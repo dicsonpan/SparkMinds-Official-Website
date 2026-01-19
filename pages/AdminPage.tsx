@@ -366,6 +366,7 @@ export const AdminPage: React.FC = () => {
                                <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center text-blue-500 shrink-0">
                                    {ps.id === 'booking' ? <Icons.CalendarClock size={24} /> : 
                                     ps.id === 'footer' ? <Icons.Footprints size={24} /> : 
+                                    ps.id === 'social_practice' ? <Icons.TrendingUp size={24} /> :
                                     <Icons.LayoutTemplate size={24} />}
                                </div>
                                <div className="flex-1">
@@ -595,6 +596,78 @@ export const AdminPage: React.FC = () => {
                         metadata: { ...editingItem.metadata, success_message: e.target.value }
                       })}
                       className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Pages: Social Practice Specific Fields */}
+              {activeTab === 'pages' && editingItem.id === 'social_practice' && (
+                <div className="space-y-4 bg-slate-50 p-4 rounded-lg border border-slate-100">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase">右侧卡片内容</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                     <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">卡片标题</label>
+                        <input 
+                          type="text" 
+                          value={editingItem.metadata?.card_title || ''} 
+                          onChange={e => setEditingItem({
+                            ...editingItem, 
+                            metadata: { ...editingItem.metadata, card_title: e.target.value }
+                          })}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm outline-none"
+                        />
+                     </div>
+                     <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">卡片副标题</label>
+                        <input 
+                          type="text" 
+                          value={editingItem.metadata?.card_subtitle || ''} 
+                          onChange={e => setEditingItem({
+                            ...editingItem, 
+                            metadata: { ...editingItem.metadata, card_subtitle: e.target.value }
+                          })}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm outline-none"
+                        />
+                     </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">卡片语录/评价</label>
+                    <textarea 
+                      rows={2}
+                      value={editingItem.metadata?.quote || ''} 
+                      onChange={e => setEditingItem({
+                        ...editingItem, 
+                        metadata: { ...editingItem.metadata, quote: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">底部小字 (Note)</label>
+                    <input 
+                      type="text" 
+                      value={editingItem.metadata?.note || ''} 
+                      onChange={e => setEditingItem({
+                        ...editingItem, 
+                        metadata: { ...editingItem.metadata, note: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm outline-none"
+                    />
+                  </div>
+                  
+                  <h4 className="text-xs font-bold text-slate-500 uppercase pt-2 border-t border-slate-200 mt-2">左侧亮点列表</h4>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">列表项 (每行一项)</label>
+                    <textarea 
+                      rows={4}
+                      value={Array.isArray(editingItem.metadata?.list_items) ? editingItem.metadata.list_items.join('\n') : (editingItem.metadata?.list_items || '')} 
+                      onChange={e => setEditingItem({
+                        ...editingItem, 
+                        metadata: { ...editingItem.metadata, list_items: e.target.value.split('\n') }
+                      })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm outline-none font-mono"
+                      placeholder="第一项&#10;第二项&#10;第三项"
                     />
                   </div>
                 </div>

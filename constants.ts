@@ -148,6 +148,23 @@ export const PAGE_SECTIONS_DEFAULT: PageSection[] = [
     description: '在创智实验室，没有“死记硬背”的知识。每一个项目都是为了解决真实世界的问题而生，成为孩子简历上最亮眼的勋章。'
   },
   {
+    id: 'social_practice',
+    title: '让创意的价值\n在真实市场中得到验证',
+    subtitle: '社会实践与财商启蒙',
+    description: '我们鼓励孩子将作品产品化。通过将创意转化为开源硬件套件或服务，孩子不仅能获得人生“第一桶金”，更重要的是在这一过程中理解经济运行的规律，培养极其宝贵的企业家精神。',
+    metadata: {
+      list_items: [
+        '从Idea到产品的全流程体验',
+        '理解成本、定价与市场需求',
+        '提前积累真实的社会实践履历'
+      ],
+      card_title: '学员项目商业化案例',
+      card_subtitle: '市场验证与价值回馈',
+      quote: '“这不仅仅是一次售卖，更是孩子建立自信、理解社会价值的最好一课。”',
+      note: '* 部分优秀学员作品已成功上线创客市场'
+    }
+  },
+  {
     id: 'booking',
     title: '预约体验课', 
     subtitle: 'BOOK NOW',

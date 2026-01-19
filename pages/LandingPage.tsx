@@ -56,6 +56,7 @@ export const LandingPage: React.FC = () => {
   const showcasesSec = getSection('showcases');
   const bookingSec = getSection('booking');
   const footerSec = getSection('footer');
+  const socialPracticeSec = getSection('social_practice');
 
   // --- Showcase Filtering Logic ---
   const categories = useMemo(() => {
@@ -345,21 +346,20 @@ export const LandingPage: React.FC = () => {
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
               <div className="inline-block py-1 px-3 rounded-full bg-blue-800 border border-blue-700 text-orange-400 text-sm font-semibold tracking-wider mb-6">
-                社会实践与财商启蒙
+                {socialPracticeSec.subtitle || '社会实践与财商启蒙'}
               </div>
-              <h2 className="text-3xl md:text-4xl font-bold mb-6">
-                让创意的价值<br/>在真实市场中得到验证
+              <h2 className="text-3xl md:text-4xl font-bold mb-6 whitespace-pre-wrap">
+                {socialPracticeSec.title || '让创意的价值\n在真实市场中得到验证'}
               </h2>
               <p className="text-blue-100 text-lg mb-8 leading-relaxed">
-                我们鼓励孩子将作品产品化。通过将创意转化为开源硬件套件或服务，孩子不仅能获得人生“第一桶金”，
-                更重要的是在这一过程中理解经济运行的规律，培养极其宝贵的企业家精神。
+                {socialPracticeSec.description}
               </p>
               <ul className="space-y-4">
-                {[
+                {(socialPracticeSec.metadata?.list_items || [
                   '从Idea到产品的全流程体验',
                   '理解成本、定价与市场需求',
                   '提前积累真实的社会实践履历'
-                ].map((item, i) => (
+                ]).map((item: string, i: number) => (
                   <li key={i} className="flex items-center gap-3">
                     <div className="w-6 h-6 rounded-full bg-[#E1964B] flex items-center justify-center flex-shrink-0">
                       <Icons.Check className="w-4 h-4 text-white" />
@@ -375,17 +375,17 @@ export const LandingPage: React.FC = () => {
                    <Icons.TrendingUp className="w-6 h-6 text-white" />
                  </div>
                  <div>
-                   <h4 className="font-bold text-xl">学员项目商业化案例</h4>
-                   <p className="text-blue-200 text-sm">市场验证与价值回馈</p>
+                   <h4 className="font-bold text-xl">{socialPracticeSec.metadata?.card_title || '学员项目商业化案例'}</h4>
+                   <p className="text-blue-200 text-sm">{socialPracticeSec.metadata?.card_subtitle || '市场验证与价值回馈'}</p>
                  </div>
                </div>
                <div className="h-48 bg-blue-950/50 rounded-lg flex items-center justify-center border border-white/5 p-4 text-center">
                   <p className="text-blue-200 italic">
-                    “这不仅仅是一次售卖，更是孩子建立自信、理解社会价值的最好一课。”
+                    {socialPracticeSec.metadata?.quote || '“这不仅仅是一次售卖，更是孩子建立自信、理解社会价值的最好一课。”'}
                   </p>
                </div>
                <p className="mt-4 text-sm text-blue-200">
-                 * 部分优秀学员作品已成功上线创客市场
+                 {socialPracticeSec.metadata?.note || '* 部分优秀学员作品已成功上线创客市场'}
                </p>
             </div>
           </div>

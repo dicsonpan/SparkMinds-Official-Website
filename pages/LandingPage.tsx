@@ -4,7 +4,8 @@ import { SectionHeading } from '../components/SectionHeading';
 import { CourseCard } from '../components/CourseCard';
 import * as Icons from 'lucide-react';
 import { useContent } from '../hooks/useContent';
-import { Link } from 'react-router-dom';
+// Removed unused Link import since we hid the admin button
+// import { Link } from 'react-router-dom';
 
 export const LandingPage: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -19,6 +20,23 @@ export const LandingPage: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Custom scroll function to handle navigation within HashRouter
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      // Offset calculation for fixed header
+      const navHeight = 100; // slightly more than header height for breathing room
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - navHeight;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth"
+      });
+    }
+    setMobileMenuOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
       
@@ -30,18 +48,18 @@ export const LandingPage: React.FC = () => {
           {/* Desktop Menu */}
           <div className="hidden md:flex space-x-8 items-center">
             {['核心理念', '成长路径', '学员作品', '社会实践'].map((item) => (
-              <a 
+              <button 
                 key={item} 
-                href={`#${item}`} 
-                className={`font-medium hover:text-[#E1964B] transition-colors ${isScrolled ? 'text-slate-700' : 'text-slate-800'}`}
+                onClick={() => scrollToSection(item)}
+                className={`font-medium hover:text-[#E1964B] transition-colors cursor-pointer bg-transparent border-none ${isScrolled ? 'text-slate-700' : 'text-slate-800'}`}
               >
                 {item}
-              </a>
+              </button>
             ))}
             <button className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold transition-colors shadow-lg shadow-blue-600/20">
               预约试听
             </button>
-            <Link to="/admin" className="text-xs text-slate-400 hover:text-slate-600">Admin</Link>
+            {/* Admin link hidden as requested */}
           </div>
 
           {/* Mobile Menu Button */}
@@ -57,19 +75,18 @@ export const LandingPage: React.FC = () => {
         {mobileMenuOpen && (
           <div className="md:hidden absolute top-full left-0 w-full bg-white shadow-lg border-t border-slate-100 p-4 flex flex-col space-y-4">
              {['核心理念', '成长路径', '学员作品', '社会实践'].map((item) => (
-              <a 
+              <button 
                 key={item} 
-                href={`#${item}`} 
-                className="text-slate-700 font-medium py-2 border-b border-slate-100"
-                onClick={() => setMobileMenuOpen(false)}
+                onClick={() => scrollToSection(item)}
+                className="text-left text-slate-700 font-medium py-2 border-b border-slate-100 bg-transparent"
               >
                 {item}
-              </a>
+              </button>
             ))}
              <button className="bg-[#E1964B] text-white w-full py-3 rounded-lg font-bold">
               预约体验课
             </button>
-            <Link to="/admin" className="text-center text-sm text-slate-400 py-2">管理员登录</Link>
+            {/* Mobile Admin link hidden as requested */}
           </div>
         )}
       </nav>
@@ -95,10 +112,16 @@ export const LandingPage: React.FC = () => {
               从激发好奇心到顶尖名校科研背景，为未来做好准备。
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-blue-600 hover:bg-blue-700 text-white text-lg px-8 py-4 rounded-xl font-bold shadow-xl shadow-blue-600/20 transition-transform hover:-translate-y-1">
+              <button 
+                onClick={() => scrollToSection('成长路径')}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-lg px-8 py-4 rounded-xl font-bold shadow-xl shadow-blue-600/20 transition-transform hover:-translate-y-1"
+              >
                 查看孩子的成长规划
               </button>
-              <button className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-lg px-8 py-4 rounded-xl font-bold shadow-sm transition-colors flex items-center justify-center gap-2">
+              <button 
+                 onClick={() => scrollToSection('学员作品')}
+                 className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-lg px-8 py-4 rounded-xl font-bold shadow-sm transition-colors flex items-center justify-center gap-2"
+              >
                 <Icons.PlayCircle className="w-5 h-5 text-[#E1964B]" />
                 看看学员们做出了什么
               </button>
@@ -270,9 +293,17 @@ export const LandingPage: React.FC = () => {
             <div>
               <h4 className="text-white font-bold mb-4">探索</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-[#E1964B] transition-colors">课程体系</a></li>
+                <li>
+                  <button onClick={() => scrollToSection('成长路径')} className="hover:text-[#E1964B] transition-colors bg-transparent border-none p-0 cursor-pointer">
+                    课程体系
+                  </button>
+                </li>
                 <li><a href="#" className="hover:text-[#E1964B] transition-colors">寒暑假集训</a></li>
-                <li><a href="#" className="hover:text-[#E1964B] transition-colors">学员荣誉</a></li>
+                <li>
+                  <button onClick={() => scrollToSection('学员作品')} className="hover:text-[#E1964B] transition-colors bg-transparent border-none p-0 cursor-pointer">
+                    学员荣誉
+                  </button>
+                </li>
                 <li><a href="#" className="hover:text-[#E1964B] transition-colors">关于我们</a></li>
               </ul>
             </div>

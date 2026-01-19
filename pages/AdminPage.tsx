@@ -582,8 +582,106 @@ export const AdminPage: React.FC = () => {
                     })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                   />
+                  <div className="grid grid-cols-2 gap-4 mt-2">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">按钮1文字</label>
+                        <input type="text" value={editingItem.metadata?.cta1 || ''} onChange={e => setEditingItem({...editingItem, metadata: {...editingItem.metadata, cta1: e.target.value}})} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">按钮2文字</label>
+                        <input type="text" value={editingItem.metadata?.cta2 || ''} onChange={e => setEditingItem({...editingItem, metadata: {...editingItem.metadata, cta2: e.target.value}})} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none" />
+                    </div>
+                  </div>
                 </div>
               )}
+
+              {/* Pages: Social Practice Specifics */}
+              {activeTab === 'pages' && editingItem.id === 'social_practice' && (
+                 <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+                    <h4 className="font-bold text-slate-700 text-sm border-b border-slate-200 pb-2">社会实践详情配置</h4>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">实践亮点列表 (每行一项)</label>
+                        <textarea
+                            rows={3}
+                            value={Array.isArray(editingItem.metadata?.list_items) ? editingItem.metadata.list_items.join('\n') : ''}
+                            onChange={e => setEditingItem({
+                                ...editingItem,
+                                metadata: { ...editingItem.metadata, list_items: e.target.value.split('\n').filter((x: string) => x.trim()) }
+                            })}
+                            placeholder="从Idea到产品的全流程体验..."
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                         <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">卡片标题</label>
+                            <input type="text" value={editingItem.metadata?.card_title || ''} onChange={e => setEditingItem({...editingItem, metadata: {...editingItem.metadata, card_title: e.target.value}})} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none" />
+                         </div>
+                         <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">卡片副标题</label>
+                            <input type="text" value={editingItem.metadata?.card_subtitle || ''} onChange={e => setEditingItem({...editingItem, metadata: {...editingItem.metadata, card_subtitle: e.target.value}})} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none" />
+                         </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">引用语 (Quote)</label>
+                        <textarea rows={2} value={editingItem.metadata?.quote || ''} onChange={e => setEditingItem({...editingItem, metadata: {...editingItem.metadata, quote: e.target.value}})} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none" />
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">底部备注</label>
+                        <input type="text" value={editingItem.metadata?.note || ''} onChange={e => setEditingItem({...editingItem, metadata: {...editingItem.metadata, note: e.target.value}})} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none" />
+                    </div>
+                 </div>
+              )}
+              
+              {/* Pages: Booking Specifics */}
+               {activeTab === 'pages' && editingItem.id === 'booking' && (
+                 <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+                    <h4 className="font-bold text-slate-700 text-sm border-b border-slate-200 pb-2">预约文案配置</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">导航按钮文字</label>
+                            <input type="text" value={editingItem.metadata?.nav_button_text || ''} onChange={e => setEditingItem({...editingItem, metadata: {...editingItem.metadata, nav_button_text: e.target.value}})} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">手机端按钮文字</label>
+                            <input type="text" value={editingItem.metadata?.mobile_button_text || ''} onChange={e => setEditingItem({...editingItem, metadata: {...editingItem.metadata, mobile_button_text: e.target.value}})} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none" />
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">提交按钮文字</label>
+                            <input type="text" value={editingItem.metadata?.submit_button_text || ''} onChange={e => setEditingItem({...editingItem, metadata: {...editingItem.metadata, submit_button_text: e.target.value}})} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none" />
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">成功提示消息</label>
+                            <input type="text" value={editingItem.metadata?.success_message || ''} onChange={e => setEditingItem({...editingItem, metadata: {...editingItem.metadata, success_message: e.target.value}})} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none" />
+                        </div>
+                    </div>
+                 </div>
+               )}
+
+              {/* Pages: Footer Specifics */}
+               {activeTab === 'pages' && editingItem.id === 'footer' && (
+                 <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+                    <h4 className="font-bold text-slate-700 text-sm border-b border-slate-200 pb-2">联系信息配置</h4>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">地址</label>
+                        <input type="text" value={editingItem.metadata?.address || ''} onChange={e => setEditingItem({...editingItem, metadata: {...editingItem.metadata, address: e.target.value}})} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                         <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">电话</label>
+                            <input type="text" value={editingItem.metadata?.phone || ''} onChange={e => setEditingItem({...editingItem, metadata: {...editingItem.metadata, phone: e.target.value}})} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none" />
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">邮箱</label>
+                            <input type="text" value={editingItem.metadata?.email || ''} onChange={e => setEditingItem({...editingItem, metadata: {...editingItem.metadata, email: e.target.value}})} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none" />
+                        </div>
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">版权信息</label>
+                        <input type="text" value={editingItem.metadata?.copyright || ''} onChange={e => setEditingItem({...editingItem, metadata: {...editingItem.metadata, copyright: e.target.value}})} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none" />
+                    </div>
+                 </div>
+               )}
 
               {/* Description / Content */}
               {(editingItem.description !== undefined || editingItem.content !== undefined) && (
@@ -706,10 +804,6 @@ export const AdminPage: React.FC = () => {
                   )}
               </div>
               )}
-
-              {/* Page Specific Fields for 'pages' (Hidden in simplified view above, kept same) */}
-              {/* ... (Existing page specific fields logic is implicitly covered by React state, no changes needed to logic, just context) ... */}
-              {/* Note: I'm preserving the page logic fields in the full output below automatically */}
 
             </div>
             

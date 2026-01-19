@@ -6,10 +6,11 @@ export interface CourseLevel {
   description: string;
   skills: string[];
   iconName: string;
-  imageUrl?: string;
+  imageUrls?: string[]; // Changed from single string to string array
 }
 
 export interface Showcase {
+  id?: number; // Added optional ID for frontend management
   title: string;
   description: string;
   category: string;
@@ -17,6 +18,7 @@ export interface Showcase {
 }
 
 export interface PhilosophyPoint {
+  id?: number;
   title: string;
   content: string;
   iconName: string;
@@ -33,4 +35,14 @@ export interface PageSection {
     cta2?: string;
     [key: string]: any;
   };
+}
+
+export interface Booking {
+  id: number;
+  parent_name: string;
+  phone: string;
+  child_age: string;
+  status: 'pending' | 'contacted';
+  note?: string;
+  created_at: string;
 }

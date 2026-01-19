@@ -9,7 +9,9 @@ export const CURRICULUM: CourseLevel[] = [
     description: '不只是玩积木，而是像设计师一样思考。孩子将学习将脑海中的奇思妙想，通过TinkerCad进行3D建模，并亲手操作3D打印机将其变为现实，建立早期的空间想象力与工程概念。',
     skills: ['空间想象力', '3D建模', '逆向工程思维', '动手实践'],
     iconName: 'Box',
-    imageUrl: 'https://images.unsplash.com/photo-1631541909061-71e349d1f203?q=80&w=800&auto=format&fit=crop'
+    imageUrls: [
+      'https://images.unsplash.com/photo-1631541909061-71e349d1f203?q=80&w=800&auto=format&fit=crop'
+    ]
   },
   {
     id: 'L2',
@@ -19,7 +21,9 @@ export const CURRICULUM: CourseLevel[] = [
     description: '探索“电”的魔法。通过制作声光电小发明（如自制台灯、感应风扇），理解电路原理与传感器逻辑。从这一步开始，孩子不再是电子产品的消费者，而是创造者。',
     skills: ['电路原理', '传感器应用', '科学探究', '逻辑归因'],
     iconName: 'Zap',
-    imageUrl: 'https://images.unsplash.com/photo-1555679427-1f6dfcce943b?q=80&w=800&auto=format&fit=crop'
+    imageUrls: [
+      'https://images.unsplash.com/photo-1555679427-1f6dfcce943b?q=80&w=800&auto=format&fit=crop'
+    ]
   },
   {
     id: 'L3',
@@ -29,7 +33,9 @@ export const CURRICULUM: CourseLevel[] = [
     description: '编程语言的“看图说话”。使用Mixly等工具，让硬件“活”起来（如设计点阵动画、智能温控）。重点培养计算机科学核心的“输入-处理-输出”逻辑思维，为代码编程打下地基。',
     skills: ['计算思维', '流程图逻辑', '模块化设计', '软硬结合'],
     iconName: 'MousePointerClick',
-    imageUrl: 'https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?q=80&w=800&auto=format&fit=crop'
+    imageUrls: [
+      'https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?q=80&w=800&auto=format&fit=crop'
+    ]
   },
   {
     id: 'L4',
@@ -39,7 +45,9 @@ export const CURRICULUM: CourseLevel[] = [
     description: '告别图形块，开始像真正的工程师一样敲代码。学习C++语言与Arduino主板，通过制作循迹小车、智能家居原型，掌握计算机底层的控制逻辑与算法基础。',
     skills: ['C++语言', '算法基础', '自动化控制', 'Debug能力'],
     iconName: 'Cpu',
-    imageUrl: 'https://images.unsplash.com/photo-1553406830-ef2513450d76?q=80&w=800&auto=format&fit=crop'
+    imageUrls: [
+      'https://images.unsplash.com/photo-1553406830-ef2513450d76?q=80&w=800&auto=format&fit=crop'
+    ]
   },
   {
     id: 'L5',
@@ -49,7 +57,9 @@ export const CURRICULUM: CourseLevel[] = [
     description: '从单机到联网的跨越。学习如何用手机远程控制硬件（如远程浇花系统）。孩子将接触Python语言，理解现代互联网设备是如何交互的，培养系统性的工程视野。',
     skills: ['Python/C++', '网络通信', '系统架构', '复杂工程管理'],
     iconName: 'Wifi',
-    imageUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800&auto=format&fit=crop'
+    imageUrls: [
+      'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800&auto=format&fit=crop'
+    ]
   },
   {
     id: 'L6',
@@ -59,7 +69,9 @@ export const CURRICULUM: CourseLevel[] = [
     description: '具备独立开发商业级产品的能力。学习Linux服务器、数据库与网页技术。孩子将能独立搭建网站、开发小程序，打通软件与硬件的最后“一公里”。',
     skills: ['Linux服务器', 'Web全栈', '数据库', '产品经理思维'],
     iconName: 'Globe',
-    imageUrl: 'https://images.unsplash.com/photo-1504639725590-34d0984388bd?q=80&w=800&auto=format&fit=crop'
+    imageUrls: [
+      'https://images.unsplash.com/photo-1504639725590-34d0984388bd?q=80&w=800&auto=format&fit=crop'
+    ]
   },
   {
     id: 'L7',
@@ -69,7 +81,9 @@ export const CURRICULUM: CourseLevel[] = [
     description: '站在科技的最前沿。接触计算机视觉、神经网络等大学级知识。我们将指导学生进行独立课题研究，产出高含金量的科研论文或项目，助力国内外名校申请。',
     skills: ['AI/深度学习', '学术写作', '科研方法论', '名校背景提升'],
     iconName: 'Brain',
-    imageUrl: 'https://images.unsplash.com/photo-1507146426996-ef05306b995a?q=80&w=800&auto=format&fit=crop'
+    imageUrls: [
+      'https://images.unsplash.com/photo-1507146426996-ef05306b995a?q=80&w=800&auto=format&fit=crop'
+    ]
   }
 ];
 

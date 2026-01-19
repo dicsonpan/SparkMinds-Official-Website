@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { CourseLevel } from '../types';
 import * as Icons from 'lucide-react';
 
@@ -8,8 +8,20 @@ interface CourseCardProps {
 }
 
 export const CourseCard: React.FC<CourseCardProps> = ({ course, index }) => {
-  // Dynamic icon rendering if needed, though mostly using image now
   const isEven = index % 2 === 0;
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const images = course.imageUrls || [];
+
+  // Carousel Logic
+  useEffect(() => {
+    if (images.length <= 1) return;
+
+    const timer = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % images.length);
+    }, 4000); // Change every 4 seconds
+
+    return () => clearInterval(timer);
+  }, [images.length]);
 
   return (
     <div className={`relative flex items-center justify-between w-full mb-12 md:mb-20 ${isEven ? 'flex-row-reverse' : ''}`}>
@@ -26,14 +38,33 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course, index }) => {
       <div className="w-full md:w-5/12 pl-14 md:pl-0">
         <div className="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
           
-          {/* Card Image Header */}
-          <div className="h-40 w-full bg-slate-200 relative overflow-hidden">
-            {course.imageUrl ? (
-              <img 
-                src={course.imageUrl} 
-                alt={course.title} 
-                className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
-              />
+          {/* Card Image Header / Carousel */}
+          <div className="h-48 w-full bg-slate-200 relative overflow-hidden group-hover:scale-[1.02] transition-transform duration-500">
+            {images.length > 0 ? (
+              <>
+                {images.map((url, idx) => (
+                  <img 
+                    key={`${url}-${idx}`}
+                    src={url} 
+                    alt={`${course.title} - ${idx + 1}`} 
+                    className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${idx === currentImageIndex ? 'opacity-100' : 'opacity-0'}`}
+                  />
+                ))}
+                
+                {/* Carousel Dots */}
+                {images.length > 1 && (
+                  <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-10">
+                    {images.map((_, idx) => (
+                      <button 
+                        key={idx}
+                        onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(idx); }}
+                        className={`w-1.5 h-1.5 rounded-full transition-all ${idx === currentImageIndex ? 'bg-white w-3' : 'bg-white/50 hover:bg-white/80'}`}
+                        aria-label={`Go to slide ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-blue-50 text-blue-300">
                 <Icons.Image size={40} />
@@ -41,8 +72,8 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course, index }) => {
             )}
             
             {/* Level Badge Overlay */}
-            <div className="absolute top-4 left-4">
-              <span className="inline-block bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-lg shadow-md uppercase tracking-wide">
+            <div className="absolute top-4 left-4 z-20">
+              <span className="inline-block bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-lg shadow-md uppercase tracking-wide backdrop-blur-sm bg-opacity-90">
                 {course.id}
               </span>
             </div>

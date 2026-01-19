@@ -28,11 +28,31 @@ export const useContent = () => {
       
       // Fetch Curriculum
       const { data: currData } = await supabase.from('curriculum').select('*').order('id', { ascending: true });
-      if (currData && currData.length > 0) setCurriculum(currData);
+      if (currData && currData.length > 0) {
+        const mappedCurriculum = currData.map((item: any) => ({
+          id: item.id,
+          level: item.level,
+          age: item.age,
+          title: item.title,
+          description: item.description,
+          skills: item.skills,
+          iconName: item.icon_name, 
+          imageUrls: item.image_urls || [] // Map image_urls array
+        }));
+        setCurriculum(mappedCurriculum);
+      }
 
       // Fetch Philosophy
       const { data: philData } = await supabase.from('philosophy').select('*').order('created_at', { ascending: true });
-      if (philData && philData.length > 0) setPhilosophy(philData);
+      if (philData && philData.length > 0) {
+        const mappedPhilosophy = philData.map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          content: item.content,
+          iconName: item.icon_name 
+        }));
+        setPhilosophy(mappedPhilosophy);
+      }
 
       // Fetch Showcases
       const { data: showData } = await supabase.from('showcases').select('*').order('created_at', { ascending: true });

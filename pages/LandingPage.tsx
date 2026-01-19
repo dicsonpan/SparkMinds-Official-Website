@@ -5,6 +5,7 @@ import { CourseCard } from '../components/CourseCard';
 import * as Icons from 'lucide-react';
 import { useContent } from '../hooks/useContent';
 import { PageSection } from '../types';
+import { supabase } from '../lib/supabaseClient';
 
 export const LandingPage: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -15,6 +16,14 @@ export const LandingPage: React.FC = () => {
   const { curriculum, philosophy, showcases, pageSections } = useContent();
   const [selectedCategory, setSelectedCategory] = useState<string>('全部');
   const [visibleCount, setVisibleCount] = useState<number>(8); // Initial display count
+
+  // Booking Form State
+  const [bookingForm, setBookingForm] = useState({
+    parentName: '',
+    phone: '',
+    childAge: '6-8岁'
+  });
+  const [bookingStatus, setBookingStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
 
   useEffect(() => {
     const handleScroll = () => {
@@ -82,10 +91,34 @@ export const LandingPage: React.FC = () => {
   };
 
   // --- Booking Form Handler ---
-  const handleBookingSubmit = (e: React.FormEvent) => {
+  const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert(bookingSec.metadata?.success_message || '提交成功');
-    setIsBookingModalOpen(false);
+    setBookingStatus('submitting');
+    
+    try {
+      const { error } = await supabase.from('bookings').insert([{
+        parent_name: bookingForm.parentName,
+        phone: bookingForm.phone,
+        child_age: bookingForm.childAge,
+        status: 'pending'
+      }]);
+
+      if (error) throw error;
+
+      setBookingStatus('success');
+      // Reset form
+      setBookingForm({ parentName: '', phone: '', childAge: '6-8岁' });
+      
+      // Close modal after 2 seconds
+      setTimeout(() => {
+        setIsBookingModalOpen(false);
+        setBookingStatus('idle');
+      }, 2000);
+
+    } catch (err) {
+      console.error(err);
+      setBookingStatus('error');
+    }
   };
 
   return (
@@ -458,31 +491,68 @@ export const LandingPage: React.FC = () => {
               <p className="text-slate-500 mt-2 text-sm">{bookingSec.description}</p>
             </div>
 
-            <form onSubmit={handleBookingSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">家长姓名</label>
-                <input type="text" required className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="请输入您的姓名" />
+            {bookingStatus === 'success' ? (
+              <div className="text-center py-8">
+                <div className="text-green-500 mb-4 flex justify-center">
+                  <Icons.CheckCircle size={48} />
+                </div>
+                <h4 className="text-xl font-bold text-slate-800 mb-2">{bookingSec.metadata?.success_message || '提交成功！'}</h4>
+                <p className="text-slate-500 text-sm">我们的顾问将尽快与您取得联系。</p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">联系电话</label>
-                <input type="tel" required className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="请输入手机号码" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">孩子年龄</label>
-                <select className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                  <option>6-8岁</option>
-                  <option>9-12岁</option>
-                  <option>13-15岁</option>
-                  <option>16岁以上</option>
-                </select>
-              </div>
-              <button 
-                type="submit" 
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-600/20 transition-all mt-2"
-              >
-                {bookingSec.metadata?.submit_button_text || '立即预约'}
-              </button>
-            </form>
+            ) : (
+              <form onSubmit={handleBookingSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">家长姓名</label>
+                  <input 
+                    type="text" 
+                    required 
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
+                    placeholder="请输入您的姓名" 
+                    value={bookingForm.parentName}
+                    onChange={(e) => setBookingForm({...bookingForm, parentName: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">联系电话</label>
+                  <input 
+                    type="tel" 
+                    required 
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
+                    placeholder="请输入手机号码" 
+                    value={bookingForm.phone}
+                    onChange={(e) => setBookingForm({...bookingForm, phone: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">孩子年龄</label>
+                  <select 
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={bookingForm.childAge}
+                    onChange={(e) => setBookingForm({...bookingForm, childAge: e.target.value})}
+                  >
+                    <option>6-8岁</option>
+                    <option>9-12岁</option>
+                    <option>13-15岁</option>
+                    <option>16岁以上</option>
+                  </select>
+                </div>
+                
+                {bookingStatus === 'error' && (
+                  <div className="text-red-500 text-sm text-center">
+                    提交失败，请稍后重试或直接联系客服。
+                  </div>
+                )}
+
+                <button 
+                  type="submit" 
+                  disabled={bookingStatus === 'submitting'}
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-70 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-600/20 transition-all mt-2 flex items-center justify-center gap-2"
+                >
+                  {bookingStatus === 'submitting' && <Icons.Loader2 className="animate-spin" size={20} />}
+                  {bookingSec.metadata?.submit_button_text || '立即预约'}
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}

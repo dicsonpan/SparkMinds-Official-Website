@@ -364,14 +364,16 @@ export const AdminPage: React.FC = () => {
                       {pageSections.map((ps) => (
                            <div key={ps.id} className="p-6 flex items-start gap-6 hover:bg-slate-50 transition-colors group">
                                <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center text-blue-500 shrink-0">
-                                   <Icons.LayoutTemplate size={24} />
+                                   {ps.id === 'booking' ? <Icons.CalendarClock size={24} /> : 
+                                    ps.id === 'footer' ? <Icons.Footprints size={24} /> : 
+                                    <Icons.LayoutTemplate size={24} />}
                                </div>
                                <div className="flex-1">
                                    <div className="flex items-center gap-3 mb-1">
                                       <span className="font-mono text-xs font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded uppercase">{ps.id}</span>
                                       <h3 className="font-bold text-slate-900">{ps.title}</h3>
                                    </div>
-                                   <p className="text-slate-500 text-sm">{ps.description}</p>
+                                   <p className="text-slate-500 text-sm line-clamp-2">{ps.description}</p>
                                </div>
                                <button onClick={() => openEditModal(ps)} className="opacity-0 group-hover:opacity-100 p-2 text-blue-600 hover:bg-blue-50 rounded transition-all">
                                  <Icons.Edit2 size={18} />
@@ -420,7 +422,7 @@ export const AdminPage: React.FC = () => {
               </div>
 
               {/* Pages: Subtitle */}
-              {activeTab === 'pages' && editingItem.id !== 'hero' && (
+              {activeTab === 'pages' && editingItem.id !== 'hero' && editingItem.id !== 'footer' && (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">副标题 (小标签)</label>
                   <input 
@@ -452,7 +454,7 @@ export const AdminPage: React.FC = () => {
               {(editingItem.description !== undefined || editingItem.content !== undefined) && (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
-                    {editingItem.description !== undefined ? '描述' : '内容'}
+                    {editingItem.description !== undefined ? '描述 / 正文内容' : '内容'}
                   </label>
                   <textarea 
                     rows={4}
@@ -491,6 +493,108 @@ export const AdminPage: React.FC = () => {
                         metadata: { ...editingItem.metadata, cta2: e.target.value }
                       })}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Pages: Footer Specific Fields */}
+              {activeTab === 'pages' && editingItem.id === 'footer' && (
+                <div className="space-y-3 bg-slate-50 p-4 rounded-lg border border-slate-100">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase">页脚联系信息</h4>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">地址</label>
+                    <input 
+                      type="text" 
+                      value={editingItem.metadata?.address || ''} 
+                      onChange={e => setEditingItem({
+                        ...editingItem, 
+                        metadata: { ...editingItem.metadata, address: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm outline-none"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                     <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">邮箱</label>
+                        <input 
+                          type="text" 
+                          value={editingItem.metadata?.email || ''} 
+                          onChange={e => setEditingItem({
+                            ...editingItem, 
+                            metadata: { ...editingItem.metadata, email: e.target.value }
+                          })}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm outline-none"
+                        />
+                     </div>
+                     <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">电话</label>
+                        <input 
+                          type="text" 
+                          value={editingItem.metadata?.phone || ''} 
+                          onChange={e => setEditingItem({
+                            ...editingItem, 
+                            metadata: { ...editingItem.metadata, phone: e.target.value }
+                          })}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm outline-none"
+                        />
+                     </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">版权信息</label>
+                    <input 
+                      type="text" 
+                      value={editingItem.metadata?.copyright || ''} 
+                      onChange={e => setEditingItem({
+                        ...editingItem, 
+                        metadata: { ...editingItem.metadata, copyright: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Pages: Booking Specific Fields */}
+              {activeTab === 'pages' && editingItem.id === 'booking' && (
+                <div className="space-y-3 bg-slate-50 p-4 rounded-lg border border-slate-100">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase">预约按钮与反馈</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                     <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">导航栏按钮文案</label>
+                        <input 
+                          type="text" 
+                          value={editingItem.metadata?.nav_button_text || ''} 
+                          onChange={e => setEditingItem({
+                            ...editingItem, 
+                            metadata: { ...editingItem.metadata, nav_button_text: e.target.value }
+                          })}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm outline-none"
+                        />
+                     </div>
+                     <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">弹窗提交按钮文案</label>
+                        <input 
+                          type="text" 
+                          value={editingItem.metadata?.submit_button_text || ''} 
+                          onChange={e => setEditingItem({
+                            ...editingItem, 
+                            metadata: { ...editingItem.metadata, submit_button_text: e.target.value }
+                          })}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm outline-none"
+                        />
+                     </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">成功提交后的提示语</label>
+                    <input 
+                      type="text" 
+                      value={editingItem.metadata?.success_message || ''} 
+                      onChange={e => setEditingItem({
+                        ...editingItem, 
+                        metadata: { ...editingItem.metadata, success_message: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm outline-none"
                     />
                   </div>
                 </div>

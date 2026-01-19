@@ -9,6 +9,7 @@ import { PageSection } from '../types';
 export const LandingPage: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   
   // Showcase Logic State
   const { curriculum, philosophy, showcases, pageSections } = useContent();
@@ -53,21 +54,20 @@ export const LandingPage: React.FC = () => {
   const philosophySec = getSection('philosophy');
   const curriculumSec = getSection('curriculum');
   const showcasesSec = getSection('showcases');
+  const bookingSec = getSection('booking');
+  const footerSec = getSection('footer');
 
   // --- Showcase Filtering Logic ---
-  // 1. Extract unique categories from data
   const categories = useMemo(() => {
     const cats = new Set(showcases.map(s => s.category));
     return ['全部', ...Array.from(cats)];
   }, [showcases]);
 
-  // 2. Filter showcases based on selection
   const filteredShowcases = useMemo(() => {
     if (selectedCategory === '全部') return showcases;
     return showcases.filter(s => s.category === selectedCategory);
   }, [showcases, selectedCategory]);
 
-  // 3. Slice for pagination
   const visibleShowcases = filteredShowcases.slice(0, visibleCount);
   const hasMore = visibleCount < filteredShowcases.length;
 
@@ -78,6 +78,13 @@ export const LandingPage: React.FC = () => {
   const handleCategoryChange = (cat: string) => {
     setSelectedCategory(cat);
     setVisibleCount(8); // Reset pagination when filter changes
+  };
+
+  // --- Booking Form Handler ---
+  const handleBookingSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    alert(bookingSec.metadata?.success_message || '提交成功');
+    setIsBookingModalOpen(false);
   };
 
   return (
@@ -99,8 +106,11 @@ export const LandingPage: React.FC = () => {
                 {item}
               </button>
             ))}
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold transition-colors shadow-lg shadow-blue-600/20">
-              预约试听
+            <button 
+              onClick={() => setIsBookingModalOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold transition-colors shadow-lg shadow-blue-600/20"
+            >
+              {bookingSec.metadata?.nav_button_text || '预约试听'}
             </button>
           </div>
 
@@ -125,8 +135,14 @@ export const LandingPage: React.FC = () => {
                 {item}
               </button>
             ))}
-             <button className="bg-[#E1964B] text-white w-full py-3 rounded-lg font-bold">
-              预约体验课
+             <button 
+               onClick={() => {
+                 setMobileMenuOpen(false);
+                 setIsBookingModalOpen(true);
+               }}
+               className="bg-[#E1964B] text-white w-full py-3 rounded-lg font-bold"
+             >
+              {bookingSec.metadata?.mobile_button_text || '预约体验课'}
             </button>
           </div>
         )}
@@ -217,21 +233,15 @@ export const LandingPage: React.FC = () => {
               <CourseCard key={course.id} course={course} index={index} />
             ))}
 
-            {/* The Summit Marker - Updated for visual impact */}
+            {/* The Summit Marker */}
             <div className="relative flex justify-center mt-16">
                <div className="relative group cursor-default">
-                  {/* Glowing background effect */}
                   <div className="absolute -inset-1 bg-gradient-to-r from-orange-400 to-blue-600 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
-                  
-                  {/* The main button */}
                   <div className="relative bg-slate-900 text-white px-10 py-6 rounded-full shadow-2xl flex items-center gap-4 border-2 border-slate-800 z-20 overflow-hidden">
-                    {/* Shine effect */}
                     <div className="absolute top-0 left-0 w-full h-full bg-white opacity-5 transform -skew-x-12 translate-x-[-120%] group-hover:translate-x-[120%] transition-transform duration-1000 ease-in-out"></div>
-                    
                     <div className="w-12 h-12 bg-gradient-to-br from-[#E1964B] to-yellow-500 rounded-full flex items-center justify-center text-white shadow-lg shrink-0">
                        <Icons.Crown size={24} fill="currentColor" className="text-white" />
                     </div>
-                    
                     <div className="flex flex-col">
                        <span className="text-xs text-orange-400 font-bold tracking-widest uppercase mb-1">Target</span>
                        <span className="font-bold text-xl md:text-2xl tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-200">
@@ -388,14 +398,12 @@ export const LandingPage: React.FC = () => {
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div className="col-span-1 md:col-span-2">
               <Logo className="h-8 w-auto mb-4 grayscale brightness-200 opacity-80" />
-              <p className="max-w-xs text-sm leading-relaxed">
-                创智实验室 (SparkMinds) 专注于青少年硬核科技素养教育。
-                <br/><br/>
-                我们致力于为中国家庭提供一条科学、扎实、具有国际视野的科技创新成长路径。
+              <p className="max-w-xs text-sm leading-relaxed whitespace-pre-wrap">
+                {footerSec.description}
               </p>
             </div>
             <div>
-              <h4 className="text-white font-bold mb-4">探索</h4>
+              <h4 className="text-white font-bold mb-4">{footerSec.metadata?.explore_title || '探索'}</h4>
               <ul className="space-y-2 text-sm">
                 <li>
                   <button onClick={() => scrollToSection('成长路径')} className="hover:text-[#E1964B] transition-colors bg-transparent border-none p-0 cursor-pointer">
@@ -412,16 +420,16 @@ export const LandingPage: React.FC = () => {
               </ul>
             </div>
             <div>
-              <h4 className="text-white font-bold mb-4">联系我们</h4>
+              <h4 className="text-white font-bold mb-4">{footerSec.title || '联系我们'}</h4>
               <ul className="space-y-2 text-sm">
-                <li className="flex items-center gap-2"><Icons.MapPin size={16}/> 广州/深圳 线下创新中心</li>
-                <li className="flex items-center gap-2"><Icons.Mail size={16}/> contact@sparkminds.edu</li>
-                <li className="flex items-center gap-2"><Icons.Phone size={16}/> 400-123-4567</li>
+                <li className="flex items-center gap-2"><Icons.MapPin size={16} className="shrink-0"/> {footerSec.metadata?.address || '地址加载中...'}</li>
+                <li className="flex items-center gap-2"><Icons.Mail size={16} className="shrink-0"/> {footerSec.metadata?.email || '邮箱加载中...'}</li>
+                <li className="flex items-center gap-2"><Icons.Phone size={16} className="shrink-0"/> {footerSec.metadata?.phone || '电话加载中...'}</li>
               </ul>
             </div>
           </div>
           <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center text-xs">
-            <p>© 2024 SparkMinds 创智实验室. All rights reserved.</p>
+            <p>{footerSec.metadata?.copyright || '© 2024 SparkMinds. All rights reserved.'}</p>
             <div className="flex gap-4 mt-4 md:mt-0">
               <a href="#" className="hover:text-white">隐私政策</a>
               <a href="#" className="hover:text-white">用户协议</a>
@@ -429,6 +437,55 @@ export const LandingPage: React.FC = () => {
           </div>
         </div>
       </footer>
+
+      {/* Booking Modal */}
+      {isBookingModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsBookingModalOpen(false)}></div>
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 md:p-8 animate-fade-in-up">
+            <button 
+              onClick={() => setIsBookingModalOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <Icons.X size={24} />
+            </button>
+            
+            <div className="text-center mb-6">
+              <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 mx-auto mb-4">
+                <Icons.CalendarCheck size={24} />
+              </div>
+              <h3 className="text-2xl font-bold text-slate-900">{bookingSec.title}</h3>
+              <p className="text-slate-500 mt-2 text-sm">{bookingSec.description}</p>
+            </div>
+
+            <form onSubmit={handleBookingSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">家长姓名</label>
+                <input type="text" required className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="请输入您的姓名" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">联系电话</label>
+                <input type="tel" required className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="请输入手机号码" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">孩子年龄</label>
+                <select className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                  <option>6-8岁</option>
+                  <option>9-12岁</option>
+                  <option>13-15岁</option>
+                  <option>16岁以上</option>
+                </select>
+              </div>
+              <button 
+                type="submit" 
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-600/20 transition-all mt-2"
+              >
+                {bookingSec.metadata?.submit_button_text || '立即预约'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

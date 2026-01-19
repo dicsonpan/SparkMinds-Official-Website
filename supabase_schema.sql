@@ -77,7 +77,9 @@ values
 ('hero', '给孩子带得走的', '', '在这个人工智能时代，我们不仅教授编程与硬件，更致力于培养孩子解决复杂问题的工程思维。从激发好奇心到顶尖名校科研背景，为未来做好准备。', '{"highlighted_text": "硬核科技创造力", "cta1": "查看孩子的成长规划", "cta2": "看看学员们做出了什么"}'),
 ('philosophy', '不仅是兴趣班，更是未来竞争力的孵化器', 'OUR MISSION', '我们用6年时间打磨出一套标准化的“真做”课程，让科技素养成为孩子受益终身的能力。', '{}'),
 ('curriculum', 'L1-L7 阶梯式成长体系', 'GROWTH PATH', '科学规划7级成长阶梯，匹配孩子不同年龄段的认知发展。从动手启蒙到算法科研，直通顶尖学府。', '{}'),
-('showcases', '让孩子的才华被世界看见', 'SUCCESS STORIES', '在创智实验室，没有“死记硬背”的知识。每一个项目都是为了解决真实世界的问题而生，成为孩子简历上最亮眼的勋章。', '{}')
+('showcases', '让孩子的才华被世界看见', 'SUCCESS STORIES', '在创智实验室，没有“死记硬背”的知识。每一个项目都是为了解决真实世界的问题而生，成为孩子简历上最亮眼的勋章。', '{}'),
+('booking', '预约体验课', 'BOOK NOW', '请留下您的联系方式，我们的课程顾问将在24小时内与您联系，为您安排个性化试听体验。', '{"nav_button_text": "预约试听", "mobile_button_text": "预约体验课", "submit_button_text": "立即预约", "success_message": "预约成功！我们会尽快联系您。"}'),
+('footer', '联系我们', '', '创智实验室 (SparkMinds) 专注于青少年硬核科技素养教育。\n\n我们致力于为中国家庭提供一条科学、扎实、具有国际视野的科技创新成长路径。', '{"address": "广州/深圳 线下创新中心", "email": "contact@sparkminds.edu", "phone": "400-123-4567", "copyright": "© 2024 SparkMinds 创智实验室. All rights reserved.", "explore_title": "探索", "contact_title": "联系我们"}')
 on conflict (id) do nothing;
 
 

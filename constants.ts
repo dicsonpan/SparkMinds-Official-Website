@@ -146,5 +146,30 @@ export const PAGE_SECTIONS_DEFAULT: PageSection[] = [
     title: '让孩子的才华被世界看见',
     subtitle: 'SUCCESS STORIES',
     description: '在创智实验室，没有“死记硬背”的知识。每一个项目都是为了解决真实世界的问题而生，成为孩子简历上最亮眼的勋章。'
+  },
+  {
+    id: 'booking',
+    title: '预约体验课', 
+    subtitle: 'BOOK NOW',
+    description: '请留下您的联系方式，我们的课程顾问将在24小时内与您联系，为您安排个性化试听体验。',
+    metadata: {
+      nav_button_text: '预约试听',
+      mobile_button_text: '预约体验课',
+      submit_button_text: '立即预约',
+      success_message: '预约成功！我们会尽快联系您。'
+    }
+  },
+  {
+    id: 'footer',
+    title: '联系我们',
+    description: '创智实验室 (SparkMinds) 专注于青少年硬核科技素养教育。\n\n我们致力于为中国家庭提供一条科学、扎实、具有国际视野的科技创新成长路径。',
+    metadata: {
+      address: '广州/深圳 线下创新中心',
+      email: 'contact@sparkminds.edu',
+      phone: '400-123-4567',
+      copyright: '© 2024 SparkMinds 创智实验室. All rights reserved.',
+      explore_title: '探索',
+      contact_title: '联系我们'
+    }
   }
 ];

@@ -217,11 +217,28 @@ export const LandingPage: React.FC = () => {
               <CourseCard key={course.id} course={course} index={index} />
             ))}
 
-            {/* The Summit Marker */}
-            <div className="relative flex justify-center mt-12">
-               <div className="bg-slate-900 text-white px-8 py-4 rounded-full shadow-2xl flex items-center gap-3 border-4 border-white z-20">
-                 <Icons.GraduationCap className="text-[#E1964B]" />
-                 <span className="font-bold tracking-wide">顶尖名校 / 科技领袖</span>
+            {/* The Summit Marker - Updated for visual impact */}
+            <div className="relative flex justify-center mt-16">
+               <div className="relative group cursor-default">
+                  {/* Glowing background effect */}
+                  <div className="absolute -inset-1 bg-gradient-to-r from-orange-400 to-blue-600 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
+                  
+                  {/* The main button */}
+                  <div className="relative bg-slate-900 text-white px-10 py-6 rounded-full shadow-2xl flex items-center gap-4 border-2 border-slate-800 z-20 overflow-hidden">
+                    {/* Shine effect */}
+                    <div className="absolute top-0 left-0 w-full h-full bg-white opacity-5 transform -skew-x-12 translate-x-[-120%] group-hover:translate-x-[120%] transition-transform duration-1000 ease-in-out"></div>
+                    
+                    <div className="w-12 h-12 bg-gradient-to-br from-[#E1964B] to-yellow-500 rounded-full flex items-center justify-center text-white shadow-lg shrink-0">
+                       <Icons.Crown size={24} fill="currentColor" className="text-white" />
+                    </div>
+                    
+                    <div className="flex flex-col">
+                       <span className="text-xs text-orange-400 font-bold tracking-widest uppercase mb-1">Target</span>
+                       <span className="font-bold text-xl md:text-2xl tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-200">
+                         顶尖名校 / 科技领袖
+                       </span>
+                    </div>
+                  </div>
                </div>
             </div>
           </div>

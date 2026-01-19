@@ -6,6 +6,7 @@ export interface CourseLevel {
   description: string;
   skills: string[];
   iconName: string;
+  imageUrl?: string;
 }
 
 export interface Showcase {

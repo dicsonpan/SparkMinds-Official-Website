@@ -9,6 +9,7 @@ create table if not exists public.curriculum (
   description text not null,
   skills text[] not null,
   icon_name text not null,
+  image_url text, -- NEW: Added for course cover images
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 

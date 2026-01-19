@@ -14,6 +14,7 @@ interface DbCourse {
   description: string;
   skills: string[];
   icon_name: string;
+  image_url?: string;
 }
 
 interface DbShowcase {
@@ -105,7 +106,8 @@ export const AdminPage: React.FC = () => {
           title: c.title,
           description: c.description,
           skills: c.skills,
-          icon_name: c.iconName
+          icon_name: c.iconName,
+          image_url: c.imageUrl
         }));
         await supabase.from('curriculum').insert(dbCurriculum);
       }
@@ -205,6 +207,8 @@ export const AdminPage: React.FC = () => {
 
       if (activeTab === 'showcase') {
         setEditingItem({ ...editingItem, image_alt: data.publicUrl });
+      } else if (activeTab === 'curriculum') {
+        setEditingItem({ ...editingItem, image_url: data.publicUrl });
       } else {
         setEditingItem({ ...editingItem, icon_name: data.publicUrl });
       }
@@ -281,8 +285,12 @@ export const AdminPage: React.FC = () => {
                  <div className="divide-y divide-slate-100">
                     {curriculum.map(c => (
                         <div key={c.id} className="p-6 flex items-start gap-6 hover:bg-slate-50 transition-colors group">
-                           <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 shrink-0">
-                             {(Icons as any)[c.icon_name] ? React.createElement((Icons as any)[c.icon_name], {size: 24}) : <Icons.Box />}
+                           <div className="w-16 h-12 bg-slate-200 rounded overflow-hidden shrink-0 border border-slate-100">
+                             {c.image_url ? (
+                               <img src={c.image_url} alt={c.title} className="w-full h-full object-cover" />
+                             ) : (
+                               <div className="w-full h-full flex items-center justify-center text-slate-400"><Icons.Image size={16} /></div>
+                             )}
                            </div>
                            <div className="flex-1">
                              <div className="flex items-center gap-3 mb-1">
@@ -520,21 +528,23 @@ export const AdminPage: React.FC = () => {
               {activeTab !== 'pages' && (
               <div>
                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    {activeTab === 'showcase' ? '图片 (上传或输入链接/视频可填B站iframe)' : '图标名称 (Lucide Icon)'}
+                    {activeTab === 'showcase' ? '图片 (上传或输入链接/视频可填B站iframe)' : 
+                     activeTab === 'curriculum' ? '课程封面图' : '图标名称 (Lucide Icon)'}
                  </label>
                  
                  <input 
                     type="text" 
-                    value={editingItem.icon_name || editingItem.image_alt || ''} 
+                    value={editingItem.icon_name || editingItem.image_alt || editingItem.image_url || ''} 
                     onChange={e => {
                         if (activeTab === 'showcase') setEditingItem({...editingItem, image_alt: e.target.value});
+                        else if (activeTab === 'curriculum') setEditingItem({...editingItem, image_url: e.target.value});
                         else setEditingItem({...editingItem, icon_name: e.target.value});
                     }}
-                    placeholder={activeTab === 'showcase' ? "https://... 或上传图片" : "Box, Zap, etc."}
+                    placeholder={activeTab === 'showcase' || activeTab === 'curriculum' ? "https://... 或上传图片" : "Box, Zap, etc."}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm mb-2"
                   />
                   
-                  {activeTab === 'showcase' && (
+                  {(activeTab === 'showcase' || activeTab === 'curriculum') && (
                     <div className="relative">
                       <input
                         type="file"
@@ -553,7 +563,7 @@ export const AdminPage: React.FC = () => {
                   )}
                   {activeTab === 'showcase' && (
                     <p className="text-xs text-slate-500 mt-1">
-                      提示: 视频请将B站的iframe代码填入上方文本框。图片建议比例 4:3。
+                      提示: 视频请将B站的iframe代码填入上方文本框。
                     </p>
                   )}
               </div>

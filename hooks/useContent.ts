@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { CURRICULUM, PHILOSOPHY, SHOWCASES, PAGE_SECTIONS_DEFAULT } from '../constants';
-import { CourseLevel, PhilosophyPoint, Showcase, PageSection } from '../types';
+import { CURRICULUM, PHILOSOPHY, SHOWCASES, PAGE_SECTIONS_DEFAULT, SOCIAL_PROJECTS } from '../constants';
+import { CourseLevel, PhilosophyPoint, Showcase, PageSection, SocialProject } from '../types';
 
 export const useContent = () => {
   const [curriculum, setCurriculum] = useState<CourseLevel[]>(CURRICULUM);
   const [philosophy, setPhilosophy] = useState<PhilosophyPoint[]>(PHILOSOPHY);
   const [showcases, setShowcases] = useState<Showcase[]>(SHOWCASES);
+  const [socialProjects, setSocialProjects] = useState<SocialProject[]>(SOCIAL_PROJECTS);
   const [pageSections, setPageSections] = useState<Record<string, PageSection>>({});
   const [loading, setLoading] = useState(true);
 
@@ -67,6 +68,20 @@ export const useContent = () => {
         setShowcases(mappedShowcases);
       }
 
+      // Fetch Social Projects
+      const { data: socData } = await supabase.from('social_projects').select('*').order('created_at', { ascending: true });
+      if (socData && socData.length > 0) {
+        const mappedProjects = socData.map((item: any) => ({
+            id: item.id,
+            title: item.title,
+            subtitle: item.subtitle,
+            quote: item.quote,
+            footerNote: item.footer_note,
+            imageUrl: item.image_url
+        }));
+        setSocialProjects(mappedProjects);
+      }
+
       // Fetch Page Sections
       const { data: secData } = await supabase.from('page_sections').select('*');
       if (secData && secData.length > 0) {
@@ -84,5 +99,5 @@ export const useContent = () => {
     fetchData();
   }, []);
 
-  return { curriculum, philosophy, showcases, pageSections, loading, refresh: fetchData };
+  return { curriculum, philosophy, showcases, socialProjects, pageSections, loading, refresh: fetchData };
 };

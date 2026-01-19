@@ -46,3 +46,12 @@ export interface Booking {
   note?: string;
   created_at: string;
 }
+
+export interface SocialProject {
+  id?: number;
+  title: string;
+  subtitle: string;
+  quote: string;
+  footerNote: string;
+  imageUrl?: string;
+}

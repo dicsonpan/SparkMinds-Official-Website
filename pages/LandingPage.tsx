@@ -13,9 +13,12 @@ export const LandingPage: React.FC = () => {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   
   // Showcase Logic State
-  const { curriculum, philosophy, showcases, pageSections } = useContent();
+  const { curriculum, philosophy, showcases, socialProjects, pageSections } = useContent();
   const [selectedCategory, setSelectedCategory] = useState<string>('全部');
   const [visibleCount, setVisibleCount] = useState<number>(8); // Initial display count
+  
+  // Social Carousel State
+  const [currentSocialIndex, setCurrentSocialIndex] = useState(0);
 
   // Booking Form State
   const [bookingForm, setBookingForm] = useState({
@@ -32,6 +35,15 @@ export const LandingPage: React.FC = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Social Carousel Autoplay
+  useEffect(() => {
+    if (socialProjects.length <= 1) return;
+    const interval = setInterval(() => {
+        setCurrentSocialIndex(prev => (prev + 1) % socialProjects.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [socialProjects.length]);
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
@@ -377,6 +389,7 @@ export const LandingPage: React.FC = () => {
         
         <div className="container mx-auto px-4 md:px-6 relative z-10">
           <div className="grid md:grid-cols-2 gap-12 items-center">
+            {/* Left Column: Text Info */}
             <div>
               <div className="inline-block py-1 px-3 rounded-full bg-blue-800 border border-blue-700 text-orange-400 text-sm font-semibold tracking-wider mb-6">
                 {socialPracticeSec.subtitle || '社会实践与财商启蒙'}
@@ -402,24 +415,55 @@ export const LandingPage: React.FC = () => {
                 ))}
               </ul>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm p-8 rounded-2xl border border-white/10">
-               <div className="flex items-center gap-4 mb-6">
-                 <div className="p-3 bg-[#E1964B] rounded-lg">
-                   <Icons.TrendingUp className="w-6 h-6 text-white" />
+
+            {/* Right Column: Dynamic Project Carousel */}
+            <div className="relative">
+              {socialProjects.map((project, idx) => (
+                <div 
+                  key={idx}
+                  className={`transition-all duration-700 ease-in-out absolute inset-0 md:relative ${
+                    idx === currentSocialIndex ? 'opacity-100 translate-x-0 z-20' : 'opacity-0 translate-x-10 z-10 absolute inset-0'
+                  }`}
+                >
+                  <div className="bg-white/10 backdrop-blur-sm p-8 rounded-2xl border border-white/10 h-full flex flex-col justify-between">
+                     <div className="flex items-center gap-4 mb-6">
+                       <div className="w-12 h-12 bg-[#E1964B] rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+                          {project.imageUrl ? (
+                            <img src={project.imageUrl} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <Icons.TrendingUp className="w-6 h-6 text-white" />
+                          )}
+                       </div>
+                       <div>
+                         <h4 className="font-bold text-xl">{project.title}</h4>
+                         <p className="text-blue-200 text-sm">{project.subtitle}</p>
+                       </div>
+                     </div>
+                     <div className="flex-1 bg-blue-950/50 rounded-lg flex items-center justify-center border border-white/5 p-6 text-center mb-6">
+                        <p className="text-blue-200 italic font-serif text-lg leading-relaxed">
+                          {project.quote}
+                        </p>
+                     </div>
+                     <p className="text-sm text-blue-300 font-medium">
+                       {project.footerNote}
+                     </p>
+                  </div>
+                </div>
+              ))}
+              
+              {/* Carousel Indicators (Only if > 1) */}
+              {socialProjects.length > 1 && (
+                 <div className="flex justify-center gap-2 mt-6">
+                   {socialProjects.map((_, idx) => (
+                     <button
+                       key={idx}
+                       onClick={() => setCurrentSocialIndex(idx)}
+                       className={`w-2 h-2 rounded-full transition-all ${idx === currentSocialIndex ? 'bg-orange-400 w-6' : 'bg-white/20 hover:bg-white/40'}`}
+                       aria-label={`Go to project ${idx + 1}`}
+                     />
+                   ))}
                  </div>
-                 <div>
-                   <h4 className="font-bold text-xl">{socialPracticeSec.metadata?.card_title || '学员项目商业化案例'}</h4>
-                   <p className="text-blue-200 text-sm">{socialPracticeSec.metadata?.card_subtitle || '市场验证与价值回馈'}</p>
-                 </div>
-               </div>
-               <div className="h-48 bg-blue-950/50 rounded-lg flex items-center justify-center border border-white/5 p-4 text-center">
-                  <p className="text-blue-200 italic">
-                    {socialPracticeSec.metadata?.quote || '“这不仅仅是一次售卖，更是孩子建立自信、理解社会价值的最好一课。”'}
-                  </p>
-               </div>
-               <p className="mt-4 text-sm text-blue-200">
-                 {socialPracticeSec.metadata?.note || '* 部分优秀学员作品已成功上线创客市场'}
-               </p>
+              )}
             </div>
           </div>
         </div>

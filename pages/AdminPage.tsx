@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { Logo } from '../components/Logo';
 import * as Icons from 'lucide-react';
-import { CURRICULUM, PHILOSOPHY, SHOWCASES, PAGE_SECTIONS_DEFAULT } from '../constants';
+import { CURRICULUM, PHILOSOPHY, SHOWCASES, PAGE_SECTIONS_DEFAULT, SOCIAL_PROJECTS } from '../constants';
 import { Booking } from '../types';
 
 // Type definitions for raw DB data (snake_case)
@@ -15,11 +15,11 @@ interface DbCourse {
   description: string;
   skills: string[];
   icon_name: string;
-  image_urls: string[]; // Changed to array
+  image_urls: string[];
 }
 
 interface DbShowcase {
-  id?: number; // Optional because new records won't have it yet
+  id?: number;
   title: string;
   category: string;
   description: string;
@@ -41,13 +41,23 @@ interface DbPageSection {
   metadata: any;
 }
 
+interface DbSocialProject {
+  id?: number;
+  title: string;
+  subtitle: string;
+  quote: string;
+  footer_note: string;
+  image_url: string;
+}
+
 export const AdminPage: React.FC = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'curriculum' | 'showcase' | 'philosophy' | 'pages' | 'bookings'>('bookings');
+  const [activeTab, setActiveTab] = useState<'curriculum' | 'showcase' | 'social' | 'philosophy' | 'pages' | 'bookings'>('bookings');
   
   const [curriculum, setCurriculum] = useState<DbCourse[]>([]);
   const [philosophy, setPhilosophy] = useState<DbPhilosophy[]>([]);
   const [showcases, setShowcases] = useState<DbShowcase[]>([]);
+  const [socialProjects, setSocialProjects] = useState<DbSocialProject[]>([]);
   const [pageSections, setPageSections] = useState<DbPageSection[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   
@@ -79,6 +89,9 @@ export const AdminPage: React.FC = () => {
 
     const { data: sData } = await supabase.from('showcases').select('*').order('id');
     if (sData) setShowcases(sData);
+
+    const { data: spData } = await supabase.from('social_projects').select('*').order('created_at');
+    if (spData) setSocialProjects(spData);
 
     const { data: pageData } = await supabase.from('page_sections').select('*');
     if (pageData) setPageSections(pageData);
@@ -137,6 +150,17 @@ export const AdminPage: React.FC = () => {
         await supabase.from('showcases').insert(dbShowcases);
       }
 
+      if (socialProjects.length === 0) {
+        const dbSocial = SOCIAL_PROJECTS.map(s => ({
+            title: s.title,
+            subtitle: s.subtitle,
+            quote: s.quote,
+            footer_note: s.footerNote,
+            image_url: s.imageUrl || ''
+        }));
+        await supabase.from('social_projects').insert(dbSocial);
+      }
+
       if (pageSections.length === 0) {
         await supabase.from('page_sections').insert(PAGE_SECTIONS_DEFAULT);
       }
@@ -161,10 +185,11 @@ export const AdminPage: React.FC = () => {
       template = { id: 'NewLevel', level: '', age: '', title: '', description: '', skills: [], icon_name: 'Box', image_urls: [] };
     } else if (activeTab === 'showcase') {
       template = { title: '', category: '商业级产品', description: '', image_alt: '' };
+    } else if (activeTab === 'social') {
+      template = { title: '商业化案例', subtitle: '', quote: '', footer_note: '', image_url: '' };
     } else if (activeTab === 'philosophy') {
       template = { title: '', content: '', icon_name: 'Star' };
     }
-    // No create new for bookings via admin
     
     setEditingItem(template);
     setIsModalOpen(true);
@@ -187,6 +212,7 @@ export const AdminPage: React.FC = () => {
       if (activeTab === 'curriculum') table = 'curriculum';
       if (activeTab === 'showcase') table = 'showcases';
       if (activeTab === 'philosophy') table = 'philosophy';
+      if (activeTab === 'social') table = 'social_projects';
       if (activeTab === 'pages') table = 'page_sections';
 
       if (isNewRecord) {
@@ -212,6 +238,25 @@ export const AdminPage: React.FC = () => {
     }
   };
 
+  // 4. Delete
+  const handleDelete = async (id: any) => {
+    if (!confirm('确定要删除吗？此操作不可恢复。')) return;
+    setLoading(true);
+    try {
+        let table = '';
+        if (activeTab === 'social') table = 'social_projects';
+        // Add other tables if delete is needed there
+
+        const { error } = await supabase.from(table).delete().eq('id', id);
+        if (error) throw error;
+        await fetchData();
+    } catch (error: any) {
+        alert('删除失败: ' + error.message);
+    } finally {
+        setLoading(false);
+    }
+  };
+
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0) return;
     
@@ -230,11 +275,12 @@ export const AdminPage: React.FC = () => {
       const publicUrl = data.publicUrl;
 
       if (activeTab === 'curriculum') {
-        // Append to existing array
         const currentUrls = editingItem.image_urls || [];
         setEditingItem({ ...editingItem, image_urls: [...currentUrls, publicUrl] });
       } else if (activeTab === 'showcase') {
         setEditingItem({ ...editingItem, image_alt: publicUrl });
+      } else if (activeTab === 'social') {
+        setEditingItem({ ...editingItem, image_url: publicUrl });
       } else {
         setEditingItem({ ...editingItem, icon_name: publicUrl });
       }
@@ -279,6 +325,7 @@ export const AdminPage: React.FC = () => {
             { id: 'bookings', label: '预约管理', icon: Icons.PhoneCall },
             { id: 'curriculum', label: '课程体系', icon: Icons.BookOpen },
             { id: 'showcase', label: '学员成果', icon: Icons.Trophy },
+            { id: 'social', label: '社会实践', icon: Icons.TrendingUp },
             { id: 'philosophy', label: '核心理念', icon: Icons.Lightbulb },
             { id: 'pages', label: '页面设置', icon: Icons.Layout },
           ].map((tab) => (
@@ -308,6 +355,7 @@ export const AdminPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-slate-800">
             {activeTab === 'curriculum' && '课程体系管理'}
             {activeTab === 'showcase' && '学员成果管理'}
+            {activeTab === 'social' && '社会实践案例管理'}
             {activeTab === 'philosophy' && '核心理念管理'}
             {activeTab === 'pages' && '页面内容设置'}
             {activeTab === 'bookings' && '试听预约管理'}
@@ -328,6 +376,7 @@ export const AdminPage: React.FC = () => {
              {/* Seed Data Button */}
              {((activeTab === 'curriculum' && curriculum.length === 0) || 
                (activeTab === 'showcase' && showcases.length === 0) ||
+               (activeTab === 'social' && socialProjects.length === 0) ||
                (activeTab === 'philosophy' && philosophy.length === 0) ||
                (activeTab === 'pages' && pageSections.length === 0)) && !loading && (
                 <button 
@@ -409,6 +458,39 @@ export const AdminPage: React.FC = () => {
                      </tbody>
                    </table>
                 </div>
+              )}
+
+              {/* Social Projects List */}
+              {activeTab === 'social' && (
+                   <div className="divide-y divide-slate-100">
+                      {socialProjects.map((s) => (
+                           <div key={s.id} className="p-6 flex items-start gap-6 hover:bg-slate-50 transition-colors group">
+                               <div className="w-24 h-16 bg-slate-200 rounded overflow-hidden shrink-0 border border-slate-100">
+                                 {s.image_url ? (
+                                   <img src={s.image_url} alt={s.title} className="w-full h-full object-cover" />
+                                 ) : (
+                                   <div className="w-full h-full flex items-center justify-center text-slate-400"><Icons.Image size={16} /></div>
+                                 )}
+                               </div>
+                               <div className="flex-1">
+                                   <div className="flex items-center gap-3 mb-1">
+                                      <h3 className="font-bold text-slate-900">{s.title}</h3>
+                                      {s.subtitle && <span className="text-xs bg-slate-100 text-slate-500 px-2 rounded-full">{s.subtitle}</span>}
+                                   </div>
+                                   <p className="text-slate-500 text-sm mb-1 italic">"{s.quote}"</p>
+                                   <p className="text-xs text-slate-400">{s.footer_note}</p>
+                               </div>
+                               <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                   <button onClick={() => openEditModal(s)} className="p-2 text-blue-600 hover:bg-blue-50 rounded">
+                                     <Icons.Edit2 size={18} />
+                                   </button>
+                                   <button onClick={() => handleDelete(s.id)} className="p-2 text-red-600 hover:bg-red-50 rounded">
+                                     <Icons.Trash2 size={18} />
+                                   </button>
+                               </div>
+                           </div>
+                      ))}
+                   </div>
               )}
 
               {/* Curriculum List */}
@@ -521,6 +603,7 @@ export const AdminPage: React.FC = () => {
               {/* Empty States */}
               {((activeTab === 'curriculum' && curriculum.length === 0) || 
                 (activeTab === 'showcase' && showcases.length === 0) ||
+                (activeTab === 'social' && socialProjects.length === 0) ||
                 (activeTab === 'philosophy' && philosophy.length === 0)) && (
                 <div className="p-12 text-center text-slate-400">
                   <Icons.Database className="mx-auto mb-4 opacity-50" size={48} />
@@ -569,6 +652,45 @@ export const AdminPage: React.FC = () => {
                 </div>
               )}
 
+              {/* Social: Subtitle */}
+              {activeTab === 'social' && (
+                 <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">副标题</label>
+                  <input 
+                    type="text" 
+                    value={editingItem.subtitle || ''} 
+                    onChange={e => setEditingItem({...editingItem, subtitle: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+              )}
+
+              {/* Social: Quote */}
+              {activeTab === 'social' && (
+                 <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">引用语 (Quote)</label>
+                  <textarea 
+                    rows={3}
+                    value={editingItem.quote || ''} 
+                    onChange={e => setEditingItem({...editingItem, quote: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+              )}
+
+              {/* Social: Footer Note */}
+              {activeTab === 'social' && (
+                 <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">底部备注</label>
+                  <input 
+                    type="text" 
+                    value={editingItem.footer_note || ''} 
+                    onChange={e => setEditingItem({...editingItem, footer_note: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+              )}
+
               {/* Pages: Hero Highlight Text */}
               {activeTab === 'pages' && editingItem.id === 'hero' && (
                 <div>
@@ -611,24 +733,6 @@ export const AdminPage: React.FC = () => {
                             placeholder="从Idea到产品的全流程体验..."
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                         />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">卡片标题</label>
-                            <input type="text" value={editingItem.metadata?.card_title || ''} onChange={e => setEditingItem({...editingItem, metadata: {...editingItem.metadata, card_title: e.target.value}})} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none" />
-                         </div>
-                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">卡片副标题</label>
-                            <input type="text" value={editingItem.metadata?.card_subtitle || ''} onChange={e => setEditingItem({...editingItem, metadata: {...editingItem.metadata, card_subtitle: e.target.value}})} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none" />
-                         </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">引用语 (Quote)</label>
-                        <textarea rows={2} value={editingItem.metadata?.quote || ''} onChange={e => setEditingItem({...editingItem, metadata: {...editingItem.metadata, quote: e.target.value}})} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none" />
-                    </div>
-                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">底部备注</label>
-                        <input type="text" value={editingItem.metadata?.note || ''} onChange={e => setEditingItem({...editingItem, metadata: {...editingItem.metadata, note: e.target.value}})} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none" />
                     </div>
                  </div>
               )}
@@ -740,16 +844,18 @@ export const AdminPage: React.FC = () => {
               <div>
                  <label className="block text-sm font-medium text-slate-700 mb-1">
                     {activeTab === 'showcase' ? '图片 (上传或输入链接/视频可填B站iframe)' : 
-                     activeTab === 'curriculum' ? '课程封面图集' : '图标名称 (Lucide Icon)'}
+                     activeTab === 'curriculum' ? '课程封面图集' : 
+                     activeTab === 'social' ? '背景/图标图片' : '图标名称 (Lucide Icon)'}
                  </label>
                  
                  {/* Single Input for Non-Curriculum tabs */}
                  {activeTab !== 'curriculum' && (
                     <input 
                         type="text" 
-                        value={editingItem.icon_name || editingItem.image_alt || ''} 
+                        value={editingItem.icon_name || editingItem.image_alt || editingItem.image_url || ''} 
                         onChange={e => {
                             if (activeTab === 'showcase') setEditingItem({...editingItem, image_alt: e.target.value});
+                            else if (activeTab === 'social') setEditingItem({...editingItem, image_url: e.target.value});
                             else setEditingItem({...editingItem, icon_name: e.target.value});
                         }}
                         placeholder={activeTab === 'showcase' ? "https://... 或上传图片" : "Box, Zap, etc."}
@@ -775,7 +881,7 @@ export const AdminPage: React.FC = () => {
                   )}
 
                   {/* Upload Button */}
-                  {(activeTab === 'showcase' || activeTab === 'curriculum') && (
+                  {(activeTab === 'showcase' || activeTab === 'curriculum' || activeTab === 'social') && (
                     <div className="relative">
                       <input
                         type="file"

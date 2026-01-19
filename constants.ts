@@ -1,4 +1,4 @@
-import { CourseLevel, Showcase, PhilosophyPoint, PageSection } from './types';
+import { CourseLevel, Showcase, PhilosophyPoint, PageSection, SocialProject } from './types';
 
 export const CURRICULUM: CourseLevel[] = [
   {
@@ -132,6 +132,27 @@ export const SHOWCASES: Showcase[] = [
   }
 ];
 
+export const SOCIAL_PROJECTS: SocialProject[] = [
+  {
+    title: '学员项目商业化案例',
+    subtitle: '市场验证与价值回馈',
+    quote: '“这不仅仅是一次售卖，更是孩子建立自信、理解社会价值的最好一课。”',
+    footerNote: '* 部分优秀学员作品已成功上线创客市场'
+  },
+  {
+    title: '开源硬件套件众筹',
+    subtitle: '从原型到量产',
+    quote: '“看着自己设计的电路板被发往全球各地的创客手中，那种成就感比考满分更强烈。”',
+    footerNote: '* 学员发起的Kickstarter众筹项目'
+  },
+  {
+    title: '校园智能回收站',
+    subtitle: '服务社区',
+    quote: '“我们用技术解决了学校垃圾分类的难题，校长甚至为我们颁发了特别贡献奖。”',
+    footerNote: '* 项目已在3所合作学校落地运行'
+  }
+];
+
 export const PAGE_SECTIONS_DEFAULT: PageSection[] = [
   {
     id: 'hero',
@@ -171,11 +192,7 @@ export const PAGE_SECTIONS_DEFAULT: PageSection[] = [
         '从Idea到产品的全流程体验',
         '理解成本、定价与市场需求',
         '提前积累真实的社会实践履历'
-      ],
-      card_title: '学员项目商业化案例',
-      card_subtitle: '市场验证与价值回馈',
-      quote: '“这不仅仅是一次售卖，更是孩子建立自信、理解社会价值的最好一课。”',
-      note: '* 部分优秀学员作品已成功上线创客市场'
+      ]
     }
   },
   {

@@ -42,6 +42,9 @@ export const AdminPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [editingItem, setEditingItem] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // New state for file upload
+  const [uploading, setUploading] = useState(false);
 
   // Check auth
   useEffect(() => {
@@ -158,6 +161,48 @@ export const AdminPage: React.FC = () => {
     }
   };
 
+  // --- Image Upload Logic ---
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) {
+      return;
+    }
+    
+    const file = event.target.files[0];
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    setUploading(true);
+
+    try {
+      // 1. Upload to Supabase Storage bucket "images"
+      const { error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // 2. Get Public URL
+      const { data } = supabase.storage
+        .from('images')
+        .getPublicUrl(filePath);
+
+      // 3. Update the editing item state
+      if (activeTab === 'showcase') {
+        setEditingItem({ ...editingItem, image_alt: data.publicUrl });
+      } else {
+        setEditingItem({ ...editingItem, icon_name: data.publicUrl }); // Fallback if user uploads image for icon (though not recommended for icons)
+      }
+
+    } catch (error: any) {
+      alert('图片上传失败: ' + error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-100 flex font-sans">
       {/* Sidebar */}
@@ -251,11 +296,11 @@ export const AdminPage: React.FC = () => {
                    <div className="grid grid-cols-1 divide-y divide-slate-100">
                       {showcases.map((s) => (
                            <div key={s.id} className="p-6 flex gap-6 hover:bg-slate-50 transition-colors group">
-                               <div className="w-32 h-24 bg-slate-200 rounded-lg overflow-hidden shrink-0">
+                               <div className="w-32 h-24 bg-slate-200 rounded-lg overflow-hidden shrink-0 border border-slate-100">
                                   {s.image_alt.startsWith('http') ? (
                                     <img src={s.image_alt} alt={s.title} className="w-full h-full object-cover" />
                                   ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-xs text-slate-400 bg-slate-100">No Image</div>
+                                    <div className="w-full h-full flex items-center justify-center text-xs text-slate-400 bg-slate-100 p-2 text-center break-all">{s.image_alt}</div>
                                   )}
                                </div>
                                <div className="flex-1">
@@ -404,11 +449,13 @@ export const AdminPage: React.FC = () => {
                 </div>
               )}
               
-              {/* Icon / Image Fields */}
+              {/* Icon / Image Fields with Upload */}
               <div>
                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    {activeTab === 'showcase' ? '图片链接 (Image Alt/URL)' : '图标名称 (Lucide Icon)'}
+                    {activeTab === 'showcase' ? '图片 (上传或输入链接/视频可填B站iframe)' : '图标名称 (Lucide Icon)'}
                  </label>
+                 
+                 {/* URL Input */}
                  <input 
                     type="text" 
                     value={editingItem.icon_name || editingItem.image_alt || ''} 
@@ -416,8 +463,39 @@ export const AdminPage: React.FC = () => {
                         if (activeTab === 'showcase') setEditingItem({...editingItem, image_alt: e.target.value});
                         else setEditingItem({...editingItem, icon_name: e.target.value});
                     }}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm"
+                    placeholder={activeTab === 'showcase' ? "https://... 或上传图片" : "Box, Zap, etc."}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm mb-2"
                   />
+                  
+                  {/* File Upload (Only for Showcase) */}
+                  {activeTab === 'showcase' && (
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        disabled={uploading}
+                        className="block w-full text-sm text-slate-500
+                          file:mr-4 file:py-2 file:px-4
+                          file:rounded-full file:border-0
+                          file:text-sm file:font-semibold
+                          file:bg-blue-50 file:text-blue-700
+                          hover:file:bg-blue-100
+                        "
+                      />
+                      {uploading && (
+                        <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                          <Icons.Loader2 className="animate-spin text-blue-600" size={20} />
+                          <span className="ml-2 text-sm text-blue-600 font-medium">上传中...</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {activeTab === 'showcase' && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      提示: 视频请将B站的iframe代码填入上方文本框。图片建议比例 4:3。
+                    </p>
+                  )}
               </div>
 
             </div>
@@ -431,7 +509,7 @@ export const AdminPage: React.FC = () => {
               </button>
               <button 
                 onClick={handleSave}
-                disabled={loading}
+                disabled={loading || uploading}
                 className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-lg shadow-blue-600/20 transition-all flex items-center gap-2"
               >
                 {loading ? <Icons.Loader2 className="animate-spin" size={16} /> : <Icons.Save size={16} />}

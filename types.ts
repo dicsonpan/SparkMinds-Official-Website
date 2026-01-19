@@ -20,3 +20,16 @@ export interface PhilosophyPoint {
   content: string;
   iconName: string;
 }
+
+export interface PageSection {
+  id: string;
+  title: string;
+  subtitle?: string;
+  description: string;
+  metadata?: {
+    highlighted_text?: string;
+    cta1?: string;
+    cta2?: string;
+    [key: string]: any;
+  };
+}

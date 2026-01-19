@@ -1,4 +1,4 @@
-import { CourseLevel, Showcase, PhilosophyPoint } from './types';
+import { CourseLevel, Showcase, PhilosophyPoint, PageSection } from './types';
 
 export const CURRICULUM: CourseLevel[] = [
   {
@@ -108,5 +108,36 @@ export const SHOWCASES: Showcase[] = [
     category: 'PBL项目式学习',
     description: '走出教室，走进田野。孩子们通过实地调研，设计了一套全自动灌溉系统。在解决真实农业问题的过程中，他们理解了什么是工程，什么是责任。',
     imageAlt: 'Students in field testing irrigation system'
+  }
+];
+
+export const PAGE_SECTIONS_DEFAULT: PageSection[] = [
+  {
+    id: 'hero',
+    title: '给孩子带得走的',
+    description: '在这个人工智能时代，我们不仅教授编程与硬件，更致力于培养孩子解决复杂问题的工程思维。从激发好奇心到顶尖名校科研背景，为未来做好准备。',
+    metadata: {
+      highlighted_text: '硬核科技创造力',
+      cta1: '查看孩子的成长规划',
+      cta2: '看看学员们做出了什么'
+    }
+  },
+  {
+    id: 'philosophy',
+    title: '不仅是兴趣班，更是未来竞争力的孵化器',
+    subtitle: 'OUR MISSION',
+    description: '我们用6年时间打磨出一套标准化的“真做”课程，让科技素养成为孩子受益终身的能力。'
+  },
+  {
+    id: 'curriculum',
+    title: 'L1-L7 阶梯式成长体系',
+    subtitle: 'GROWTH PATH',
+    description: '科学规划7级成长阶梯，匹配孩子不同年龄段的认知发展。从动手启蒙到算法科研，直通顶尖学府。'
+  },
+  {
+    id: 'showcases',
+    title: '让孩子的才华被世界看见',
+    subtitle: 'SUCCESS STORIES',
+    description: '在创智实验室，没有“死记硬背”的知识。每一个项目都是为了解决真实世界的问题而生，成为孩子简历上最亮眼的勋章。'
   }
 ];

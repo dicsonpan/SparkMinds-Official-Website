@@ -4,13 +4,12 @@ import { SectionHeading } from '../components/SectionHeading';
 import { CourseCard } from '../components/CourseCard';
 import * as Icons from 'lucide-react';
 import { useContent } from '../hooks/useContent';
-// Removed unused Link import since we hid the admin button
-// import { Link } from 'react-router-dom';
+import { PageSection } from '../types';
 
 export const LandingPage: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { curriculum, philosophy, showcases } = useContent();
+  const { curriculum, philosophy, showcases, pageSections } = useContent();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -20,12 +19,10 @@ export const LandingPage: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Custom scroll function to handle navigation within HashRouter
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
-      // Offset calculation for fixed header
-      const navHeight = 100; // slightly more than header height for breathing room
+      const navHeight = 100;
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - navHeight;
 
@@ -36,6 +33,22 @@ export const LandingPage: React.FC = () => {
     }
     setMobileMenuOpen(false);
   };
+
+  // Helper to safely get section data
+  const getSection = (id: string): PageSection => {
+    return pageSections[id] || { 
+      id: 'loading',
+      title: 'Loading...', 
+      description: '', 
+      subtitle: '',
+      metadata: {}
+    };
+  };
+
+  const hero = getSection('hero');
+  const philosophySec = getSection('philosophy');
+  const curriculumSec = getSection('curriculum');
+  const showcasesSec = getSection('showcases');
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
@@ -59,7 +72,6 @@ export const LandingPage: React.FC = () => {
             <button className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold transition-colors shadow-lg shadow-blue-600/20">
               预约试听
             </button>
-            {/* Admin link hidden as requested */}
           </div>
 
           {/* Mobile Menu Button */}
@@ -86,7 +98,6 @@ export const LandingPage: React.FC = () => {
              <button className="bg-[#E1964B] text-white w-full py-3 rounded-lg font-bold">
               预约体验课
             </button>
-            {/* Mobile Admin link hidden as requested */}
           </div>
         )}
       </nav>
@@ -102,28 +113,27 @@ export const LandingPage: React.FC = () => {
           <div className="max-w-4xl mx-auto text-center">
             
             <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 leading-tight mb-6">
-              给孩子带得走的<br/>
+              {hero.title}<br/>
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#E1964B] to-blue-600">
-                硬核科技创造力
+                {hero.metadata?.highlighted_text || '硬核科技创造力'}
               </span>
             </h1>
             <p className="text-lg md:text-xl text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed">
-              在这个人工智能时代，我们不仅教授编程与硬件，更致力于培养孩子解决复杂问题的工程思维。
-              从激发好奇心到顶尖名校科研背景，为未来做好准备。
+              {hero.description}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button 
                 onClick={() => scrollToSection('成长路径')}
                 className="bg-blue-600 hover:bg-blue-700 text-white text-lg px-8 py-4 rounded-xl font-bold shadow-xl shadow-blue-600/20 transition-transform hover:-translate-y-1"
               >
-                查看孩子的成长规划
+                {hero.metadata?.cta1 || '查看孩子的成长规划'}
               </button>
               <button 
                  onClick={() => scrollToSection('学员作品')}
                  className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-lg px-8 py-4 rounded-xl font-bold shadow-sm transition-colors flex items-center justify-center gap-2"
               >
                 <Icons.PlayCircle className="w-5 h-5 text-[#E1964B]" />
-                看看学员们做出了什么
+                {hero.metadata?.cta2 || '看看学员们做出了什么'}
               </button>
             </div>
           </div>
@@ -134,9 +144,9 @@ export const LandingPage: React.FC = () => {
       <section id="核心理念" className="py-20 bg-white">
         <div className="container mx-auto px-4 md:px-6">
           <SectionHeading 
-            subtitle="OUR MISSION" 
-            title="不仅是兴趣班，更是未来竞争力的孵化器" 
-            description="我们用6年时间打磨出一套标准化的“真做”课程，让科技素养成为孩子受益终身的能力。"
+            subtitle={philosophySec.subtitle || 'OUR MISSION'} 
+            title={philosophySec.title}
+            description={philosophySec.description}
           />
           
           <div className="grid md:grid-cols-3 gap-8">
@@ -163,9 +173,9 @@ export const LandingPage: React.FC = () => {
         <div className="circuit-pattern absolute inset-0 opacity-50 pointer-events-none"></div>
         <div className="container mx-auto px-4 md:px-6 relative z-10">
           <SectionHeading 
-            subtitle="GROWTH PATH" 
-            title="L1-L7 阶梯式成长体系" 
-            description="科学规划7级成长阶梯，匹配孩子不同年龄段的认知发展。从动手启蒙到算法科研，直通顶尖学府。"
+            subtitle={curriculumSec.subtitle || 'GROWTH PATH'} 
+            title={curriculumSec.title} 
+            description={curriculumSec.description}
           />
 
           <div className="relative max-w-5xl mx-auto mt-16">
@@ -192,21 +202,30 @@ export const LandingPage: React.FC = () => {
       <section id="学员作品" className="py-20 bg-white">
         <div className="container mx-auto px-4 md:px-6">
           <SectionHeading 
-            subtitle="SUCCESS STORIES" 
-            title="让孩子的才华被世界看见" 
-            description="在创智实验室，没有“死记硬背”的知识。每一个项目都是为了解决真实世界的问题而生，成为孩子简历上最亮眼的勋章。"
+            subtitle={showcasesSec.subtitle || 'SUCCESS STORIES'} 
+            title={showcasesSec.title} 
+            description={showcasesSec.description}
           />
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {showcases.map((showcase, idx) => (
               <div key={idx} className="group cursor-pointer">
                 <div className="relative overflow-hidden rounded-xl aspect-[4/3] mb-4 bg-slate-200">
-                  <img 
-                    src={showcase.imageAlt.startsWith('http') ? showcase.imageAlt : `https://picsum.photos/seed/${idx + 15}/600/400`} 
-                    alt={showcase.imageAlt}
-                    className="object-cover w-full h-full transform group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-md text-xs font-bold text-blue-800 uppercase">
+                  {/* Intelligent rendering for Video iframe or Image */}
+                  {showcase.imageAlt.trim().startsWith('<iframe') ? (
+                    <div 
+                      className="w-full h-full [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0" 
+                      dangerouslySetInnerHTML={{__html: showcase.imageAlt}} 
+                    />
+                  ) : (
+                    <img 
+                      src={showcase.imageAlt.startsWith('http') ? showcase.imageAlt : `https://picsum.photos/seed/${idx + 15}/600/400`} 
+                      alt={showcase.title}
+                      className="object-cover w-full h-full transform group-hover:scale-105 transition-transform duration-500"
+                    />
+                  )}
+                  
+                  <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-md text-xs font-bold text-blue-800 uppercase z-10">
                     {showcase.category}
                   </div>
                 </div>
@@ -224,6 +243,7 @@ export const LandingPage: React.FC = () => {
 
       {/* Business Loop / Social Practice */}
       <section id="社会实践" className="py-20 bg-blue-900 text-white relative overflow-hidden">
+        {/* Static content for now, can be moved to DB if needed later */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600 rounded-full mix-blend-overlay filter blur-3xl opacity-20"></div>
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-orange-600 rounded-full mix-blend-overlay filter blur-3xl opacity-20"></div>
         

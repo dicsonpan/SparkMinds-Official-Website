@@ -31,35 +31,57 @@ create table if not exists public.showcases (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 4. Enable Row Level Security
+-- 4. Create Page Sections Table (NEW)
+create table if not exists public.page_sections (
+  id text primary key, -- e.g. "hero", "philosophy"
+  title text not null,
+  subtitle text,
+  description text,
+  metadata jsonb,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- 5. Enable Row Level Security
 alter table public.curriculum enable row level security;
 alter table public.philosophy enable row level security;
 alter table public.showcases enable row level security;
+alter table public.page_sections enable row level security;
 
--- 5. Create Policies for Tables
+-- 6. Create Policies for Tables
 drop policy if exists "Allow public read access" on public.curriculum;
 drop policy if exists "Allow public read access" on public.philosophy;
 drop policy if exists "Allow public read access" on public.showcases;
+drop policy if exists "Allow public read access" on public.page_sections;
+
 drop policy if exists "Allow authenticated update" on public.curriculum;
 drop policy if exists "Allow authenticated update" on public.philosophy;
 drop policy if exists "Allow authenticated update" on public.showcases;
+drop policy if exists "Allow authenticated update" on public.page_sections;
 
 -- Read policies (Public)
 create policy "Allow public read access" on public.curriculum for select using (true);
 create policy "Allow public read access" on public.philosophy for select using (true);
 create policy "Allow public read access" on public.showcases for select using (true);
+create policy "Allow public read access" on public.page_sections for select using (true);
 
 -- Write policies (Authenticated users only)
 create policy "Allow authenticated update" on public.curriculum for all using (auth.role() = 'authenticated');
 create policy "Allow authenticated update" on public.philosophy for all using (auth.role() = 'authenticated');
 create policy "Allow authenticated update" on public.showcases for all using (auth.role() = 'authenticated');
+create policy "Allow authenticated update" on public.page_sections for all using (auth.role() = 'authenticated');
 
--- 6. Insert Initial Data from constants.ts (Existing logic...)
--- ... (Existing INSERT statements omitted for brevity, they remain the same) ...
+-- 7. Insert Initial Data for Page Sections
+insert into public.page_sections (id, title, subtitle, description, metadata)
+values
+('hero', '给孩子带得走的', '', '在这个人工智能时代，我们不仅教授编程与硬件，更致力于培养孩子解决复杂问题的工程思维。从激发好奇心到顶尖名校科研背景，为未来做好准备。', '{"highlighted_text": "硬核科技创造力", "cta1": "查看孩子的成长规划", "cta2": "看看学员们做出了什么"}'),
+('philosophy', '不仅是兴趣班，更是未来竞争力的孵化器', 'OUR MISSION', '我们用6年时间打磨出一套标准化的“真做”课程，让科技素养成为孩子受益终身的能力。', '{}'),
+('curriculum', 'L1-L7 阶梯式成长体系', 'GROWTH PATH', '科学规划7级成长阶梯，匹配孩子不同年龄段的认知发展。从动手启蒙到算法科研，直通顶尖学府。', '{}'),
+('showcases', '让孩子的才华被世界看见', 'SUCCESS STORIES', '在创智实验室，没有“死记硬背”的知识。每一个项目都是为了解决真实世界的问题而生，成为孩子简历上最亮眼的勋章。', '{}')
+on conflict (id) do nothing;
 
 
 -- ==========================================
--- NEW: Storage Bucket Setup
+-- Storage Bucket Setup (Ensuring it exists)
 -- ==========================================
 
 -- 1. Create a new storage bucket called 'images'

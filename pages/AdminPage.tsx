@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { Logo } from '../components/Logo';
 import * as Icons from 'lucide-react';
-import { CURRICULUM, PHILOSOPHY, SHOWCASES } from '../constants';
+import { CURRICULUM, PHILOSOPHY, SHOWCASES, PAGE_SECTIONS_DEFAULT } from '../constants';
 
 // Type definitions for raw DB data (snake_case)
 interface DbCourse {
@@ -31,19 +31,27 @@ interface DbPhilosophy {
   icon_name: string;
 }
 
+interface DbPageSection {
+  id: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  metadata: any;
+}
+
 export const AdminPage: React.FC = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'curriculum' | 'showcase' | 'philosophy'>('curriculum');
+  const [activeTab, setActiveTab] = useState<'curriculum' | 'showcase' | 'philosophy' | 'pages'>('curriculum');
   
   const [curriculum, setCurriculum] = useState<DbCourse[]>([]);
   const [philosophy, setPhilosophy] = useState<DbPhilosophy[]>([]);
   const [showcases, setShowcases] = useState<DbShowcase[]>([]);
+  const [pageSections, setPageSections] = useState<DbPageSection[]>([]);
   
   const [loading, setLoading] = useState(true);
   const [editingItem, setEditingItem] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // New state for file upload
   const [uploading, setUploading] = useState(false);
 
   // Check auth
@@ -67,6 +75,9 @@ export const AdminPage: React.FC = () => {
 
     const { data: sData } = await supabase.from('showcases').select('*').order('id');
     if (sData) setShowcases(sData);
+
+    const { data: pageData } = await supabase.from('page_sections').select('*');
+    if (pageData) setPageSections(pageData);
     
     setLoading(false);
   };
@@ -117,6 +128,10 @@ export const AdminPage: React.FC = () => {
         }));
         await supabase.from('showcases').insert(dbShowcases);
       }
+
+      if (pageSections.length === 0) {
+        await supabase.from('page_sections').insert(PAGE_SECTIONS_DEFAULT);
+      }
       
       alert('数据初始化成功！');
       fetchData();
@@ -142,6 +157,7 @@ export const AdminPage: React.FC = () => {
       if (activeTab === 'curriculum') table = 'curriculum';
       if (activeTab === 'showcase') table = 'showcases';
       if (activeTab === 'philosophy') table = 'philosophy';
+      if (activeTab === 'pages') table = 'page_sections';
 
       // Update in Supabase
       const { error } = await supabase
@@ -175,7 +191,6 @@ export const AdminPage: React.FC = () => {
     setUploading(true);
 
     try {
-      // 1. Upload to Supabase Storage bucket "images"
       const { error: uploadError } = await supabase.storage
         .from('images')
         .upload(filePath, file);
@@ -184,16 +199,14 @@ export const AdminPage: React.FC = () => {
         throw uploadError;
       }
 
-      // 2. Get Public URL
       const { data } = supabase.storage
         .from('images')
         .getPublicUrl(filePath);
 
-      // 3. Update the editing item state
       if (activeTab === 'showcase') {
         setEditingItem({ ...editingItem, image_alt: data.publicUrl });
       } else {
-        setEditingItem({ ...editingItem, icon_name: data.publicUrl }); // Fallback if user uploads image for icon (though not recommended for icons)
+        setEditingItem({ ...editingItem, icon_name: data.publicUrl });
       }
 
     } catch (error: any) {
@@ -215,6 +228,7 @@ export const AdminPage: React.FC = () => {
             { id: 'curriculum', label: '课程体系', icon: Icons.BookOpen },
             { id: 'showcase', label: '学员成果', icon: Icons.Trophy },
             { id: 'philosophy', label: '核心理念', icon: Icons.Lightbulb },
+            { id: 'pages', label: '页面设置', icon: Icons.Layout },
           ].map((tab) => (
             <button 
               key={tab.id}
@@ -238,11 +252,13 @@ export const AdminPage: React.FC = () => {
             {activeTab === 'curriculum' && '课程体系管理'}
             {activeTab === 'showcase' && '学员成果管理'}
             {activeTab === 'philosophy' && '核心理念管理'}
+            {activeTab === 'pages' && '页面内容设置'}
           </h1>
-          {/* Seed Data Button (Only visible if data is empty) */}
+          {/* Seed Data Button */}
           {((activeTab === 'curriculum' && curriculum.length === 0) || 
             (activeTab === 'showcase' && showcases.length === 0) ||
-            (activeTab === 'philosophy' && philosophy.length === 0)) && !loading && (
+            (activeTab === 'philosophy' && philosophy.length === 0) ||
+            (activeTab === 'pages' && pageSections.length === 0)) && !loading && (
              <button 
                onClick={handleSeedData}
                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm text-sm font-bold"
@@ -274,16 +290,8 @@ export const AdminPage: React.FC = () => {
                                <h3 className="font-bold text-slate-900">{c.title}</h3>
                              </div>
                              <p className="text-slate-500 text-sm mb-3 line-clamp-2">{c.description}</p>
-                             <div className="flex gap-2">
-                               {c.skills && c.skills.map((s, i) => (
-                                 <span key={i} className="text-xs border border-slate-200 text-slate-500 px-2 py-0.5 rounded">{s}</span>
-                               ))}
-                             </div>
                            </div>
-                           <button 
-                             onClick={() => openEditModal(c)}
-                             className="opacity-0 group-hover:opacity-100 p-2 text-blue-600 hover:bg-blue-50 rounded transition-all"
-                           >
+                           <button onClick={() => openEditModal(c)} className="opacity-0 group-hover:opacity-100 p-2 text-blue-600 hover:bg-blue-50 rounded transition-all">
                              <Icons.Edit2 size={18} />
                            </button>
                         </div>
@@ -297,7 +305,9 @@ export const AdminPage: React.FC = () => {
                       {showcases.map((s) => (
                            <div key={s.id} className="p-6 flex gap-6 hover:bg-slate-50 transition-colors group">
                                <div className="w-32 h-24 bg-slate-200 rounded-lg overflow-hidden shrink-0 border border-slate-100">
-                                  {s.image_alt.startsWith('http') ? (
+                                  {s.image_alt.startsWith('http') || s.image_alt.startsWith('<iframe') ? (
+                                    s.image_alt.startsWith('<iframe') ? 
+                                    <div className="w-full h-full [&>iframe]:w-full [&>iframe]:h-full" dangerouslySetInnerHTML={{__html: s.image_alt}} /> :
                                     <img src={s.image_alt} alt={s.title} className="w-full h-full object-cover" />
                                   ) : (
                                     <div className="w-full h-full flex items-center justify-center text-xs text-slate-400 bg-slate-100 p-2 text-center break-all">{s.image_alt}</div>
@@ -309,10 +319,7 @@ export const AdminPage: React.FC = () => {
                                        <h3 className="font-bold text-slate-900 mb-1">{s.title}</h3>
                                        <span className="text-xs font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded">{s.category}</span>
                                      </div>
-                                     <button 
-                                       onClick={() => openEditModal(s)}
-                                       className="opacity-0 group-hover:opacity-100 p-2 text-blue-600 hover:bg-blue-50 rounded transition-all"
-                                     >
+                                     <button onClick={() => openEditModal(s)} className="opacity-0 group-hover:opacity-100 p-2 text-blue-600 hover:bg-blue-50 rounded transition-all">
                                        <Icons.Edit2 size={18} />
                                      </button>
                                    </div>
@@ -335,10 +342,30 @@ export const AdminPage: React.FC = () => {
                                    <h3 className="font-bold text-slate-900 mb-1">{p.title}</h3>
                                    <p className="text-slate-500 text-sm">{p.content}</p>
                                </div>
-                               <button 
-                                 onClick={() => openEditModal(p)}
-                                 className="opacity-0 group-hover:opacity-100 p-2 text-blue-600 hover:bg-blue-50 rounded transition-all"
-                               >
+                               <button onClick={() => openEditModal(p)} className="opacity-0 group-hover:opacity-100 p-2 text-blue-600 hover:bg-blue-50 rounded transition-all">
+                                 <Icons.Edit2 size={18} />
+                               </button>
+                           </div>
+                      ))}
+                   </div>
+              )}
+
+              {/* Page Sections List */}
+              {activeTab === 'pages' && (
+                   <div className="divide-y divide-slate-100">
+                      {pageSections.map((ps) => (
+                           <div key={ps.id} className="p-6 flex items-start gap-6 hover:bg-slate-50 transition-colors group">
+                               <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center text-blue-500 shrink-0">
+                                   <Icons.LayoutTemplate size={24} />
+                               </div>
+                               <div className="flex-1">
+                                   <div className="flex items-center gap-3 mb-1">
+                                      <span className="font-mono text-xs font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded uppercase">{ps.id}</span>
+                                      <h3 className="font-bold text-slate-900">{ps.title}</h3>
+                                   </div>
+                                   <p className="text-slate-500 text-sm">{ps.description}</p>
+                               </div>
+                               <button onClick={() => openEditModal(ps)} className="opacity-0 group-hover:opacity-100 p-2 text-blue-600 hover:bg-blue-50 rounded transition-all">
                                  <Icons.Edit2 size={18} />
                                </button>
                            </div>
@@ -372,7 +399,8 @@ export const AdminPage: React.FC = () => {
             </div>
             
             <div className="p-6 overflow-y-auto space-y-4">
-              {/* Common Fields */}
+              
+              {/* Common: Title */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">标题</label>
                 <input 
@@ -382,6 +410,35 @@ export const AdminPage: React.FC = () => {
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
+
+              {/* Pages: Subtitle */}
+              {activeTab === 'pages' && editingItem.id !== 'hero' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">副标题 (小标签)</label>
+                  <input 
+                    type="text" 
+                    value={editingItem.subtitle || ''} 
+                    onChange={e => setEditingItem({...editingItem, subtitle: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+              )}
+
+              {/* Pages: Hero Highlight Text */}
+              {activeTab === 'pages' && editingItem.id === 'hero' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">渐变色强调文字</label>
+                  <input 
+                    type="text" 
+                    value={editingItem.metadata?.highlighted_text || ''} 
+                    onChange={e => setEditingItem({
+                      ...editingItem, 
+                      metadata: { ...editingItem.metadata, highlighted_text: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+              )}
 
               {/* Description / Content */}
               {(editingItem.description !== undefined || editingItem.content !== undefined) && (
@@ -401,61 +458,71 @@ export const AdminPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Specific: Curriculum Fields */}
+              {/* Pages: Hero Buttons */}
+              {activeTab === 'pages' && editingItem.id === 'hero' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">按钮1文案</label>
+                    <input 
+                      type="text" 
+                      value={editingItem.metadata?.cta1 || ''} 
+                      onChange={e => setEditingItem({
+                        ...editingItem, 
+                        metadata: { ...editingItem.metadata, cta1: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                   <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">按钮2文案</label>
+                    <input 
+                      type="text" 
+                      value={editingItem.metadata?.cta2 || ''} 
+                      onChange={e => setEditingItem({
+                        ...editingItem, 
+                        metadata: { ...editingItem.metadata, cta2: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Curriculum specific */}
               {activeTab === 'curriculum' && (
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">Level ID</label>
-                      <input 
-                        type="text" 
-                        disabled
-                        value={editingItem.id || ''} 
-                        className="w-full px-3 py-2 bg-slate-100 border border-slate-300 rounded-lg text-slate-500"
-                      />
+                      <input type="text" disabled value={editingItem.id || ''} className="w-full px-3 py-2 bg-slate-100 border border-slate-300 rounded-lg text-slate-500" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">年龄段</label>
-                      <input 
-                        type="text" 
-                        value={editingItem.age || ''} 
-                        onChange={e => setEditingItem({...editingItem, age: e.target.value})}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
+                      <input type="text" value={editingItem.age || ''} onChange={e => setEditingItem({...editingItem, age: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
                     </div>
                   </div>
                    <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">技能点 (逗号分隔)</label>
-                    <input 
-                      type="text" 
-                      value={editingItem.skills ? editingItem.skills.join(', ') : ''} 
-                      onChange={e => setEditingItem({...editingItem, skills: e.target.value.split(',').map((s: string) => s.trim())})}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    />
+                    <input type="text" value={editingItem.skills ? editingItem.skills.join(', ') : ''} onChange={e => setEditingItem({...editingItem, skills: e.target.value.split(',').map((s: string) => s.trim())})} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
                   </div>
                 </>
               )}
 
-              {/* Specific: Showcase Fields */}
+              {/* Showcase specific */}
               {activeTab === 'showcase' && (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">分类</label>
-                  <input 
-                    type="text" 
-                    value={editingItem.category || ''} 
-                    onChange={e => setEditingItem({...editingItem, category: e.target.value})}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
+                  <input type="text" value={editingItem.category || ''} onChange={e => setEditingItem({...editingItem, category: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
                 </div>
               )}
               
-              {/* Icon / Image Fields with Upload */}
+              {/* Media Upload / Icon */}
+              {activeTab !== 'pages' && (
               <div>
                  <label className="block text-sm font-medium text-slate-700 mb-1">
                     {activeTab === 'showcase' ? '图片 (上传或输入链接/视频可填B站iframe)' : '图标名称 (Lucide Icon)'}
                  </label>
                  
-                 {/* URL Input */}
                  <input 
                     type="text" 
                     value={editingItem.icon_name || editingItem.image_alt || ''} 
@@ -467,7 +534,6 @@ export const AdminPage: React.FC = () => {
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm mb-2"
                   />
                   
-                  {/* File Upload (Only for Showcase) */}
                   {activeTab === 'showcase' && (
                     <div className="relative">
                       <input
@@ -475,13 +541,7 @@ export const AdminPage: React.FC = () => {
                         accept="image/*"
                         onChange={handleImageUpload}
                         disabled={uploading}
-                        className="block w-full text-sm text-slate-500
-                          file:mr-4 file:py-2 file:px-4
-                          file:rounded-full file:border-0
-                          file:text-sm file:font-semibold
-                          file:bg-blue-50 file:text-blue-700
-                          hover:file:bg-blue-100
-                        "
+                        className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                       />
                       {uploading && (
                         <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
@@ -497,21 +557,13 @@ export const AdminPage: React.FC = () => {
                     </p>
                   )}
               </div>
+              )}
 
             </div>
             
             <div className="px-6 py-4 bg-slate-50 flex justify-end gap-3 border-t border-slate-100">
-              <button 
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg font-medium transition-colors"
-              >
-                取消
-              </button>
-              <button 
-                onClick={handleSave}
-                disabled={loading || uploading}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-lg shadow-blue-600/20 transition-all flex items-center gap-2"
-              >
+              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg font-medium transition-colors">取消</button>
+              <button onClick={handleSave} disabled={loading || uploading} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-lg shadow-blue-600/20 transition-all flex items-center gap-2">
                 {loading ? <Icons.Loader2 className="animate-spin" size={16} /> : <Icons.Save size={16} />}
                 保存修改
               </button>

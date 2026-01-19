@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Logo } from '../components/Logo';
 import { SectionHeading } from '../components/SectionHeading';
 import { CourseCard } from '../components/CourseCard';
@@ -9,7 +9,11 @@ import { PageSection } from '../types';
 export const LandingPage: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // Showcase Logic State
   const { curriculum, philosophy, showcases, pageSections } = useContent();
+  const [selectedCategory, setSelectedCategory] = useState<string>('全部');
+  const [visibleCount, setVisibleCount] = useState<number>(8); // Initial display count
 
   useEffect(() => {
     const handleScroll = () => {
@@ -49,6 +53,32 @@ export const LandingPage: React.FC = () => {
   const philosophySec = getSection('philosophy');
   const curriculumSec = getSection('curriculum');
   const showcasesSec = getSection('showcases');
+
+  // --- Showcase Filtering Logic ---
+  // 1. Extract unique categories from data
+  const categories = useMemo(() => {
+    const cats = new Set(showcases.map(s => s.category));
+    return ['全部', ...Array.from(cats)];
+  }, [showcases]);
+
+  // 2. Filter showcases based on selection
+  const filteredShowcases = useMemo(() => {
+    if (selectedCategory === '全部') return showcases;
+    return showcases.filter(s => s.category === selectedCategory);
+  }, [showcases, selectedCategory]);
+
+  // 3. Slice for pagination
+  const visibleShowcases = filteredShowcases.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredShowcases.length;
+
+  const handleLoadMore = () => {
+    setVisibleCount(prev => prev + 8);
+  };
+
+  const handleCategoryChange = (cat: string) => {
+    setSelectedCategory(cat);
+    setVisibleCount(8); // Reset pagination when filter changes
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
@@ -207,9 +237,27 @@ export const LandingPage: React.FC = () => {
             description={showcasesSec.description}
           />
 
+          {/* Category Filter Bar */}
+          {categories.length > 2 && (
+            <div className="flex flex-wrap justify-center gap-3 mb-10">
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => handleCategoryChange(cat)}
+                  className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 
+                    ${selectedCategory === cat 
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-200 transform scale-105' 
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {showcases.map((showcase, idx) => (
-              <div key={idx} className="group cursor-pointer">
+            {visibleShowcases.map((showcase, idx) => (
+              <div key={`${showcase.title}-${idx}`} className="group cursor-pointer animate-fade-in-up">
                 <div className="relative overflow-hidden rounded-xl aspect-[4/3] mb-4 bg-slate-200">
                   {/* Intelligent rendering for Video iframe or Image */}
                   {showcase.imageAlt.trim().startsWith('<iframe') ? (
@@ -225,7 +273,7 @@ export const LandingPage: React.FC = () => {
                     />
                   )}
                   
-                  <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-md text-xs font-bold text-blue-800 uppercase z-10">
+                  <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-md text-xs font-bold text-blue-800 uppercase z-10 shadow-sm">
                     {showcase.category}
                   </div>
                 </div>
@@ -238,6 +286,25 @@ export const LandingPage: React.FC = () => {
               </div>
             ))}
           </div>
+
+          {/* Load More Button */}
+          {hasMore && (
+            <div className="mt-12 text-center">
+              <button 
+                onClick={handleLoadMore}
+                className="group relative inline-flex items-center justify-center px-8 py-3 font-semibold text-blue-600 transition-all duration-200 bg-white border-2 border-blue-100 rounded-full hover:bg-blue-50 hover:border-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600"
+              >
+                <span>查看更多作品 ({filteredShowcases.length - visibleCount})</span>
+                <Icons.ChevronDown className="w-5 h-5 ml-2 transition-transform duration-200 group-hover:translate-y-1" />
+              </button>
+            </div>
+          )}
+          
+          {visibleShowcases.length === 0 && (
+             <div className="text-center py-10 text-slate-500">
+                暂无该分类下的作品
+             </div>
+          )}
         </div>
       </section>
 

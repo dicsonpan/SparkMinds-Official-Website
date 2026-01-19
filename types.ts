@@ -10,11 +10,11 @@ export interface CourseLevel {
 }
 
 export interface Showcase {
-  id?: number; // Added optional ID for frontend management
+  id?: number; 
   title: string;
   description: string;
   category: string;
-  imageAlt: string;
+  imageUrls: string[]; // Changed from imageAlt to imageUrls array
 }
 
 export interface PhilosophyPoint {

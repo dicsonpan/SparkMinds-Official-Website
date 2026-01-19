@@ -43,7 +43,7 @@ create table public.showcases (
   title text not null,
   category text not null,
   description text not null,
-  image_alt text not null, -- Stores public URL or iframe HTML
+  image_urls text[] default '{}', -- Changed to array for multiple images/videos
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -114,6 +114,8 @@ create policy "Allow authenticated insert" on public.page_sections for insert wi
 create policy "Allow authenticated insert" on public.social_projects for insert with check (auth.role() = 'authenticated');
 -- Allow authenticated delete
 create policy "Allow authenticated delete" on public.social_projects for delete using (auth.role() = 'authenticated');
+create policy "Allow authenticated delete" on public.showcases for delete using (auth.role() = 'authenticated');
+
 
 -- Bookings Policies
 -- 1. Public can INSERT (Submit form)
@@ -134,7 +136,7 @@ values
 ('showcases', '让孩子的才华被世界看见', 'SUCCESS STORIES', '在创智实验室，没有“死记硬背”的知识。每一个项目都是为了解决真实世界的问题而生，成为孩子简历上最亮眼的勋章。', '{}'),
 ('social_practice', '让创意的价值\n在真实市场中得到验证', '社会实践与财商启蒙', '我们鼓励孩子将作品产品化。通过将创意转化为开源硬件套件或服务，孩子不仅能获得人生“第一桶金”，更重要的是在这一过程中理解经济运行的规律，培养极其宝贵的企业家精神。', '{"list_items": ["从Idea到产品的全流程体验", "理解成本、定价与市场需求", "提前积累真实的社会实践履历"]}'),
 ('booking', '预约体验课', 'BOOK NOW', '请留下您的联系方式，我们的课程顾问将在24小时内与您联系，为您安排个性化试听体验。', '{"nav_button_text": "预约试听", "mobile_button_text": "预约体验课", "submit_button_text": "立即预约", "success_message": "预约成功！我们会尽快联系您。"}'),
-('footer', '联系我们', '', '创智实验室 (SparkMinds) 专注于青少年硬核科技素养教育。\n\n我们致力于为中国家庭提供一条科学、扎实、具有国际视野的科技创新成长路径。', '{"address": "广州/深圳 线下创新中心", "email": "contact@sparkminds.edu", "phone": "400-123-4567", "copyright": "© 2024 SparkMinds 创智实验室. All rights reserved.", "explore_title": "探索", "contact_title": "联系我们"}');
+('footer', '联系我们', '', '创智实验室 (SparkMinds) 专注于青少年硬核科技素养教育。\r\n我们致力于为中国家庭提供一条科学、扎实、具有国际视野的科技创新成长路径。', '{"address": "广州/上海/重庆 线下创新中心", "email": "zhuangcy@sparkminds.edu", "phone": "13370001068(微信同号)", "copyright": "© 2019 - 2026 SparkMinds Lab 创智实验室. All rights reserved.", "explore_title": "探索", "contact_title": "联系我们"}');
 
 -- Insert Initial Social Projects
 insert into public.social_projects (title, subtitle, quote, footer_note)

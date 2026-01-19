@@ -110,25 +110,25 @@ export const SHOWCASES: Showcase[] = [
     title: '厚浪云平台',
     category: '商业级产品',
     description: '一名中学生不仅学会了编程，还创办了自己的云服务平台。这证明了我们的学员具备将技术转化为产品的实战能力，并在真实的商业世界中获得了天使投资。',
-    imageAlt: 'Screenshot of HouLang Cloud platform interface'
+    imageUrls: ['Screenshot of HouLang Cloud platform interface']
   },
   {
     title: '智能乐谱阅读器',
     category: '国际大奖作品',
     description: '源于对音乐的热爱，孩子结合物联网技术解决了“翻谱难”的痛点。该项目跨越3年持续迭代，斩获多项国际科创大奖，成为名校申请的强力敲门砖。',
-    imageAlt: 'Student presenting electronic sheet music device'
+    imageUrls: ['Student presenting electronic sheet music device']
   },
   {
     title: '医用矫正护具',
     category: '跨学科应用',
     description: '通过3D扫描与人体工学设计，为患者定制低成本、高透气的康复护具。这是科技与人文关怀的完美结合，体现了孩子用技术改变生活的社会责任感。',
-    imageAlt: '3D printed yellow arm guard structure'
+    imageUrls: ['3D printed yellow arm guard structure']
   },
   {
     title: '田野密码 · 智慧农业',
     category: 'PBL项目式学习',
     description: '走出教室，走进田野。孩子们通过实地调研，设计了一套全自动灌溉系统。在解决真实农业问题的过程中，他们理解了什么是工程，什么是责任。',
-    imageAlt: 'Students in field testing irrigation system'
+    imageUrls: ['Students in field testing irrigation system']
   }
 ];
 

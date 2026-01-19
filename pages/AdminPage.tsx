@@ -23,7 +23,7 @@ interface DbShowcase {
   title: string;
   category: string;
   description: string;
-  image_alt: string;
+  image_urls: string[];
 }
 
 interface DbPhilosophy {
@@ -145,7 +145,7 @@ export const AdminPage: React.FC = () => {
           title: s.title,
           category: s.category,
           description: s.description,
-          image_alt: s.imageAlt
+          image_urls: s.imageUrls || []
         }));
         await supabase.from('showcases').insert(dbShowcases);
       }
@@ -184,7 +184,7 @@ export const AdminPage: React.FC = () => {
     if (activeTab === 'curriculum') {
       template = { id: 'NewLevel', level: '', age: '', title: '', description: '', skills: [], icon_name: 'Box', image_urls: [] };
     } else if (activeTab === 'showcase') {
-      template = { title: '', category: '商业级产品', description: '', image_alt: '' };
+      template = { title: '', category: '商业级产品', description: '', image_urls: [] };
     } else if (activeTab === 'social') {
       template = { title: '商业化案例', subtitle: '', quote: '', footer_note: '', image_url: '' };
     } else if (activeTab === 'philosophy') {
@@ -245,8 +245,8 @@ export const AdminPage: React.FC = () => {
     try {
         let table = '';
         if (activeTab === 'social') table = 'social_projects';
-        // Add other tables if delete is needed there
-
+        if (activeTab === 'showcase') table = 'showcases';
+        
         const { error } = await supabase.from(table).delete().eq('id', id);
         if (error) throw error;
         await fetchData();
@@ -274,11 +274,10 @@ export const AdminPage: React.FC = () => {
       const { data } = supabase.storage.from('images').getPublicUrl(filePath);
       const publicUrl = data.publicUrl;
 
-      if (activeTab === 'curriculum') {
+      if (activeTab === 'curriculum' || activeTab === 'showcase') {
+        // Handle array
         const currentUrls = editingItem.image_urls || [];
         setEditingItem({ ...editingItem, image_urls: [...currentUrls, publicUrl] });
-      } else if (activeTab === 'showcase') {
-        setEditingItem({ ...editingItem, image_alt: publicUrl });
       } else if (activeTab === 'social') {
         setEditingItem({ ...editingItem, image_url: publicUrl });
       } else {
@@ -292,7 +291,7 @@ export const AdminPage: React.FC = () => {
     }
   };
   
-  const removeCurriculumImage = (indexToRemove: number) => {
+  const removeImageFromArray = (indexToRemove: number) => {
     const currentUrls = editingItem.image_urls || [];
     const newUrls = currentUrls.filter((_: any, idx: number) => idx !== indexToRemove);
     setEditingItem({ ...editingItem, image_urls: newUrls });
@@ -529,12 +528,12 @@ export const AdminPage: React.FC = () => {
                       {showcases.map((s) => (
                            <div key={s.id} className="p-6 flex gap-6 hover:bg-slate-50 transition-colors group">
                                <div className="w-32 h-24 bg-slate-200 rounded-lg overflow-hidden shrink-0 border border-slate-100">
-                                  {s.image_alt.startsWith('http') || s.image_alt.startsWith('<iframe') ? (
-                                    s.image_alt.startsWith('<iframe') ? 
-                                    <div className="w-full h-full [&>iframe]:w-full [&>iframe]:h-full" dangerouslySetInnerHTML={{__html: s.image_alt}} /> :
-                                    <img src={s.image_alt} alt={s.title} className="w-full h-full object-cover" />
+                                  {s.image_urls && s.image_urls.length > 0 ? (
+                                    s.image_urls[0].startsWith('<iframe') ? 
+                                    <div className="w-full h-full [&>iframe]:w-full [&>iframe]:h-full" dangerouslySetInnerHTML={{__html: s.image_urls[0]}} /> :
+                                    <img src={s.image_urls[0]} alt={s.title} className="w-full h-full object-cover" />
                                   ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-xs text-slate-400 bg-slate-100 p-2 text-center break-all">{s.image_alt}</div>
+                                    <div className="w-full h-full flex items-center justify-center text-xs text-slate-400 bg-slate-100 p-2 text-center break-all">暂无图片</div>
                                   )}
                                </div>
                                <div className="flex-1">
@@ -542,10 +541,18 @@ export const AdminPage: React.FC = () => {
                                      <div>
                                        <h3 className="font-bold text-slate-900 mb-1">{s.title}</h3>
                                        <span className="text-xs font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded">{s.category}</span>
+                                       {s.image_urls && s.image_urls.length > 1 && (
+                                          <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded ml-2">{s.image_urls.length} 图</span>
+                                       )}
                                      </div>
-                                     <button onClick={() => openEditModal(s)} className="opacity-0 group-hover:opacity-100 p-2 text-blue-600 hover:bg-blue-50 rounded transition-all">
-                                       <Icons.Edit2 size={18} />
-                                     </button>
+                                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                       <button onClick={() => openEditModal(s)} className="p-2 text-blue-600 hover:bg-blue-50 rounded">
+                                         <Icons.Edit2 size={18} />
+                                       </button>
+                                       <button onClick={() => handleDelete(s.id)} className="p-2 text-red-600 hover:bg-red-50 rounded">
+                                         <Icons.Trash2 size={18} />
+                                       </button>
+                                     </div>
                                    </div>
                                    <p className="text-slate-500 text-sm mt-2 line-clamp-2">{s.description}</p>
                                </div>
@@ -843,35 +850,63 @@ export const AdminPage: React.FC = () => {
               {activeTab !== 'pages' && (
               <div>
                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    {activeTab === 'showcase' ? '图片 (上传或输入链接/视频可填B站iframe)' : 
+                    {activeTab === 'showcase' ? '图片/视频 (支持多张，视频可填B站iframe)' : 
                      activeTab === 'curriculum' ? '课程封面图集' : 
                      activeTab === 'social' ? '背景/图标图片' : '图标名称 (Lucide Icon)'}
                  </label>
                  
-                 {/* Single Input for Non-Curriculum tabs */}
-                 {activeTab !== 'curriculum' && (
+                 {/* Single Input for Non-Curriculum/Showcase tabs */}
+                 {(activeTab !== 'curriculum' && activeTab !== 'showcase') && (
                     <input 
                         type="text" 
-                        value={editingItem.icon_name || editingItem.image_alt || editingItem.image_url || ''} 
+                        value={editingItem.icon_name || editingItem.image_url || ''} 
                         onChange={e => {
-                            if (activeTab === 'showcase') setEditingItem({...editingItem, image_alt: e.target.value});
-                            else if (activeTab === 'social') setEditingItem({...editingItem, image_url: e.target.value});
+                            if (activeTab === 'social') setEditingItem({...editingItem, image_url: e.target.value});
                             else setEditingItem({...editingItem, icon_name: e.target.value});
                         }}
-                        placeholder={activeTab === 'showcase' ? "https://... 或上传图片" : "Box, Zap, etc."}
+                        placeholder="Box, Zap, etc."
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm mb-2"
                     />
                  )}
+
+                 {/* For Showcases/Curriculum, show simple input for adding manual URLs (like iframes) */}
+                 {(activeTab === 'showcase' || activeTab === 'curriculum') && (
+                    <div className="flex gap-2 mb-2">
+                        <input 
+                            type="text" 
+                            id="manual-url-input"
+                            placeholder={activeTab === 'showcase' ? "输入图片URL或<iframe>代码" : "输入图片URL"}
+                            className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm"
+                        />
+                        <button 
+                            onClick={() => {
+                                const input = document.getElementById('manual-url-input') as HTMLInputElement;
+                                if (input.value) {
+                                    const currentUrls = editingItem.image_urls || [];
+                                    setEditingItem({ ...editingItem, image_urls: [...currentUrls, input.value] });
+                                    input.value = '';
+                                }
+                            }}
+                            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-sm font-medium"
+                        >
+                            添加
+                        </button>
+                    </div>
+                 )}
                   
-                  {/* Image List for Curriculum (Multi-image) */}
-                  {activeTab === 'curriculum' && (
+                  {/* Image List for Curriculum/Showcase (Multi-image) */}
+                  {(activeTab === 'curriculum' || activeTab === 'showcase') && (
                      <div className="grid grid-cols-4 gap-2 mb-2">
                         {(editingItem.image_urls || []).map((url: string, idx: number) => (
-                           <div key={idx} className="relative aspect-square rounded overflow-hidden border border-slate-200 group">
-                              <img src={url} alt="" className="w-full h-full object-cover" />
+                           <div key={idx} className="relative aspect-square rounded overflow-hidden border border-slate-200 group bg-slate-50">
+                              {url.startsWith('<iframe') ? (
+                                <div className="w-full h-full flex items-center justify-center text-xs text-slate-400 p-1 text-center bg-slate-100">视频/Frame</div>
+                              ) : (
+                                <img src={url} alt="" className="w-full h-full object-cover" />
+                              )}
                               <button 
-                                onClick={() => removeCurriculumImage(idx)}
-                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => removeImageFromArray(idx)}
+                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
                               >
                                 <Icons.X size={12} />
                               </button>
@@ -898,14 +933,9 @@ export const AdminPage: React.FC = () => {
                       )}
                     </div>
                   )}
-                  {activeTab === 'showcase' && (
+                  {(activeTab === 'curriculum' || activeTab === 'showcase') && (
                     <p className="text-xs text-slate-500 mt-1">
-                      提示: 视频请将B站的iframe代码填入上方文本框。
-                    </p>
-                  )}
-                  {activeTab === 'curriculum' && (
-                    <p className="text-xs text-slate-500 mt-1">
-                      提示: 可多次上传图片以添加多张。第一张将作为主封面。
+                      提示: 可上传多张图片或添加多个视频链接。第一张将作为封面。
                     </p>
                   )}
               </div>

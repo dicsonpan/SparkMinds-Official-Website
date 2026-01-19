@@ -63,7 +63,7 @@ export const useContent = () => {
             title: item.title,
             description: item.description,
             category: item.category,
-            imageAlt: item.image_alt || item.imageAlt
+            imageUrls: item.image_urls || [] // Map array
         }));
         setShowcases(mappedShowcases);
       }

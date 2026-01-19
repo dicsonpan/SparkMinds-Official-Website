@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Logo } from '../components/Logo';
 import { SectionHeading } from '../components/SectionHeading';
 import { CourseCard } from '../components/CourseCard';
+import { ImageCarousel } from '../components/ImageCarousel';
 import * as Icons from 'lucide-react';
 import { useContent } from '../hooks/useContent';
 import { PageSection } from '../types';
@@ -331,22 +332,14 @@ export const LandingPage: React.FC = () => {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {visibleShowcases.map((showcase, idx) => (
               <div key={`${showcase.title}-${idx}`} className="group cursor-pointer animate-fade-in-up">
-                <div className="relative overflow-hidden rounded-xl aspect-[4/3] mb-4 bg-slate-200">
-                  {/* Intelligent rendering for Video iframe or Image */}
-                  {showcase.imageAlt.trim().startsWith('<iframe') ? (
-                    <div 
-                      className="w-full h-full [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0" 
-                      dangerouslySetInnerHTML={{__html: showcase.imageAlt}} 
-                    />
-                  ) : (
-                    <img 
-                      src={showcase.imageAlt.startsWith('http') ? showcase.imageAlt : `https://picsum.photos/seed/${idx + 15}/600/400`} 
-                      alt={showcase.title}
-                      className="object-cover w-full h-full transform group-hover:scale-105 transition-transform duration-500"
-                    />
-                  )}
+                <div className="relative overflow-hidden rounded-xl aspect-[4/3] mb-4 shadow-sm border border-slate-100">
+                  <ImageCarousel 
+                    images={showcase.imageUrls || []} 
+                    alt={showcase.title}
+                    className="w-full h-full"
+                  />
                   
-                  <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-md text-xs font-bold text-blue-800 uppercase z-10 shadow-sm">
+                  <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-md text-xs font-bold text-blue-800 uppercase z-10 shadow-sm pointer-events-none">
                     {showcase.category}
                   </div>
                 </div>

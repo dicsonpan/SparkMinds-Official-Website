@@ -7,7 +7,7 @@ interface LogoProps {
 
 export const Logo: React.FC<LogoProps> = ({ className = "h-10 w-auto", scrolled = false }) => {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3" role="banner" aria-label="SparkMinds 创智实验室 Logo">
       {/* 
         Fixed: SVG is now inlined to ensure correct rendering without 'mm' unit issues.
         ViewBox is preserved from the original file (0 0 63.215 69.444).
@@ -17,6 +17,8 @@ export const Logo: React.FC<LogoProps> = ({ className = "h-10 w-auto", scrolled 
         className={className}
         xmlns="http://www.w3.org/2000/svg"
         fill="none"
+        role="img"
+        aria-hidden="true"
       >
         <g id="layer1">
           <g id="g7722">
@@ -131,6 +133,7 @@ export const Logo: React.FC<LogoProps> = ({ className = "h-10 w-auto", scrolled 
         </g>
       </svg>
       <div className="flex flex-col justify-center">
+        <h1 className="sr-only">SparkMinds 创智实验室</h1>
         <span className={`text-xl font-bold leading-none tracking-tight ${scrolled ? 'text-slate-800' : 'text-slate-900'}`}>
           创智实验室
         </span>

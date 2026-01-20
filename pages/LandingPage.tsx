@@ -29,6 +29,11 @@ export const LandingPage: React.FC = () => {
   });
   const [bookingStatus, setBookingStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
 
+  // Set document title for SEO
+  useEffect(() => {
+    document.title = "SparkMinds 创智实验室 | 青少年硬核科技创新教育";
+  }, []);
+
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);

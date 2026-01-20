@@ -18,9 +18,6 @@ export const LandingPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('全部');
   const [visibleCount, setVisibleCount] = useState<number>(8); // Initial display count
   
-  // Social Carousel State
-  const [currentSocialIndex, setCurrentSocialIndex] = useState(0);
-
   // Booking Form State
   const [bookingForm, setBookingForm] = useState({
     parentName: '',
@@ -41,15 +38,6 @@ export const LandingPage: React.FC = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  // Social Carousel Autoplay
-  useEffect(() => {
-    if (socialProjects.length <= 1) return;
-    const interval = setInterval(() => {
-        setCurrentSocialIndex(prev => (prev + 1) % socialProjects.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [socialProjects.length]);
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
@@ -380,90 +368,85 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* Business Loop / Social Practice */}
-      <section id="社会实践" className="py-20 bg-blue-900 text-white relative overflow-hidden">
-        {/* Static content for now, can be moved to DB if needed later */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600 rounded-full mix-blend-overlay filter blur-3xl opacity-20"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-orange-600 rounded-full mix-blend-overlay filter blur-3xl opacity-20"></div>
+      <section id="社会实践" className="py-24 bg-blue-900 text-white relative overflow-hidden">
+        {/* Background Effects */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600 rounded-full mix-blend-overlay filter blur-[100px] opacity-20 pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-orange-600 rounded-full mix-blend-overlay filter blur-[100px] opacity-20 pointer-events-none"></div>
         
         <div className="container mx-auto px-4 md:px-6 relative z-10">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            {/* Left Column: Text Info */}
-            <div>
-              <div className="inline-block py-1 px-3 rounded-full bg-blue-800 border border-blue-700 text-orange-400 text-sm font-semibold tracking-wider mb-6">
-                {socialPracticeSec.subtitle || '社会实践与财商启蒙'}
-              </div>
-              <h2 className="text-3xl md:text-4xl font-bold mb-6 whitespace-pre-wrap">
-                {socialPracticeSec.title || '让创意的价值\n在真实市场中得到验证'}
-              </h2>
-              <p className="text-blue-100 text-lg mb-8 leading-relaxed">
-                {socialPracticeSec.description}
-              </p>
-              <ul className="space-y-4">
-                {(socialPracticeSec.metadata?.list_items || [
+          
+          {/* 1. Centered Header */}
+          <div className="text-center max-w-4xl mx-auto mb-16">
+            <div className="inline-block py-1 px-4 rounded-full bg-blue-800 border border-blue-700 text-orange-400 text-sm font-bold tracking-wider mb-6">
+               {socialPracticeSec.subtitle || '社会实践与财商启蒙'}
+            </div>
+            <h2 className="text-3xl md:text-5xl font-bold mb-6 whitespace-pre-wrap leading-tight">
+               {socialPracticeSec.title || '让创意的价值\n在真实市场中得到验证'}
+            </h2>
+            <p className="text-blue-100 text-lg md:text-xl leading-relaxed opacity-90 max-w-2xl mx-auto">
+               {socialPracticeSec.description}
+            </p>
+
+            {/* Benefits List (Horizontal) */}
+            <div className="flex flex-wrap justify-center gap-4 md:gap-8 mt-10">
+              {(socialPracticeSec.metadata?.list_items || [
                   '从Idea到产品的全流程体验',
                   '理解成本、定价与市场需求',
                   '提前积累真实的社会实践履历'
                 ]).map((item: string, i: number) => (
-                  <li key={i} className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-full bg-[#E1964B] flex items-center justify-center flex-shrink-0">
-                      <Icons.Check className="w-4 h-4 text-white" />
+                  <div key={i} className="flex items-center gap-2 bg-blue-800/50 px-4 py-2 rounded-full border border-blue-700/50">
+                    <div className="w-5 h-5 rounded-full bg-[#E1964B] flex items-center justify-center flex-shrink-0">
+                      <Icons.Check className="w-3 h-3 text-white" />
                     </div>
-                    <span className="font-medium text-blue-50">{item}</span>
-                  </li>
-                ))}
-              </ul>
+                    <span className="font-medium text-blue-50 text-sm">{item}</span>
+                  </div>
+              ))}
             </div>
+          </div>
 
-            {/* Right Column: Dynamic Project Carousel */}
-            <div className="relative">
+          {/* 2. Projects Grid (Display All) */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
               {socialProjects.map((project, idx) => (
                 <div 
                   key={idx}
-                  className={`transition-all duration-700 ease-in-out absolute inset-0 md:relative ${
-                    idx === currentSocialIndex ? 'opacity-100 translate-x-0 z-20' : 'opacity-0 translate-x-10 z-10 absolute inset-0'
-                  }`}
+                  className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 hover:border-orange-500/30 hover:bg-white/10 transition-all duration-300 group flex flex-col h-full overflow-hidden"
                 >
-                  <div className="bg-white/10 backdrop-blur-sm p-8 rounded-2xl border border-white/10 h-full flex flex-col justify-between">
-                     <div className="flex items-center gap-4 mb-6">
-                       <div className="w-12 h-12 bg-[#E1964B] rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
-                          {project.imageUrl ? (
-                            <img src={project.imageUrl} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <Icons.TrendingUp className="w-6 h-6 text-white" />
-                          )}
-                       </div>
-                       <div>
-                         <h4 className="font-bold text-xl">{project.title}</h4>
-                         <p className="text-blue-200 text-sm">{project.subtitle}</p>
-                       </div>
-                     </div>
-                     <div className="flex-1 bg-blue-950/50 rounded-lg flex items-center justify-center border border-white/5 p-6 text-center mb-6">
-                        <p className="text-blue-200 italic font-serif text-lg leading-relaxed">
-                          {project.quote}
-                        </p>
-                     </div>
-                     <p className="text-sm text-blue-300 font-medium">
-                       {project.footerNote}
-                     </p>
-                  </div>
+                    <div className="p-8 flex flex-col h-full">
+                        {/* Header */}
+                        <div className="flex items-start gap-4 mb-6">
+                            <div className="w-12 h-12 bg-gradient-to-br from-[#E1964B] to-orange-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                                {project.imageUrl ? (
+                                    <img src={project.imageUrl} alt="" className="w-full h-full object-cover rounded-xl" />
+                                ) : (
+                                    <Icons.TrendingUp className="w-6 h-6 text-white" />
+                                )}
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-xl text-white group-hover:text-orange-300 transition-colors">{project.title}</h4>
+                                <p className="text-blue-300 text-sm mt-1">{project.subtitle}</p>
+                            </div>
+                        </div>
+
+                        {/* Quote Box */}
+                        <div className="flex-1 relative mb-6">
+                           <Icons.Quote size={24} className="text-blue-700 absolute -top-2 -left-2 opacity-50" />
+                           <p className="text-blue-100 italic font-serif leading-relaxed px-4 py-2">
+                              {project.quote}
+                           </p>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="pt-6 border-t border-white/5 mt-auto">
+                            <p className="text-xs text-blue-400 font-medium flex items-center gap-2">
+                               <Icons.Sparkles size={12} className="text-orange-400" />
+                               {project.footerNote}
+                            </p>
+                        </div>
+                    </div>
                 </div>
               ))}
-              
-              {/* Carousel Indicators (Only if > 1) */}
-              {socialProjects.length > 1 && (
-                 <div className="flex justify-center gap-2 mt-6">
-                   {socialProjects.map((_, idx) => (
-                     <button
-                       key={idx}
-                       onClick={() => setCurrentSocialIndex(idx)}
-                       className={`w-2 h-2 rounded-full transition-all ${idx === currentSocialIndex ? 'bg-orange-400 w-6' : 'bg-white/20 hover:bg-white/40'}`}
-                       aria-label={`Go to project ${idx + 1}`}
-                     />
-                   ))}
-                 </div>
-              )}
-            </div>
           </div>
+
         </div>
       </section>
 

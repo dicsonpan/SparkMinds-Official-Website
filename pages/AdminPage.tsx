@@ -161,9 +161,12 @@ export const AdminPage: React.FC = () => {
     
     // Prepare Batch Update
     // We update all items with their new index as sort_order
+    // CRITICAL FIX: We must include the full object because Supabase 'upsert' acts as "Insert if not exists, update if exists".
+    // The "Insert" path checks for NOT NULL constraints on all columns. 
+    // If we only send {id, sort_order}, it tries to insert a row with NULL title, which fails.
     const updates = currentList.map((item, index) => ({
-      id: item.id, // Only send ID (PK) and sort_order
-      sort_order: index + 1 // 1-based index preferred for DB usually, but 0-based is fine too
+      ...item,
+      sort_order: index + 1 
     }));
 
     // Optimistic UI is already handled by handleDragOver

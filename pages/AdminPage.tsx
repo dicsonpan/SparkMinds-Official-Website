@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { Logo } from '../components/Logo';
@@ -50,8 +50,20 @@ interface DbSocialProject {
   image_url: string;
 }
 
+// === Schema Definitions for Backup/Restore ===
+// 这些列表定义了当前数据库支持的字段。
+// 导入时，只有这些字段会被保留，多余的字段（旧版本字段）会被过滤掉。
+const ALLOWED_KEYS = {
+  curriculum: ['id', 'level', 'age', 'title', 'description', 'skills', 'icon_name', 'image_urls'],
+  philosophy: ['title', 'content', 'icon_name'], // 不包含自增 ID
+  showcases: ['title', 'category', 'description', 'image_urls'], // 不包含自增 ID
+  social_projects: ['title', 'subtitle', 'quote', 'footer_note', 'image_url'], // 不包含自增 ID
+  page_sections: ['id', 'title', 'subtitle', 'description', 'metadata'],
+};
+
 export const AdminPage: React.FC = () => {
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<'curriculum' | 'showcase' | 'social' | 'philosophy' | 'pages' | 'bookings'>('bookings');
   
   const [curriculum, setCurriculum] = useState<DbCourse[]>([]);
@@ -111,7 +123,128 @@ export const AdminPage: React.FC = () => {
     navigate('/login');
   };
 
-  // --- Data Seeding Logic ---
+  // --- Backup & Restore Logic ---
+
+  // Helper: Filter object keys based on allowlist
+  const sanitizeRecord = (record: any, allowList: string[]) => {
+    const newRecord: any = {};
+    allowList.forEach(key => {
+      // 只有当备份数据中有这个 key (且不是undefined) 时才复制
+      // 如果当前 schema 新增了字段，备份里没有，这里也不会复制，插入 DB 时会用 DB 的 default 值
+      if (record[key] !== undefined) {
+        newRecord[key] = record[key];
+      }
+    });
+    return newRecord;
+  };
+
+  const handleExportBackup = async () => {
+    setLoading(true);
+    try {
+      const backupData = {
+        version: '1.0',
+        timestamp: new Date().toISOString(),
+        data: {
+          curriculum,
+          philosophy,
+          showcases,
+          social_projects: socialProjects,
+          page_sections: pageSections,
+        }
+      };
+
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sparkminds_backup_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert('导出备份失败: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImportClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''; // Reset
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!confirm('警告：导入备份将尝试合并或覆盖当前数据。\n\n- 如果您刚刚重置了数据库，这是安全的。\n- 如果已有数据，相同ID的内容会被覆盖，新增内容会被添加。\n\n确定要继续吗？')) {
+      return;
+    }
+
+    setLoading(true);
+    const reader = new FileReader();
+    
+    reader.onload = async (e) => {
+      try {
+        const json = JSON.parse(e.target?.result as string);
+        if (!json.data) throw new Error('无效的备份文件格式');
+
+        const { data } = json;
+
+        // 1. Curriculum (Fixed ID -> Upsert)
+        if (data.curriculum?.length) {
+          const cleanData = data.curriculum.map((item: any) => sanitizeRecord(item, ALLOWED_KEYS.curriculum));
+          const { error } = await supabase.from('curriculum').upsert(cleanData);
+          if (error) throw error;
+        }
+
+        // 2. Page Sections (Fixed ID -> Upsert)
+        if (data.page_sections?.length) {
+          const cleanData = data.page_sections.map((item: any) => sanitizeRecord(item, ALLOWED_KEYS.page_sections));
+          const { error } = await supabase.from('page_sections').upsert(cleanData);
+          if (error) throw error;
+        }
+
+        // 3. Showcases (Auto ID -> Insert only, strip ID)
+        if (data.showcases?.length) {
+          const cleanData = data.showcases.map((item: any) => sanitizeRecord(item, ALLOWED_KEYS.showcases));
+          // Insert data (Supabase will generate new IDs)
+          const { error } = await supabase.from('showcases').insert(cleanData);
+          if (error) throw error;
+        }
+
+        // 4. Philosophy (Auto ID -> Insert only, strip ID)
+        if (data.philosophy?.length) {
+          const cleanData = data.philosophy.map((item: any) => sanitizeRecord(item, ALLOWED_KEYS.philosophy));
+          const { error } = await supabase.from('philosophy').insert(cleanData);
+          if (error) throw error;
+        }
+
+        // 5. Social Projects (Auto ID -> Insert only, strip ID)
+        if (data.social_projects?.length) {
+          const cleanData = data.social_projects.map((item: any) => sanitizeRecord(item, ALLOWED_KEYS.social_projects));
+          const { error } = await supabase.from('social_projects').insert(cleanData);
+          if (error) throw error;
+        }
+
+        alert('数据还原成功！');
+        fetchData();
+
+      } catch (err: any) {
+        console.error(err);
+        alert('导入失败: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    reader.readAsText(file);
+  };
+
+  // --- Data Seeding Logic (Keep for fallback) ---
   const handleSeedData = async () => {
     if (!confirm('确定要初始化数据吗？这将把 constants.ts 中的默认数据导入数据库。')) return;
     setLoading(true);
@@ -361,6 +494,36 @@ export const AdminPage: React.FC = () => {
           </h1>
           
           <div className="flex items-center gap-3">
+             {/* Import/Export Buttons */}
+             {!loading && (
+               <>
+                 <input 
+                   type="file" 
+                   ref={fileInputRef} 
+                   onChange={handleFileChange} 
+                   accept=".json" 
+                   className="hidden" 
+                 />
+                 <button 
+                   onClick={handleImportClick}
+                   className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors"
+                   title="从备份文件恢复数据"
+                 >
+                   <Icons.Upload size={16} />
+                   还原备份
+                 </button>
+                 <button 
+                   onClick={handleExportBackup}
+                   className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors"
+                   title="下载当前所有数据的JSON备份"
+                 >
+                   <Icons.Download size={16} />
+                   导出备份
+                 </button>
+                 <div className="h-6 w-px bg-slate-300 mx-1"></div>
+               </>
+             )}
+
              {/* Add New Button (Only for list-based tabs, excluding bookings and pages) */}
              {(activeTab !== 'pages' && activeTab !== 'bookings') && (
                 <button 
@@ -372,7 +535,7 @@ export const AdminPage: React.FC = () => {
                 </button>
              )}
 
-             {/* Seed Data Button */}
+             {/* Seed Data Button (Fallback) */}
              {((activeTab === 'curriculum' && curriculum.length === 0) || 
                (activeTab === 'showcase' && showcases.length === 0) ||
                (activeTab === 'social' && socialProjects.length === 0) ||

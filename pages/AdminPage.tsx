@@ -800,9 +800,14 @@ export const AdminPage: React.FC = () => {
                              </div>
                              <p className="text-slate-500 text-sm mb-3 line-clamp-2">{c.description}</p>
                            </div>
-                           <button onClick={() => openEditModal(c)} className="opacity-0 group-hover:opacity-100 p-2 text-blue-600 hover:bg-blue-50 rounded transition-all">
-                             <Icons.Edit2 size={18} />
-                           </button>
+                           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                             <button onClick={() => openEditModal(c)} className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-all">
+                               <Icons.Edit2 size={18} />
+                             </button>
+                             <button onClick={() => handleDelete(c.id)} className="p-2 text-red-600 hover:bg-red-50 rounded transition-all">
+                               <Icons.Trash2 size={18} />
+                             </button>
+                           </div>
                         </div>
                     ))}
                  </div>

@@ -8,7 +8,11 @@ export const useContent = () => {
   const [philosophy, setPhilosophy] = useState<PhilosophyPoint[]>(PHILOSOPHY);
   const [showcases, setShowcases] = useState<Showcase[]>(SHOWCASES);
   const [socialProjects, setSocialProjects] = useState<SocialProject[]>(SOCIAL_PROJECTS);
+  
+  // Use a Record for quick lookup, but also keep a sorted array for rendering order
   const [pageSections, setPageSections] = useState<Record<string, PageSection>>({});
+  const [sortedPageSections, setSortedPageSections] = useState<PageSection[]>(PAGE_SECTIONS_DEFAULT);
+  
   const [loading, setLoading] = useState(true);
 
   // Helper to convert array to object for easier access
@@ -20,7 +24,9 @@ export const useContent = () => {
 
   // Initialize with defaults
   useEffect(() => {
-    setPageSections(mapSections(PAGE_SECTIONS_DEFAULT));
+    const defaultMap = mapSections(PAGE_SECTIONS_DEFAULT);
+    setPageSections(defaultMap);
+    setSortedPageSections(PAGE_SECTIONS_DEFAULT);
   }, []);
 
   const fetchData = async () => {
@@ -106,10 +112,15 @@ export const useContent = () => {
         setSocialProjects(mappedProjects);
       }
 
-      // Fetch Page Sections
-      const { data: secData } = await supabase.from('page_sections').select('*');
+      // Fetch Page Sections - Ordered by sort_order
+      const { data: secData } = await supabase
+        .from('page_sections')
+        .select('*')
+        .order('sort_order', { ascending: true });
+
       if (secData && secData.length > 0) {
         setPageSections(mapSections(secData));
+        setSortedPageSections(secData);
       }
       
     } catch (error) {
@@ -123,5 +134,14 @@ export const useContent = () => {
     fetchData();
   }, []);
 
-  return { curriculum, philosophy, showcases, socialProjects, pageSections, loading, refresh: fetchData };
+  return { 
+    curriculum, 
+    philosophy, 
+    showcases, 
+    socialProjects, 
+    pageSections, 
+    sortedPageSections, // New export
+    loading, 
+    refresh: fetchData 
+  };
 };

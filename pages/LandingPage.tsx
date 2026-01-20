@@ -14,7 +14,7 @@ export const LandingPage: React.FC = () => {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   
   // Showcase Logic State
-  const { curriculum, philosophy, showcases, socialProjects, pageSections } = useContent();
+  const { curriculum, philosophy, showcases, socialProjects, pageSections, sortedPageSections } = useContent();
   const [selectedCategory, setSelectedCategory] = useState<string>('全部');
   const [visibleCount, setVisibleCount] = useState<number>(8); // Initial display count
   
@@ -57,7 +57,7 @@ export const LandingPage: React.FC = () => {
     setMobileMenuOpen(false);
   };
 
-  // Helper to safely get section data
+  // Helper to safely get section data for use inside render functions
   const getSection = (id: string): PageSection => {
     return pageSections[id] || { 
       id: 'loading',
@@ -68,6 +68,7 @@ export const LandingPage: React.FC = () => {
     };
   };
 
+  // Used for data lookup (legacy safe access)
   const hero = getSection('hero');
   const philosophySec = getSection('philosophy');
   const curriculumSec = getSection('curriculum');
@@ -130,69 +131,10 @@ export const LandingPage: React.FC = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
-      
-      {/* Navigation */}
-      <nav className={`fixed w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-white/90 backdrop-blur-md shadow-sm py-4' : 'bg-transparent py-6'}`}>
-        <div className="container mx-auto px-4 md:px-6 flex justify-between items-center">
-          <Logo scrolled={isScrolled} />
-          
-          {/* Desktop Menu */}
-          <div className="hidden md:flex space-x-8 items-center">
-            {['核心理念', '成长路径', '学员作品', '社会实践'].map((item) => (
-              <button 
-                key={item} 
-                onClick={() => scrollToSection(item)}
-                className={`font-medium hover:text-[#E1964B] transition-colors cursor-pointer bg-transparent border-none ${isScrolled ? 'text-slate-700' : 'text-slate-800'}`}
-              >
-                {item}
-              </button>
-            ))}
-            <button 
-              onClick={() => setIsBookingModalOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold transition-colors shadow-lg shadow-blue-600/20"
-            >
-              {bookingSec.metadata?.nav_button_text || '预约试听'}
-            </button>
-          </div>
+  // --- Render Functions for Each Section ---
 
-          {/* Mobile Menu Button */}
-          <button 
-            className="md:hidden text-slate-800"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? <Icons.X /> : <Icons.Menu />}
-          </button>
-        </div>
-
-        {/* Mobile Menu Dropdown */}
-        {mobileMenuOpen && (
-          <div className="md:hidden absolute top-full left-0 w-full bg-white shadow-lg border-t border-slate-100 p-4 flex flex-col space-y-4">
-             {['核心理念', '成长路径', '学员作品', '社会实践'].map((item) => (
-              <button 
-                key={item} 
-                onClick={() => scrollToSection(item)}
-                className="text-left text-slate-700 font-medium py-2 border-b border-slate-100 bg-transparent"
-              >
-                {item}
-              </button>
-            ))}
-             <button 
-               onClick={() => {
-                 setMobileMenuOpen(false);
-                 setIsBookingModalOpen(true);
-               }}
-               className="bg-[#E1964B] text-white w-full py-3 rounded-lg font-bold"
-             >
-              {bookingSec.metadata?.mobile_button_text || '预约体验课'}
-            </button>
-          </div>
-        )}
-      </nav>
-
-      {/* Hero Section */}
-      <header className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden">
+  const renderHero = () => (
+    <header key="hero" className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden">
         {/* Abstract Background Shapes */}
         <div className="absolute top-0 right-0 w-1/2 h-full bg-blue-50/50 skew-x-12 transform translate-x-20 -z-10"></div>
         <div className="absolute top-20 left-10 w-64 h-64 bg-orange-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
@@ -228,9 +170,10 @@ export const LandingPage: React.FC = () => {
           </div>
         </div>
       </header>
+  );
 
-      {/* Philosophy Section */}
-      <section id="核心理念" className="py-20 bg-white">
+  const renderPhilosophy = () => (
+    <section key="philosophy" id="核心理念" className="py-20 bg-white">
         <div className="container mx-auto px-4 md:px-6">
           <SectionHeading 
             subtitle={philosophySec.subtitle || 'OUR MISSION'} 
@@ -256,9 +199,10 @@ export const LandingPage: React.FC = () => {
           </div>
         </div>
       </section>
+  );
 
-      {/* Curriculum Path Section (The Circuit) */}
-      <section id="成长路径" className="py-24 bg-slate-50 relative overflow-hidden">
+  const renderCurriculum = () => (
+    <section key="curriculum" id="成长路径" className="py-24 bg-slate-50 relative overflow-hidden">
         <div className="circuit-pattern absolute inset-0 opacity-50 pointer-events-none"></div>
         <div className="container mx-auto px-4 md:px-6 relative z-10">
           <SectionHeading 
@@ -297,9 +241,10 @@ export const LandingPage: React.FC = () => {
           </div>
         </div>
       </section>
+  );
 
-      {/* Showcases Section */}
-      <section id="学员作品" className="py-20 bg-white">
+  const renderShowcases = () => (
+    <section key="showcases" id="学员作品" className="py-20 bg-white">
         <div className="container mx-auto px-4 md:px-6">
           <SectionHeading 
             subtitle={showcasesSec.subtitle || 'SUCCESS STORIES'} 
@@ -369,9 +314,10 @@ export const LandingPage: React.FC = () => {
           )}
         </div>
       </section>
+  );
 
-      {/* Business Loop / Social Practice */}
-      <section id="社会实践" className="py-24 bg-blue-900 text-white relative overflow-hidden">
+  const renderSocialPractice = () => (
+    <section key="social_practice" id="社会实践" className="py-24 bg-blue-900 text-white relative overflow-hidden">
         {/* Background Effects */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600 rounded-full mix-blend-overlay filter blur-[100px] opacity-20 pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-orange-600 rounded-full mix-blend-overlay filter blur-[100px] opacity-20 pointer-events-none"></div>
@@ -442,9 +388,26 @@ export const LandingPage: React.FC = () => {
 
         </div>
       </section>
+  );
 
-      {/* Footer */}
-      <footer className="bg-slate-900 text-slate-400 py-12 border-t border-slate-800">
+  const renderBookingCTA = () => (
+    <section key="booking" className="py-16 bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+      <div className="container mx-auto px-4 text-center">
+         <h2 className="text-3xl font-bold mb-4">{bookingSec.title}</h2>
+         <p className="mb-8 text-blue-100 max-w-2xl mx-auto">{bookingSec.description}</p>
+         <button 
+            onClick={() => setIsBookingModalOpen(true)}
+            className="bg-[#E1964B] hover:bg-orange-600 text-white text-lg px-8 py-3 rounded-full font-bold shadow-lg transition-colors inline-flex items-center gap-2"
+          >
+            <Icons.CalendarCheck size={20} />
+            {bookingSec.metadata?.submit_button_text || '立即预约体验'}
+         </button>
+      </div>
+    </section>
+  );
+
+  const renderFooter = () => (
+    <footer key="footer" className="bg-slate-900 text-slate-400 py-12 border-t border-slate-800">
         <div className="container mx-auto px-4 md:px-6">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div className="col-span-1 md:col-span-2">
@@ -488,6 +451,82 @@ export const LandingPage: React.FC = () => {
           </div>
         </div>
       </footer>
+  );
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
+      
+      {/* Navigation - Always Fixed */}
+      <nav className={`fixed w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-white/90 backdrop-blur-md shadow-sm py-4' : 'bg-transparent py-6'}`}>
+        <div className="container mx-auto px-4 md:px-6 flex justify-between items-center">
+          <Logo scrolled={isScrolled} />
+          
+          {/* Desktop Menu */}
+          <div className="hidden md:flex space-x-8 items-center">
+            {['核心理念', '成长路径', '学员作品', '社会实践'].map((item) => (
+              <button 
+                key={item} 
+                onClick={() => scrollToSection(item)}
+                className={`font-medium hover:text-[#E1964B] transition-colors cursor-pointer bg-transparent border-none ${isScrolled ? 'text-slate-700' : 'text-slate-800'}`}
+              >
+                {item}
+              </button>
+            ))}
+            <button 
+              onClick={() => setIsBookingModalOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold transition-colors shadow-lg shadow-blue-600/20"
+            >
+              {bookingSec.metadata?.nav_button_text || '预约试听'}
+            </button>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <button 
+            className="md:hidden text-slate-800"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? <Icons.X /> : <Icons.Menu />}
+          </button>
+        </div>
+
+        {/* Mobile Menu Dropdown */}
+        {mobileMenuOpen && (
+          <div className="md:hidden absolute top-full left-0 w-full bg-white shadow-lg border-t border-slate-100 p-4 flex flex-col space-y-4">
+             {['核心理念', '成长路径', '学员作品', '社会实践'].map((item) => (
+              <button 
+                key={item} 
+                onClick={() => scrollToSection(item)}
+                className="text-left text-slate-700 font-medium py-2 border-b border-slate-100 bg-transparent"
+              >
+                {item}
+              </button>
+            ))}
+             <button 
+               onClick={() => {
+                 setMobileMenuOpen(false);
+                 setIsBookingModalOpen(true);
+               }}
+               className="bg-[#E1964B] text-white w-full py-3 rounded-lg font-bold"
+             >
+              {bookingSec.metadata?.mobile_button_text || '预约体验课'}
+            </button>
+          </div>
+        )}
+      </nav>
+
+      {/* Main Content Render Loop */}
+      {sortedPageSections.map(section => {
+        switch(section.id) {
+          case 'hero': return renderHero();
+          case 'philosophy': return renderPhilosophy();
+          case 'curriculum': return renderCurriculum();
+          case 'showcases': return renderShowcases();
+          case 'social_practice': return renderSocialPractice();
+          case 'booking': return renderBookingCTA();
+          case 'footer': return renderFooter();
+          default: return null;
+        }
+      })}
 
       {/* Social Project Detail Modal */}
       {selectedSocialProject && (

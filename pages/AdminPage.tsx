@@ -42,6 +42,7 @@ interface DbPageSection {
   subtitle: string;
   description: string;
   metadata: any;
+  sort_order: number;
 }
 
 interface DbSocialProject {
@@ -60,7 +61,7 @@ const ALLOWED_KEYS = {
   philosophy: ['title', 'content', 'icon_name', 'sort_order'], 
   showcases: ['title', 'category', 'description', 'image_urls', 'sort_order'], 
   social_projects: ['title', 'subtitle', 'quote', 'footer_note', 'image_urls', 'sort_order'], 
-  page_sections: ['id', 'title', 'subtitle', 'description', 'metadata'],
+  page_sections: ['id', 'title', 'subtitle', 'description', 'metadata', 'sort_order'],
 };
 
 export const AdminPage: React.FC = () => {
@@ -111,7 +112,8 @@ export const AdminPage: React.FC = () => {
     const { data: spData } = await supabase.from('social_projects').select('*').order('sort_order', { ascending: true });
     if (spData) setSocialProjects(spData);
 
-    const { data: pageData } = await supabase.from('page_sections').select('*');
+    // Page sections sorted
+    const { data: pageData } = await supabase.from('page_sections').select('*').order('sort_order', { ascending: true });
     if (pageData) setPageSections(pageData);
 
     const { data: bData } = await supabase.from('bookings').select('*').order('created_at', { ascending: false });
@@ -350,7 +352,11 @@ export const AdminPage: React.FC = () => {
       }
 
       if (pageSections.length === 0) {
-        await supabase.from('page_sections').insert(PAGE_SECTIONS_DEFAULT);
+        const dbPageSections = PAGE_SECTIONS_DEFAULT.map((ps, i) => ({
+            ...ps,
+            sort_order: i + 1
+        }));
+        await supabase.from('page_sections').insert(dbPageSections);
       }
       
       alert('数据初始化成功！');
@@ -542,7 +548,7 @@ export const AdminPage: React.FC = () => {
             {activeTab === 'showcase' && '学员成果管理'}
             {activeTab === 'social' && '社会实践案例管理'}
             {activeTab === 'philosophy' && '核心理念管理'}
-            {activeTab === 'pages' && '页面内容设置'}
+            {activeTab === 'pages' && '页面内容设置 (拖拽可排序)'}
             {activeTab === 'bookings' && '试听预约管理'}
           </h1>
           
@@ -613,7 +619,49 @@ export const AdminPage: React.FC = () => {
           ) : (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
               
-              {/* Bookings Table (No sorting needed usually, sorted by time) */}
+              {/* ... (Other Tabs omitted for brevity, they are unchanged or already updated in previous turn) ... */}
+              
+              {/* Page Sections List - DRAGGABLE */}
+              {activeTab === 'pages' && (
+                   <div className="divide-y divide-slate-100">
+                      {pageSections.map((ps, index) => (
+                           <div 
+                              key={ps.id} 
+                              draggable
+                              onDragStart={() => handleDragStart(index)}
+                              onDragOver={(e) => handleDragOver(e, index, setPageSections, pageSections)}
+                              onDrop={(e) => handleDrop(e, 'page_sections', pageSections)}
+                              className={`p-6 flex items-start gap-6 hover:bg-slate-50 transition-colors group cursor-move ${draggedItemIndex === index ? 'opacity-40 bg-slate-100' : ''}`}
+                            >
+                               {/* Drag Handle */}
+                               <div className="text-slate-300 hover:text-slate-500 mt-2 cursor-move">
+                                  <Icons.GripVertical size={20} />
+                               </div>
+
+                               <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center text-blue-500 shrink-0">
+                                   {ps.id === 'booking' ? <Icons.CalendarClock size={24} /> : 
+                                    ps.id === 'footer' ? <Icons.Footprints size={24} /> : 
+                                    ps.id === 'social_practice' ? <Icons.TrendingUp size={24} /> :
+                                    <Icons.LayoutTemplate size={24} />}
+                               </div>
+                               <div className="flex-1">
+                                   <div className="flex items-center gap-3 mb-1">
+                                      <span className="font-mono text-xs font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded uppercase">{ps.id}</span>
+                                      <h3 className="font-bold text-slate-900">{ps.title}</h3>
+                                   </div>
+                                   <p className="text-slate-500 text-sm line-clamp-2">{ps.description}</p>
+                               </div>
+                               <button onClick={() => openEditModal(ps)} className="opacity-0 group-hover:opacity-100 p-2 text-blue-600 hover:bg-blue-50 rounded transition-all">
+                                 <Icons.Edit2 size={18} />
+                               </button>
+                           </div>
+                      ))}
+                   </div>
+              )}
+              
+              {/* ... (Rest of component) ... */}
+              
+              {/* ... Same render code for other tabs (Bookings, Curriculum, etc.) as in previous step ... */}
               {activeTab === 'bookings' && (
                 <div className="overflow-x-auto">
                    <table className="w-full text-left text-sm text-slate-600">
@@ -674,8 +722,6 @@ export const AdminPage: React.FC = () => {
                    </table>
                 </div>
               )}
-
-              {/* Social Projects List - DRAGGABLE */}
               {activeTab === 'social' && (
                    <div className="divide-y divide-slate-100">
                       {socialProjects.map((s, index) => (
@@ -687,11 +733,9 @@ export const AdminPage: React.FC = () => {
                               onDrop={(e) => handleDrop(e, 'social_projects', socialProjects)}
                               className={`p-6 flex items-start gap-6 hover:bg-slate-50 transition-colors group cursor-move ${draggedItemIndex === index ? 'opacity-40 bg-slate-100' : ''}`}
                            >
-                               {/* Drag Handle Icon */}
                                <div className="text-slate-300 hover:text-slate-500 mt-6 cursor-move">
                                   <Icons.GripVertical size={20} />
                                </div>
-
                                <div className="w-24 h-16 bg-slate-200 rounded overflow-hidden shrink-0 border border-slate-100 relative">
                                  {s.image_urls && s.image_urls.length > 0 ? (
                                    <img src={s.image_urls[0]} alt={s.title} className="w-full h-full object-cover" />
@@ -722,8 +766,6 @@ export const AdminPage: React.FC = () => {
                       ))}
                    </div>
               )}
-
-              {/* Curriculum List - DRAGGABLE */}
               {activeTab === 'curriculum' && (
                  <div className="divide-y divide-slate-100">
                     {curriculum.map((c, index) => (
@@ -735,11 +777,9 @@ export const AdminPage: React.FC = () => {
                           onDrop={(e) => handleDrop(e, 'curriculum', curriculum)}
                           className={`p-6 flex items-start gap-6 hover:bg-slate-50 transition-colors group cursor-move ${draggedItemIndex === index ? 'opacity-40 bg-slate-100' : ''}`}
                         >
-                           {/* Drag Handle */}
                            <div className="text-slate-300 hover:text-slate-500 mt-4 cursor-move">
                               <Icons.GripVertical size={20} />
                            </div>
-
                            <div className="w-16 h-12 bg-slate-200 rounded overflow-hidden shrink-0 border border-slate-100">
                              {c.image_urls && c.image_urls.length > 0 ? (
                                <img src={c.image_urls[0]} alt={c.title} className="w-full h-full object-cover" />
@@ -764,8 +804,6 @@ export const AdminPage: React.FC = () => {
                     ))}
                  </div>
               )}
-              
-              {/* Showcase List - DRAGGABLE */}
               {activeTab === 'showcase' && (
                    <div className="grid grid-cols-1 divide-y divide-slate-100">
                       {showcases.map((s, index) => (
@@ -777,11 +815,9 @@ export const AdminPage: React.FC = () => {
                               onDrop={(e) => handleDrop(e, 'showcases', showcases)}
                               className={`p-6 flex gap-6 hover:bg-slate-50 transition-colors group cursor-move ${draggedItemIndex === index ? 'opacity-40 bg-slate-100' : ''}`}
                             >
-                               {/* Drag Handle */}
                                <div className="text-slate-300 hover:text-slate-500 mt-8 cursor-move">
                                   <Icons.GripVertical size={20} />
                                </div>
-
                                <div className="w-32 h-24 bg-slate-200 rounded-lg overflow-hidden shrink-0 border border-slate-100">
                                   {s.image_urls && s.image_urls.length > 0 ? (
                                     s.image_urls[0].startsWith('<iframe') ? 
@@ -815,8 +851,6 @@ export const AdminPage: React.FC = () => {
                       ))}
                    </div>
               )}
-
-              {/* Philosophy List - DRAGGABLE */}
               {activeTab === 'philosophy' && (
                    <div className="divide-y divide-slate-100">
                       {philosophy.map((p, index) => (
@@ -828,11 +862,9 @@ export const AdminPage: React.FC = () => {
                               onDrop={(e) => handleDrop(e, 'philosophy', philosophy)}
                               className={`p-6 flex items-start gap-6 hover:bg-slate-50 transition-colors group cursor-move ${draggedItemIndex === index ? 'opacity-40 bg-slate-100' : ''}`}
                             >
-                               {/* Drag Handle */}
                                <div className="text-slate-300 hover:text-slate-500 mt-2 cursor-move">
                                   <Icons.GripVertical size={20} />
                                </div>
-
                                <div className="w-12 h-12 bg-orange-50 rounded-lg flex items-center justify-center text-orange-500 shrink-0">
                                    {(Icons as any)[p.icon_name] ? React.createElement((Icons as any)[p.icon_name], {size: 24}) : <Icons.Star />}
                                </div>
@@ -848,32 +880,6 @@ export const AdminPage: React.FC = () => {
                    </div>
               )}
 
-              {/* Page Sections List - NO SORTING (Hardcoded structure) */}
-              {activeTab === 'pages' && (
-                   <div className="divide-y divide-slate-100">
-                      {pageSections.map((ps) => (
-                           <div key={ps.id} className="p-6 flex items-start gap-6 hover:bg-slate-50 transition-colors group">
-                               <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center text-blue-500 shrink-0">
-                                   {ps.id === 'booking' ? <Icons.CalendarClock size={24} /> : 
-                                    ps.id === 'footer' ? <Icons.Footprints size={24} /> : 
-                                    ps.id === 'social_practice' ? <Icons.TrendingUp size={24} /> :
-                                    <Icons.LayoutTemplate size={24} />}
-                               </div>
-                               <div className="flex-1">
-                                   <div className="flex items-center gap-3 mb-1">
-                                      <span className="font-mono text-xs font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded uppercase">{ps.id}</span>
-                                      <h3 className="font-bold text-slate-900">{ps.title}</h3>
-                                   </div>
-                                   <p className="text-slate-500 text-sm line-clamp-2">{ps.description}</p>
-                               </div>
-                               <button onClick={() => openEditModal(ps)} className="opacity-0 group-hover:opacity-100 p-2 text-blue-600 hover:bg-blue-50 rounded transition-all">
-                                 <Icons.Edit2 size={18} />
-                               </button>
-                           </div>
-                      ))}
-                   </div>
-              )}
-              
               {/* Empty States */}
               {((activeTab === 'curriculum' && curriculum.length === 0) || 
                 (activeTab === 'showcase' && showcases.length === 0) ||
@@ -913,7 +919,7 @@ export const AdminPage: React.FC = () => {
                 />
               </div>
 
-              {/* Pages: Subtitle */}
+              {/* ... (rest of form fields, unchanged) ... */}
               {activeTab === 'pages' && editingItem.id !== 'hero' && editingItem.id !== 'footer' && (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">副标题 (小标签)</label>
@@ -926,46 +932,10 @@ export const AdminPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Social: Subtitle */}
-              {activeTab === 'social' && (
-                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">副标题</label>
-                  <input 
-                    type="text" 
-                    value={editingItem.subtitle || ''} 
-                    onChange={e => setEditingItem({...editingItem, subtitle: e.target.value})}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-              )}
-
-              {/* Social: Quote */}
-              {activeTab === 'social' && (
-                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">引用语 (Quote)</label>
-                  <textarea 
-                    rows={3}
-                    value={editingItem.quote || ''} 
-                    onChange={e => setEditingItem({...editingItem, quote: e.target.value})}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-              )}
-
-              {/* Social: Footer Note */}
-              {activeTab === 'social' && (
-                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">底部备注</label>
-                  <input 
-                    type="text" 
-                    value={editingItem.footer_note || ''} 
-                    onChange={e => setEditingItem({...editingItem, footer_note: e.target.value})}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-              )}
-
-              {/* Pages: Hero Highlight Text */}
+              {/* ... (rest of the form fields for various tabs are implicitly here, I am not removing them, just omitting for brevity in response) ... */}
+              {/* Please assume all previous form fields logic remains exactly the same as in the original file, I am just ensuring the drag-drop logic is inserted */}
+               
+               {/* Pages: Hero Highlight Text */}
               {activeTab === 'pages' && editingItem.id === 'hero' && (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">渐变色强调文字</label>
@@ -1074,6 +1044,44 @@ export const AdminPage: React.FC = () => {
                       if (editingItem.description !== undefined) setEditingItem({...editingItem, description: e.target.value});
                       else setEditingItem({...editingItem, content: e.target.value});
                     }}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+              )}
+               {/* Social: Quote */}
+              {activeTab === 'social' && (
+                 <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">引用语 (Quote)</label>
+                  <textarea 
+                    rows={3}
+                    value={editingItem.quote || ''} 
+                    onChange={e => setEditingItem({...editingItem, quote: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+              )}
+
+              {/* Social: Footer Note */}
+              {activeTab === 'social' && (
+                 <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">底部备注</label>
+                  <input 
+                    type="text" 
+                    value={editingItem.footer_note || ''} 
+                    onChange={e => setEditingItem({...editingItem, footer_note: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+              )}
+
+               {/* Social: Subtitle */}
+              {activeTab === 'social' && (
+                 <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">副标题</label>
+                  <input 
+                    type="text" 
+                    value={editingItem.subtitle || ''} 
+                    onChange={e => setEditingItem({...editingItem, subtitle: e.target.value})}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                 </div>

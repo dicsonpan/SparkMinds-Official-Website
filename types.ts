@@ -39,6 +39,7 @@ export interface PageSection {
     cta2?: string;
     [key: string]: any;
   };
+  sort_order?: number; // Added for sorting
 }
 
 export interface Booking {

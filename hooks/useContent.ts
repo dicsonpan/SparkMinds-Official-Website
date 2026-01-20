@@ -27,8 +27,13 @@ export const useContent = () => {
     try {
       setLoading(true);
       
-      // Fetch Curriculum
-      const { data: currData } = await supabase.from('curriculum').select('*').order('id', { ascending: true });
+      // Fetch Curriculum - Ordered by sort_order
+      const { data: currData } = await supabase
+        .from('curriculum')
+        .select('*')
+        .order('sort_order', { ascending: true })
+        .order('id', { ascending: true }); // Fallback
+
       if (currData && currData.length > 0) {
         const mappedCurriculum = currData.map((item: any) => ({
           id: item.id,
@@ -38,38 +43,56 @@ export const useContent = () => {
           description: item.description,
           skills: item.skills,
           iconName: item.icon_name, 
-          imageUrls: item.image_urls || [] // Map image_urls array
+          imageUrls: item.image_urls || [],
+          sort_order: item.sort_order
         }));
         setCurriculum(mappedCurriculum);
       }
 
-      // Fetch Philosophy
-      const { data: philData } = await supabase.from('philosophy').select('*').order('created_at', { ascending: true });
+      // Fetch Philosophy - Ordered by sort_order
+      const { data: philData } = await supabase
+        .from('philosophy')
+        .select('*')
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true });
+
       if (philData && philData.length > 0) {
         const mappedPhilosophy = philData.map((item: any) => ({
           id: item.id,
           title: item.title,
           content: item.content,
-          iconName: item.icon_name 
+          iconName: item.icon_name,
+          sort_order: item.sort_order
         }));
         setPhilosophy(mappedPhilosophy);
       }
 
-      // Fetch Showcases
-      const { data: showData } = await supabase.from('showcases').select('*').order('created_at', { ascending: true });
+      // Fetch Showcases - Ordered by sort_order
+      const { data: showData } = await supabase
+        .from('showcases')
+        .select('*')
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true });
+
       if (showData && showData.length > 0) {
         const mappedShowcases = showData.map((item: any) => ({
-            id: item.id, // Keep ID for admin mapping
+            id: item.id, 
             title: item.title,
             description: item.description,
             category: item.category,
-            imageUrls: item.image_urls || [] // Map array
+            imageUrls: item.image_urls || [],
+            sort_order: item.sort_order
         }));
         setShowcases(mappedShowcases);
       }
 
-      // Fetch Social Projects
-      const { data: socData } = await supabase.from('social_projects').select('*').order('created_at', { ascending: true });
+      // Fetch Social Projects - Ordered by sort_order
+      const { data: socData } = await supabase
+        .from('social_projects')
+        .select('*')
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true });
+
       if (socData && socData.length > 0) {
         const mappedProjects = socData.map((item: any) => ({
             id: item.id,
@@ -77,7 +100,8 @@ export const useContent = () => {
             subtitle: item.subtitle,
             quote: item.quote,
             footerNote: item.footer_note,
-            imageUrls: item.image_urls || [] // Map image_urls array
+            imageUrls: item.image_urls || [],
+            sort_order: item.sort_order
         }));
         setSocialProjects(mappedProjects);
       }

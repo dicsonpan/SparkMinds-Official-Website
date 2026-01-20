@@ -16,6 +16,7 @@ interface DbCourse {
   skills: string[];
   icon_name: string;
   image_urls: string[];
+  sort_order: number;
 }
 
 interface DbShowcase {
@@ -24,6 +25,7 @@ interface DbShowcase {
   category: string;
   description: string;
   image_urls: string[];
+  sort_order: number;
 }
 
 interface DbPhilosophy {
@@ -31,6 +33,7 @@ interface DbPhilosophy {
   title: string;
   content: string;
   icon_name: string;
+  sort_order: number;
 }
 
 interface DbPageSection {
@@ -47,16 +50,16 @@ interface DbSocialProject {
   subtitle: string;
   quote: string;
   footer_note: string;
-  // Updated to array to match DB schema change
   image_urls: string[];
+  sort_order: number;
 }
 
 // === Schema Definitions for Backup/Restore ===
 const ALLOWED_KEYS = {
-  curriculum: ['id', 'level', 'age', 'title', 'description', 'skills', 'icon_name', 'image_urls'],
-  philosophy: ['title', 'content', 'icon_name'], 
-  showcases: ['title', 'category', 'description', 'image_urls'], 
-  social_projects: ['title', 'subtitle', 'quote', 'footer_note', 'image_urls'], 
+  curriculum: ['id', 'level', 'age', 'title', 'description', 'skills', 'icon_name', 'image_urls', 'sort_order'],
+  philosophy: ['title', 'content', 'icon_name', 'sort_order'], 
+  showcases: ['title', 'category', 'description', 'image_urls', 'sort_order'], 
+  social_projects: ['title', 'subtitle', 'quote', 'footer_note', 'image_urls', 'sort_order'], 
   page_sections: ['id', 'title', 'subtitle', 'description', 'metadata'],
 };
 
@@ -79,6 +82,9 @@ export const AdminPage: React.FC = () => {
   
   const [uploading, setUploading] = useState(false);
 
+  // Drag and Drop State
+  const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
+
   // Check auth
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -92,17 +98,17 @@ export const AdminPage: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     
-    const { data: cData } = await supabase.from('curriculum').select('*').order('id');
+    // Ordered by sort_order
+    const { data: cData } = await supabase.from('curriculum').select('*').order('sort_order', { ascending: true });
     if (cData) setCurriculum(cData);
 
-    const { data: pData } = await supabase.from('philosophy').select('*').order('id');
+    const { data: pData } = await supabase.from('philosophy').select('*').order('sort_order', { ascending: true });
     if (pData) setPhilosophy(pData);
 
-    const { data: sData } = await supabase.from('showcases').select('*').order('id');
+    const { data: sData } = await supabase.from('showcases').select('*').order('sort_order', { ascending: true });
     if (sData) setShowcases(sData);
 
-    // Ensure we select * which includes the new image_urls column
-    const { data: spData } = await supabase.from('social_projects').select('*').order('created_at');
+    const { data: spData } = await supabase.from('social_projects').select('*').order('sort_order', { ascending: true });
     if (spData) setSocialProjects(spData);
 
     const { data: pageData } = await supabase.from('page_sections').select('*');
@@ -122,6 +128,54 @@ export const AdminPage: React.FC = () => {
     await supabase.auth.signOut();
     navigate('/login');
   };
+
+  // --- Drag and Drop Handlers ---
+
+  const handleDragStart = (index: number) => {
+    setDraggedItemIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number, listSetter: Function, currentList: any[]) => {
+    e.preventDefault(); // Necessary for drop to work
+    if (draggedItemIndex === null || draggedItemIndex === index) return;
+
+    // Create a copy and reorder
+    const newList = [...currentList];
+    const draggedItem = newList[draggedItemIndex];
+    
+    // Remove from old position
+    newList.splice(draggedItemIndex, 1);
+    // Insert at new position
+    newList.splice(index, 0, draggedItem);
+
+    // Update state immediately for visual feedback
+    listSetter(newList);
+    setDraggedItemIndex(index);
+  };
+
+  const handleDrop = async (e: React.DragEvent, tableName: string, currentList: any[]) => {
+    e.preventDefault();
+    setDraggedItemIndex(null);
+    
+    // Prepare Batch Update
+    // We update all items with their new index as sort_order
+    const updates = currentList.map((item, index) => ({
+      id: item.id, // Only send ID (PK) and sort_order
+      sort_order: index + 1 // 1-based index preferred for DB usually, but 0-based is fine too
+    }));
+
+    // Optimistic UI is already handled by handleDragOver
+    // Now persist to DB
+    try {
+      const { error } = await supabase.from(tableName).upsert(updates, { onConflict: 'id' });
+      if (error) throw error;
+      // Optional: Show success toast
+    } catch (err: any) {
+      alert("排序保存失败: " + err.message);
+      fetchData(); // Revert on error
+    }
+  };
+
 
   // --- Backup & Restore Logic ---
 
@@ -248,7 +302,7 @@ export const AdminPage: React.FC = () => {
     
     try {
       if (curriculum.length === 0) {
-        const dbCurriculum = CURRICULUM.map(c => ({
+        const dbCurriculum = CURRICULUM.map((c, i) => ({
           id: c.id,
           level: c.level,
           age: c.age,
@@ -256,38 +310,41 @@ export const AdminPage: React.FC = () => {
           description: c.description,
           skills: c.skills,
           icon_name: c.iconName,
-          image_urls: c.imageUrls || []
+          image_urls: c.imageUrls || [],
+          sort_order: i + 1
         }));
         await supabase.from('curriculum').insert(dbCurriculum);
       }
 
       if (philosophy.length === 0) {
-        const dbPhilosophy = PHILOSOPHY.map(p => ({
+        const dbPhilosophy = PHILOSOPHY.map((p, i) => ({
           title: p.title,
           content: p.content,
-          icon_name: p.iconName
+          icon_name: p.iconName,
+          sort_order: i + 1
         }));
         await supabase.from('philosophy').insert(dbPhilosophy);
       }
 
       if (showcases.length === 0) {
-        const dbShowcases = SHOWCASES.map(s => ({
+        const dbShowcases = SHOWCASES.map((s, i) => ({
           title: s.title,
           category: s.category,
           description: s.description,
-          image_urls: s.imageUrls || []
+          image_urls: s.imageUrls || [],
+          sort_order: i + 1
         }));
         await supabase.from('showcases').insert(dbShowcases);
       }
 
       if (socialProjects.length === 0) {
-        const dbSocial = SOCIAL_PROJECTS.map(s => ({
+        const dbSocial = SOCIAL_PROJECTS.map((s, i) => ({
             title: s.title,
             subtitle: s.subtitle,
             quote: s.quote,
             footer_note: s.footerNote,
-            // Map frontend camelCase to DB snake_case array
-            image_urls: s.imageUrls || []
+            image_urls: s.imageUrls || [],
+            sort_order: i + 1
         }));
         await supabase.from('social_projects').insert(dbSocial);
       }
@@ -311,15 +368,15 @@ export const AdminPage: React.FC = () => {
     setIsNewRecord(true);
     let template: any = {};
     
+    // Default sort_order to current length + 1
     if (activeTab === 'curriculum') {
-      template = { id: 'NewLevel', level: '', age: '', title: '', description: '', skills: [], icon_name: 'Box', image_urls: [] };
+      template = { id: 'NewLevel', level: '', age: '', title: '', description: '', skills: [], icon_name: 'Box', image_urls: [], sort_order: curriculum.length + 1 };
     } else if (activeTab === 'showcase') {
-      template = { title: '', category: '商业级产品', description: '', image_urls: [] };
+      template = { title: '', category: '商业级产品', description: '', image_urls: [], sort_order: showcases.length + 1 };
     } else if (activeTab === 'social') {
-      // Correctly initialize as empty array
-      template = { title: '商业化案例', subtitle: '', quote: '', footer_note: '', image_urls: [] };
+      template = { title: '商业化案例', subtitle: '', quote: '', footer_note: '', image_urls: [], sort_order: socialProjects.length + 1 };
     } else if (activeTab === 'philosophy') {
-      template = { title: '', content: '', icon_name: 'Star' };
+      template = { title: '', content: '', icon_name: 'Star', sort_order: philosophy.length + 1 };
     }
     
     setEditingItem(template);
@@ -328,7 +385,6 @@ export const AdminPage: React.FC = () => {
 
   const openEditModal = (item: any) => {
     setIsNewRecord(false);
-    // Clone object to avoid direct state mutation
     setEditingItem({ ...item }); 
     setIsModalOpen(true);
   };
@@ -375,6 +431,8 @@ export const AdminPage: React.FC = () => {
         let table = '';
         if (activeTab === 'social') table = 'social_projects';
         if (activeTab === 'showcase') table = 'showcases';
+        if (activeTab === 'curriculum') table = 'curriculum';
+        if (activeTab === 'philosophy') table = 'philosophy';
         
         const { error } = await supabase.from(table).delete().eq('id', id);
         if (error) throw error;
@@ -555,7 +613,7 @@ export const AdminPage: React.FC = () => {
           ) : (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
               
-              {/* Bookings Table */}
+              {/* Bookings Table (No sorting needed usually, sorted by time) */}
               {activeTab === 'bookings' && (
                 <div className="overflow-x-auto">
                    <table className="w-full text-left text-sm text-slate-600">
@@ -617,18 +675,29 @@ export const AdminPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Social Projects List (Updated to support multiple images visually in list) */}
+              {/* Social Projects List - DRAGGABLE */}
               {activeTab === 'social' && (
                    <div className="divide-y divide-slate-100">
-                      {socialProjects.map((s) => (
-                           <div key={s.id} className="p-6 flex items-start gap-6 hover:bg-slate-50 transition-colors group">
+                      {socialProjects.map((s, index) => (
+                           <div 
+                              key={s.id} 
+                              draggable
+                              onDragStart={() => handleDragStart(index)}
+                              onDragOver={(e) => handleDragOver(e, index, setSocialProjects, socialProjects)}
+                              onDrop={(e) => handleDrop(e, 'social_projects', socialProjects)}
+                              className={`p-6 flex items-start gap-6 hover:bg-slate-50 transition-colors group cursor-move ${draggedItemIndex === index ? 'opacity-40 bg-slate-100' : ''}`}
+                           >
+                               {/* Drag Handle Icon */}
+                               <div className="text-slate-300 hover:text-slate-500 mt-6 cursor-move">
+                                  <Icons.GripVertical size={20} />
+                               </div>
+
                                <div className="w-24 h-16 bg-slate-200 rounded overflow-hidden shrink-0 border border-slate-100 relative">
                                  {s.image_urls && s.image_urls.length > 0 ? (
                                    <img src={s.image_urls[0]} alt={s.title} className="w-full h-full object-cover" />
                                  ) : (
                                    <div className="w-full h-full flex items-center justify-center text-slate-400"><Icons.Image size={16} /></div>
                                  )}
-                                 {/* Image Count Badge */}
                                  {s.image_urls && s.image_urls.length > 1 && (
                                      <span className="absolute bottom-0 right-0 bg-black/50 text-white text-[10px] px-1">{s.image_urls.length}</span>
                                  )}
@@ -654,11 +723,23 @@ export const AdminPage: React.FC = () => {
                    </div>
               )}
 
-              {/* Curriculum List */}
+              {/* Curriculum List - DRAGGABLE */}
               {activeTab === 'curriculum' && (
                  <div className="divide-y divide-slate-100">
-                    {curriculum.map(c => (
-                        <div key={c.id} className="p-6 flex items-start gap-6 hover:bg-slate-50 transition-colors group">
+                    {curriculum.map((c, index) => (
+                        <div 
+                          key={c.id} 
+                          draggable
+                          onDragStart={() => handleDragStart(index)}
+                          onDragOver={(e) => handleDragOver(e, index, setCurriculum, curriculum)}
+                          onDrop={(e) => handleDrop(e, 'curriculum', curriculum)}
+                          className={`p-6 flex items-start gap-6 hover:bg-slate-50 transition-colors group cursor-move ${draggedItemIndex === index ? 'opacity-40 bg-slate-100' : ''}`}
+                        >
+                           {/* Drag Handle */}
+                           <div className="text-slate-300 hover:text-slate-500 mt-4 cursor-move">
+                              <Icons.GripVertical size={20} />
+                           </div>
+
                            <div className="w-16 h-12 bg-slate-200 rounded overflow-hidden shrink-0 border border-slate-100">
                              {c.image_urls && c.image_urls.length > 0 ? (
                                <img src={c.image_urls[0]} alt={c.title} className="w-full h-full object-cover" />
@@ -684,11 +765,23 @@ export const AdminPage: React.FC = () => {
                  </div>
               )}
               
-              {/* Showcase List */}
+              {/* Showcase List - DRAGGABLE */}
               {activeTab === 'showcase' && (
                    <div className="grid grid-cols-1 divide-y divide-slate-100">
-                      {showcases.map((s) => (
-                           <div key={s.id} className="p-6 flex gap-6 hover:bg-slate-50 transition-colors group">
+                      {showcases.map((s, index) => (
+                           <div 
+                              key={s.id} 
+                              draggable
+                              onDragStart={() => handleDragStart(index)}
+                              onDragOver={(e) => handleDragOver(e, index, setShowcases, showcases)}
+                              onDrop={(e) => handleDrop(e, 'showcases', showcases)}
+                              className={`p-6 flex gap-6 hover:bg-slate-50 transition-colors group cursor-move ${draggedItemIndex === index ? 'opacity-40 bg-slate-100' : ''}`}
+                            >
+                               {/* Drag Handle */}
+                               <div className="text-slate-300 hover:text-slate-500 mt-8 cursor-move">
+                                  <Icons.GripVertical size={20} />
+                               </div>
+
                                <div className="w-32 h-24 bg-slate-200 rounded-lg overflow-hidden shrink-0 border border-slate-100">
                                   {s.image_urls && s.image_urls.length > 0 ? (
                                     s.image_urls[0].startsWith('<iframe') ? 
@@ -723,11 +816,23 @@ export const AdminPage: React.FC = () => {
                    </div>
               )}
 
-              {/* Philosophy List */}
+              {/* Philosophy List - DRAGGABLE */}
               {activeTab === 'philosophy' && (
                    <div className="divide-y divide-slate-100">
-                      {philosophy.map((p) => (
-                           <div key={p.id} className="p-6 flex items-start gap-6 hover:bg-slate-50 transition-colors group">
+                      {philosophy.map((p, index) => (
+                           <div 
+                              key={p.id} 
+                              draggable
+                              onDragStart={() => handleDragStart(index)}
+                              onDragOver={(e) => handleDragOver(e, index, setPhilosophy, philosophy)}
+                              onDrop={(e) => handleDrop(e, 'philosophy', philosophy)}
+                              className={`p-6 flex items-start gap-6 hover:bg-slate-50 transition-colors group cursor-move ${draggedItemIndex === index ? 'opacity-40 bg-slate-100' : ''}`}
+                            >
+                               {/* Drag Handle */}
+                               <div className="text-slate-300 hover:text-slate-500 mt-2 cursor-move">
+                                  <Icons.GripVertical size={20} />
+                               </div>
+
                                <div className="w-12 h-12 bg-orange-50 rounded-lg flex items-center justify-center text-orange-500 shrink-0">
                                    {(Icons as any)[p.icon_name] ? React.createElement((Icons as any)[p.icon_name], {size: 24}) : <Icons.Star />}
                                </div>
@@ -743,7 +848,7 @@ export const AdminPage: React.FC = () => {
                    </div>
               )}
 
-              {/* Page Sections List */}
+              {/* Page Sections List - NO SORTING (Hardcoded structure) */}
               {activeTab === 'pages' && (
                    <div className="divide-y divide-slate-100">
                       {pageSections.map((ps) => (
@@ -784,7 +889,7 @@ export const AdminPage: React.FC = () => {
         </main>
       </div>
 
-      {/* Edit Modal */}
+      {/* Edit Modal (unchanged structure) */}
       {isModalOpen && editingItem && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">

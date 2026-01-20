@@ -7,7 +7,8 @@ export interface CourseLevel {
   description: string;
   skills: string[];
   iconName: string;
-  imageUrls?: string[]; // Changed from single string to string array
+  imageUrls?: string[];
+  sort_order?: number; // Added for sorting
 }
 
 export interface Showcase {
@@ -15,7 +16,8 @@ export interface Showcase {
   title: string;
   description: string;
   category: string;
-  imageUrls: string[]; // Changed from imageAlt to imageUrls array
+  imageUrls: string[];
+  sort_order?: number; // Added for sorting
 }
 
 export interface PhilosophyPoint {
@@ -23,6 +25,7 @@ export interface PhilosophyPoint {
   title: string;
   content: string;
   iconName: string;
+  sort_order?: number; // Added for sorting
 }
 
 export interface PageSection {
@@ -54,5 +57,6 @@ export interface SocialProject {
   subtitle: string;
   quote: string;
   footerNote: string;
-  imageUrls: string[]; // Changed from single imageUrl to array
+  imageUrls: string[];
+  sort_order?: number; // Added for sorting
 }

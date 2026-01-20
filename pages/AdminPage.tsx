@@ -47,6 +47,7 @@ interface DbSocialProject {
   subtitle: string;
   quote: string;
   footer_note: string;
+  // Updated to array to match DB schema change
   image_urls: string[];
 }
 
@@ -100,6 +101,7 @@ export const AdminPage: React.FC = () => {
     const { data: sData } = await supabase.from('showcases').select('*').order('id');
     if (sData) setShowcases(sData);
 
+    // Ensure we select * which includes the new image_urls column
     const { data: spData } = await supabase.from('social_projects').select('*').order('created_at');
     if (spData) setSocialProjects(spData);
 
@@ -284,6 +286,7 @@ export const AdminPage: React.FC = () => {
             subtitle: s.subtitle,
             quote: s.quote,
             footer_note: s.footerNote,
+            // Map frontend camelCase to DB snake_case array
             image_urls: s.imageUrls || []
         }));
         await supabase.from('social_projects').insert(dbSocial);
@@ -313,6 +316,7 @@ export const AdminPage: React.FC = () => {
     } else if (activeTab === 'showcase') {
       template = { title: '', category: '商业级产品', description: '', image_urls: [] };
     } else if (activeTab === 'social') {
+      // Correctly initialize as empty array
       template = { title: '商业化案例', subtitle: '', quote: '', footer_note: '', image_urls: [] };
     } else if (activeTab === 'philosophy') {
       template = { title: '', content: '', icon_name: 'Star' };
@@ -324,6 +328,7 @@ export const AdminPage: React.FC = () => {
 
   const openEditModal = (item: any) => {
     setIsNewRecord(false);
+    // Clone object to avoid direct state mutation
     setEditingItem({ ...item }); 
     setIsModalOpen(true);
   };
@@ -623,6 +628,7 @@ export const AdminPage: React.FC = () => {
                                  ) : (
                                    <div className="w-full h-full flex items-center justify-center text-slate-400"><Icons.Image size={16} /></div>
                                  )}
+                                 {/* Image Count Badge */}
                                  {s.image_urls && s.image_urls.length > 1 && (
                                      <span className="absolute bottom-0 right-0 bg-black/50 text-white text-[10px] px-1">{s.image_urls.length}</span>
                                  )}

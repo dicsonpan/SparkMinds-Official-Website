@@ -1,3 +1,4 @@
+
 export interface CourseLevel {
   id: string;
   level: string;
@@ -53,5 +54,5 @@ export interface SocialProject {
   subtitle: string;
   quote: string;
   footerNote: string;
-  imageUrl?: string;
+  imageUrls: string[]; // Changed from single imageUrl to array
 }

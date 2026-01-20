@@ -75,7 +75,7 @@ create table public.social_projects (
   subtitle text,
   quote text not null,
   footer_note text,
-  image_url text, -- Optional background or icon image
+  image_urls text[] default '{}', -- Changed from single image_url to array
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 

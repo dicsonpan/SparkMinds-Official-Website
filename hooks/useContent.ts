@@ -77,7 +77,7 @@ export const useContent = () => {
             subtitle: item.subtitle,
             quote: item.quote,
             footerNote: item.footer_note,
-            imageUrl: item.image_url
+            imageUrls: item.image_urls || [] // Map image_urls array
         }));
         setSocialProjects(mappedProjects);
       }

@@ -47,17 +47,15 @@ interface DbSocialProject {
   subtitle: string;
   quote: string;
   footer_note: string;
-  image_url: string;
+  image_urls: string[];
 }
 
 // === Schema Definitions for Backup/Restore ===
-// 这些列表定义了当前数据库支持的字段。
-// 导入时，只有这些字段会被保留，多余的字段（旧版本字段）会被过滤掉。
 const ALLOWED_KEYS = {
   curriculum: ['id', 'level', 'age', 'title', 'description', 'skills', 'icon_name', 'image_urls'],
-  philosophy: ['title', 'content', 'icon_name'], // 不包含自增 ID
-  showcases: ['title', 'category', 'description', 'image_urls'], // 不包含自增 ID
-  social_projects: ['title', 'subtitle', 'quote', 'footer_note', 'image_url'], // 不包含自增 ID
+  philosophy: ['title', 'content', 'icon_name'], 
+  showcases: ['title', 'category', 'description', 'image_urls'], 
+  social_projects: ['title', 'subtitle', 'quote', 'footer_note', 'image_urls'], 
   page_sections: ['id', 'title', 'subtitle', 'description', 'metadata'],
 };
 
@@ -129,8 +127,6 @@ export const AdminPage: React.FC = () => {
   const sanitizeRecord = (record: any, allowList: string[]) => {
     const newRecord: any = {};
     allowList.forEach(key => {
-      // 只有当备份数据中有这个 key (且不是undefined) 时才复制
-      // 如果当前 schema 新增了字段，备份里没有，这里也不会复制，插入 DB 时会用 DB 的 default 值
       if (record[key] !== undefined) {
         newRecord[key] = record[key];
       }
@@ -194,36 +190,35 @@ export const AdminPage: React.FC = () => {
 
         const { data } = json;
 
-        // 1. Curriculum (Fixed ID -> Upsert)
+        // 1. Curriculum
         if (data.curriculum?.length) {
           const cleanData = data.curriculum.map((item: any) => sanitizeRecord(item, ALLOWED_KEYS.curriculum));
           const { error } = await supabase.from('curriculum').upsert(cleanData);
           if (error) throw error;
         }
 
-        // 2. Page Sections (Fixed ID -> Upsert)
+        // 2. Page Sections
         if (data.page_sections?.length) {
           const cleanData = data.page_sections.map((item: any) => sanitizeRecord(item, ALLOWED_KEYS.page_sections));
           const { error } = await supabase.from('page_sections').upsert(cleanData);
           if (error) throw error;
         }
 
-        // 3. Showcases (Auto ID -> Insert only, strip ID)
+        // 3. Showcases
         if (data.showcases?.length) {
           const cleanData = data.showcases.map((item: any) => sanitizeRecord(item, ALLOWED_KEYS.showcases));
-          // Insert data (Supabase will generate new IDs)
           const { error } = await supabase.from('showcases').insert(cleanData);
           if (error) throw error;
         }
 
-        // 4. Philosophy (Auto ID -> Insert only, strip ID)
+        // 4. Philosophy
         if (data.philosophy?.length) {
           const cleanData = data.philosophy.map((item: any) => sanitizeRecord(item, ALLOWED_KEYS.philosophy));
           const { error } = await supabase.from('philosophy').insert(cleanData);
           if (error) throw error;
         }
 
-        // 5. Social Projects (Auto ID -> Insert only, strip ID)
+        // 5. Social Projects
         if (data.social_projects?.length) {
           const cleanData = data.social_projects.map((item: any) => sanitizeRecord(item, ALLOWED_KEYS.social_projects));
           const { error } = await supabase.from('social_projects').insert(cleanData);
@@ -244,7 +239,7 @@ export const AdminPage: React.FC = () => {
     reader.readAsText(file);
   };
 
-  // --- Data Seeding Logic (Keep for fallback) ---
+  // --- Data Seeding Logic ---
   const handleSeedData = async () => {
     if (!confirm('确定要初始化数据吗？这将把 constants.ts 中的默认数据导入数据库。')) return;
     setLoading(true);
@@ -289,7 +284,7 @@ export const AdminPage: React.FC = () => {
             subtitle: s.subtitle,
             quote: s.quote,
             footer_note: s.footerNote,
-            image_url: s.imageUrl || ''
+            image_urls: s.imageUrls || []
         }));
         await supabase.from('social_projects').insert(dbSocial);
       }
@@ -309,7 +304,6 @@ export const AdminPage: React.FC = () => {
 
   // --- CRUD Logic ---
   
-  // 1. Open Modal for Create
   const handleCreateNew = () => {
     setIsNewRecord(true);
     let template: any = {};
@@ -319,7 +313,7 @@ export const AdminPage: React.FC = () => {
     } else if (activeTab === 'showcase') {
       template = { title: '', category: '商业级产品', description: '', image_urls: [] };
     } else if (activeTab === 'social') {
-      template = { title: '商业化案例', subtitle: '', quote: '', footer_note: '', image_url: '' };
+      template = { title: '商业化案例', subtitle: '', quote: '', footer_note: '', image_urls: [] };
     } else if (activeTab === 'philosophy') {
       template = { title: '', content: '', icon_name: 'Star' };
     }
@@ -328,14 +322,12 @@ export const AdminPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  // 2. Open Modal for Edit
   const openEditModal = (item: any) => {
     setIsNewRecord(false);
-    setEditingItem({ ...item }); // Clone to avoid direct mutation
+    setEditingItem({ ...item }); 
     setIsModalOpen(true);
   };
 
-  // 3. Save (Update or Insert)
   const handleSave = async () => {
     if (!editingItem) return;
     setLoading(true);
@@ -363,7 +355,7 @@ export const AdminPage: React.FC = () => {
 
       setIsModalOpen(false);
       setEditingItem(null);
-      await fetchData(); // Refresh data
+      await fetchData(); 
     } catch (error: any) {
       alert('保存失败: ' + error.message);
     } finally {
@@ -371,7 +363,6 @@ export const AdminPage: React.FC = () => {
     }
   };
 
-  // 4. Delete
   const handleDelete = async (id: any) => {
     if (!confirm('确定要删除吗？此操作不可恢复。')) return;
     setLoading(true);
@@ -407,13 +398,12 @@ export const AdminPage: React.FC = () => {
       const { data } = supabase.storage.from('images').getPublicUrl(filePath);
       const publicUrl = data.publicUrl;
 
-      if (activeTab === 'curriculum' || activeTab === 'showcase') {
-        // Handle array
+      // Logic for Array based image fields
+      if (activeTab === 'curriculum' || activeTab === 'showcase' || activeTab === 'social') {
         const currentUrls = editingItem.image_urls || [];
         setEditingItem({ ...editingItem, image_urls: [...currentUrls, publicUrl] });
-      } else if (activeTab === 'social') {
-        setEditingItem({ ...editingItem, image_url: publicUrl });
       } else {
+        // Single field (Philosophy, etc)
         setEditingItem({ ...editingItem, icon_name: publicUrl });
       }
 
@@ -441,7 +431,7 @@ export const AdminPage: React.FC = () => {
     if (error) {
       alert('状态更新失败');
     } else {
-      fetchData(); // Refresh list
+      fetchData(); 
     }
   };
 
@@ -524,7 +514,7 @@ export const AdminPage: React.FC = () => {
                </>
              )}
 
-             {/* Add New Button (Only for list-based tabs, excluding bookings and pages) */}
+             {/* Add New Button */}
              {(activeTab !== 'pages' && activeTab !== 'bookings') && (
                 <button 
                   onClick={handleCreateNew}
@@ -535,7 +525,7 @@ export const AdminPage: React.FC = () => {
                 </button>
              )}
 
-             {/* Seed Data Button (Fallback) */}
+             {/* Seed Data Button */}
              {((activeTab === 'curriculum' && curriculum.length === 0) || 
                (activeTab === 'showcase' && showcases.length === 0) ||
                (activeTab === 'social' && socialProjects.length === 0) ||
@@ -622,16 +612,19 @@ export const AdminPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Social Projects List */}
+              {/* Social Projects List (Updated to support multiple images visually in list) */}
               {activeTab === 'social' && (
                    <div className="divide-y divide-slate-100">
                       {socialProjects.map((s) => (
                            <div key={s.id} className="p-6 flex items-start gap-6 hover:bg-slate-50 transition-colors group">
-                               <div className="w-24 h-16 bg-slate-200 rounded overflow-hidden shrink-0 border border-slate-100">
-                                 {s.image_url ? (
-                                   <img src={s.image_url} alt={s.title} className="w-full h-full object-cover" />
+                               <div className="w-24 h-16 bg-slate-200 rounded overflow-hidden shrink-0 border border-slate-100 relative">
+                                 {s.image_urls && s.image_urls.length > 0 ? (
+                                   <img src={s.image_urls[0]} alt={s.title} className="w-full h-full object-cover" />
                                  ) : (
                                    <div className="w-full h-full flex items-center justify-center text-slate-400"><Icons.Image size={16} /></div>
+                                 )}
+                                 {s.image_urls && s.image_urls.length > 1 && (
+                                     <span className="absolute bottom-0 right-0 bg-black/50 text-white text-[10px] px-1">{s.image_urls.length}</span>
                                  )}
                                </div>
                                <div className="flex-1">
@@ -1013,32 +1006,29 @@ export const AdminPage: React.FC = () => {
               {activeTab !== 'pages' && (
               <div>
                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    {activeTab === 'showcase' ? '图片/视频 (支持多张，视频可填B站iframe)' : 
+                    {(activeTab === 'showcase' || activeTab === 'social') ? '图片/视频 (支持多张，视频可填B站iframe)' : 
                      activeTab === 'curriculum' ? '课程封面图集' : 
-                     activeTab === 'social' ? '背景/图标图片' : '图标名称 (Lucide Icon)'}
+                     '图标名称 (Lucide Icon)'}
                  </label>
                  
-                 {/* Single Input for Non-Curriculum/Showcase tabs */}
-                 {(activeTab !== 'curriculum' && activeTab !== 'showcase') && (
+                 {/* Single Input for Philosophy only */}
+                 {(activeTab === 'philosophy') && (
                     <input 
                         type="text" 
-                        value={editingItem.icon_name || editingItem.image_url || ''} 
-                        onChange={e => {
-                            if (activeTab === 'social') setEditingItem({...editingItem, image_url: e.target.value});
-                            else setEditingItem({...editingItem, icon_name: e.target.value});
-                        }}
+                        value={editingItem.icon_name || ''} 
+                        onChange={e => setEditingItem({...editingItem, icon_name: e.target.value})}
                         placeholder="Box, Zap, etc."
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm mb-2"
                     />
                  )}
 
-                 {/* For Showcases/Curriculum, show simple input for adding manual URLs (like iframes) */}
-                 {(activeTab === 'showcase' || activeTab === 'curriculum') && (
+                 {/* For Showcases/Curriculum/Social, show simple input for adding manual URLs (like iframes) */}
+                 {(activeTab === 'showcase' || activeTab === 'curriculum' || activeTab === 'social') && (
                     <div className="flex gap-2 mb-2">
                         <input 
                             type="text" 
                             id="manual-url-input"
-                            placeholder={activeTab === 'showcase' ? "输入图片URL或<iframe>代码" : "输入图片URL"}
+                            placeholder="输入图片URL或<iframe>代码"
                             className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm"
                         />
                         <button 
@@ -1057,8 +1047,8 @@ export const AdminPage: React.FC = () => {
                     </div>
                  )}
                   
-                  {/* Image List for Curriculum/Showcase (Multi-image) */}
-                  {(activeTab === 'curriculum' || activeTab === 'showcase') && (
+                  {/* Image List for Curriculum/Showcase/Social (Multi-image) */}
+                  {(activeTab === 'curriculum' || activeTab === 'showcase' || activeTab === 'social') && (
                      <div className="grid grid-cols-4 gap-2 mb-2">
                         {(editingItem.image_urls || []).map((url: string, idx: number) => (
                            <div key={idx} className="relative aspect-square rounded overflow-hidden border border-slate-200 group bg-slate-50">
@@ -1096,7 +1086,7 @@ export const AdminPage: React.FC = () => {
                       )}
                     </div>
                   )}
-                  {(activeTab === 'curriculum' || activeTab === 'showcase') && (
+                  {(activeTab === 'curriculum' || activeTab === 'showcase' || activeTab === 'social') && (
                     <p className="text-xs text-slate-500 mt-1">
                       提示: 可上传多张图片或添加多个视频链接。第一张将作为封面。
                     </p>

@@ -5,7 +5,7 @@ import { CourseCard } from '../components/CourseCard';
 import { ImageCarousel } from '../components/ImageCarousel';
 import * as Icons from 'lucide-react';
 import { useContent } from '../hooks/useContent';
-import { PageSection } from '../types';
+import { PageSection, SocialProject } from '../types';
 import { supabase } from '../lib/supabaseClient';
 
 export const LandingPage: React.FC = () => {
@@ -18,6 +18,9 @@ export const LandingPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('全部');
   const [visibleCount, setVisibleCount] = useState<number>(8); // Initial display count
   
+  // Social Project Modal State
+  const [selectedSocialProject, setSelectedSocialProject] = useState<SocialProject | null>(null);
+
   // Booking Form State
   const [bookingForm, setBookingForm] = useState({
     parentName: '',
@@ -404,43 +407,33 @@ export const LandingPage: React.FC = () => {
             </div>
           </div>
 
-          {/* 2. Projects Grid (Display All) */}
+          {/* 2. Projects Grid (Display All - Card Style) */}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
               {socialProjects.map((project, idx) => (
                 <div 
                   key={idx}
-                  className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 hover:border-orange-500/30 hover:bg-white/10 transition-all duration-300 group flex flex-col h-full overflow-hidden"
+                  onClick={() => setSelectedSocialProject(project)}
+                  className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 hover:border-orange-500/30 hover:bg-white/10 transition-all duration-300 group flex flex-col h-full overflow-hidden cursor-pointer"
                 >
-                    <div className="p-8 flex flex-col h-full">
-                        {/* Header */}
-                        <div className="flex items-start gap-4 mb-6">
-                            <div className="w-12 h-12 bg-gradient-to-br from-[#E1964B] to-orange-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                                {project.imageUrl ? (
-                                    <img src={project.imageUrl} alt="" className="w-full h-full object-cover rounded-xl" />
-                                ) : (
-                                    <Icons.TrendingUp className="w-6 h-6 text-white" />
-                                )}
-                            </div>
-                            <div>
-                                <h4 className="font-bold text-xl text-white group-hover:text-orange-300 transition-colors">{project.title}</h4>
-                                <p className="text-blue-300 text-sm mt-1">{project.subtitle}</p>
-                            </div>
-                        </div>
-
-                        {/* Quote Box */}
-                        <div className="flex-1 relative mb-6">
-                           <Icons.Quote size={24} className="text-blue-700 absolute -top-2 -left-2 opacity-50" />
-                           <p className="text-blue-100 italic font-serif leading-relaxed px-4 py-2">
-                              {project.quote}
-                           </p>
-                        </div>
-
-                        {/* Footer */}
-                        <div className="pt-6 border-t border-white/5 mt-auto">
-                            <p className="text-xs text-blue-400 font-medium flex items-center gap-2">
-                               <Icons.Sparkles size={12} className="text-orange-400" />
-                               {project.footerNote}
-                            </p>
+                    <div className="relative aspect-video overflow-hidden bg-slate-800">
+                        {project.imageUrls && project.imageUrls.length > 0 ? (
+                           // Check if it's an iframe video
+                           project.imageUrls[0].startsWith('<iframe') ? (
+                             <div className="w-full h-full flex items-center justify-center bg-black/50">
+                               <Icons.PlayCircle className="text-white/80 w-12 h-12" />
+                             </div>
+                           ) : (
+                             <img src={project.imageUrls[0]} alt={project.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                           )
+                        ) : (
+                           <div className="w-full h-full flex items-center justify-center text-white/20">
+                              <Icons.Image size={48} />
+                           </div>
+                        )}
+                        
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-6">
+                            <h4 className="font-bold text-xl text-white group-hover:text-orange-300 transition-colors">{project.title}</h4>
+                            <p className="text-blue-300 text-sm mt-1">{project.subtitle}</p>
                         </div>
                     </div>
                 </div>
@@ -495,6 +488,68 @@ export const LandingPage: React.FC = () => {
           </div>
         </div>
       </footer>
+
+      {/* Social Project Detail Modal */}
+      {selectedSocialProject && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedSocialProject(null)}></div>
+           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col md:flex-row overflow-hidden animate-fade-in-up">
+              <button 
+                  onClick={() => setSelectedSocialProject(null)}
+                  className="absolute top-4 right-4 z-50 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full transition-colors"
+                >
+                  <Icons.X size={24} />
+              </button>
+
+              {/* Left: Media Gallery */}
+              <div className="w-full md:w-2/3 bg-black h-1/2 md:h-full flex items-center justify-center relative">
+                 <ImageCarousel 
+                    images={selectedSocialProject.imageUrls || []} 
+                    alt={selectedSocialProject.title}
+                    className="w-full h-full"
+                    autoPlayInterval={0} // Disable autoplay for detail view to let user control
+                 />
+              </div>
+
+              {/* Right: Content */}
+              <div className="w-full md:w-1/3 bg-white p-8 overflow-y-auto">
+                 <div className="mb-6">
+                    <span className="text-xs font-bold text-orange-500 uppercase tracking-wider mb-2 block">
+                       {selectedSocialProject.subtitle}
+                    </span>
+                    <h3 className="text-3xl font-bold text-slate-900 leading-tight">
+                       {selectedSocialProject.title}
+                    </h3>
+                 </div>
+
+                 <div className="space-y-6">
+                    <div className="relative pl-6 border-l-4 border-blue-100 italic text-slate-600">
+                       <Icons.Quote size={20} className="absolute -top-2 -left-2 text-blue-200 fill-current" />
+                       "{selectedSocialProject.quote}"
+                    </div>
+
+                    <div className="prose prose-slate prose-sm text-slate-600">
+                       {/* Footer note acts as description here if description field is missing, or generic text */}
+                       <p>{selectedSocialProject.footerNote}</p>
+                    </div>
+
+                    <div className="pt-6 border-t border-slate-100 mt-auto">
+                       <button 
+                         onClick={() => {
+                           setSelectedSocialProject(null);
+                           setIsBookingModalOpen(true);
+                         }}
+                         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+                       >
+                         <Icons.MessageSquare size={18} />
+                         咨询该项目
+                       </button>
+                    </div>
+                 </div>
+              </div>
+           </div>
+        </div>
+      )}
 
       {/* Booking Modal */}
       {isBookingModalOpen && (

@@ -5,6 +5,7 @@ import { Logo } from '../components/Logo';
 import * as Icons from 'lucide-react';
 import { CURRICULUM, PHILOSOPHY, SHOWCASES, PAGE_SECTIONS_DEFAULT, SOCIAL_PROJECTS } from '../constants';
 import { Booking } from '../types';
+import imageCompression from 'browser-image-compression';
 
 // Type definitions for raw DB data (snake_case)
 interface DbCourse {
@@ -64,6 +65,14 @@ const ALLOWED_KEYS = {
   page_sections: ['id', 'title', 'subtitle', 'description', 'metadata', 'sort_order'],
 };
 
+// Compression Config
+const COMPRESSION_OPTIONS = {
+  maxSizeMB: 0.8,          // Target size ~800KB
+  maxWidthOrHeight: 1920,  // Max dimension 1920px (1080p standard)
+  useWebWorker: true,      // Use multi-threading
+  fileType: 'image/jpeg'   // Normalize to JPEG for better compression
+};
+
 export const AdminPage: React.FC = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -82,6 +91,7 @@ export const AdminPage: React.FC = () => {
   const [isNewRecord, setIsNewRecord] = useState(false);
   
   const [uploading, setUploading] = useState(false);
+  const [optimizationStatus, setOptimizationStatus] = useState<string | null>(null);
 
   // Drag and Drop State
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
@@ -161,20 +171,14 @@ export const AdminPage: React.FC = () => {
     
     // Prepare Batch Update
     // We update all items with their new index as sort_order
-    // CRITICAL FIX: We must include the full object because Supabase 'upsert' acts as "Insert if not exists, update if exists".
-    // The "Insert" path checks for NOT NULL constraints on all columns. 
-    // If we only send {id, sort_order}, it tries to insert a row with NULL title, which fails.
     const updates = currentList.map((item, index) => ({
       ...item,
       sort_order: index + 1 
     }));
 
-    // Optimistic UI is already handled by handleDragOver
-    // Now persist to DB
     try {
       const { error } = await supabase.from(tableName).upsert(updates, { onConflict: 'id' });
       if (error) throw error;
-      // Optional: Show success toast
     } catch (err: any) {
       alert("排序保存失败: " + err.message);
       fetchData(); // Revert on error
@@ -299,6 +303,92 @@ export const AdminPage: React.FC = () => {
 
     reader.readAsText(file);
   };
+
+  // --- Image Optimization Logic ---
+
+  const handleBatchOptimize = async () => {
+    if (!confirm('确定要优化所有存量图片吗？\n\n这将自动：\n1. 下载存储桶中所有图片\n2. 在本地压缩 (最大1920px, 800KB)\n3. 覆盖上传原文件\n\n过程可能需要几分钟，请勿关闭页面。')) {
+      return;
+    }
+
+    setOptimizationStatus('准备开始...');
+    setLoading(true);
+
+    try {
+      // 1. List all files in 'images' bucket
+      const { data: files, error: listError } = await supabase
+        .storage
+        .from('images')
+        .list('', { limit: 1000, offset: 0 });
+
+      if (listError) throw listError;
+      if (!files || files.length === 0) {
+        alert('没有找到图片文件');
+        return;
+      }
+
+      let successCount = 0;
+      let failCount = 0;
+      let skippedCount = 0;
+
+      for (let i = 0; i < files.length; i++) {
+        const fileMeta = files[i];
+        if (fileMeta.name === '.emptyFolderPlaceholder' || !fileMeta.metadata) {
+          skippedCount++;
+          continue;
+        }
+
+        setOptimizationStatus(`正在处理 (${i + 1}/${files.length}): ${fileMeta.name}`);
+
+        try {
+          // 2. Download original
+          const { data: blob, error: downloadError } = await supabase
+            .storage
+            .from('images')
+            .download(fileMeta.name);
+
+          if (downloadError) throw downloadError;
+          if (!blob) throw new Error('Blob is null');
+
+          // Check if it's an image
+          if (!blob.type.startsWith('image/')) {
+            skippedCount++;
+            continue;
+          }
+
+          // 3. Compress
+          // Convert Blob to File to satisfy library TS requirement (though it handles blobs too usually)
+          const originalFile = new File([blob], fileMeta.name, { type: blob.type });
+          const compressedFile = await imageCompression(originalFile, COMPRESSION_OPTIONS);
+
+          // 4. Update (Overwrite)
+          const { error: updateError } = await supabase
+            .storage
+            .from('images')
+            .update(fileMeta.name, compressedFile, {
+              cacheControl: '3600', // Update cache control to standard 1 hour
+              upsert: true
+            });
+
+          if (updateError) throw updateError;
+          successCount++;
+
+        } catch (err) {
+          console.error(`Failed to optimize ${fileMeta.name}:`, err);
+          failCount++;
+        }
+      }
+
+      alert(`优化完成！\n成功: ${successCount}\n失败: ${failCount}\n跳过: ${skippedCount}`);
+
+    } catch (err: any) {
+      alert('批量优化失败: ' + err.message);
+    } finally {
+      setLoading(false);
+      setOptimizationStatus(null);
+    }
+  };
+
 
   // --- Data Seeding Logic ---
   const handleSeedData = async () => {
@@ -457,14 +547,21 @@ export const AdminPage: React.FC = () => {
     if (!event.target.files || event.target.files.length === 0) return;
     
     const file = event.target.files[0];
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-    const filePath = `${fileName}`;
-
     setUploading(true);
 
     try {
-      const { error: uploadError } = await supabase.storage.from('images').upload(filePath, file);
+      // 1. Compress image before upload
+      console.log(`Original size: ${file.size / 1024 / 1024} MB`);
+      const compressedFile = await imageCompression(file, COMPRESSION_OPTIONS);
+      console.log(`Compressed size: ${compressedFile.size / 1024 / 1024} MB`);
+
+      const fileExt = compressedFile.name.split('.').pop();
+      // Ensure unique name but keep extension
+      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt || 'jpg'}`;
+      const filePath = `${fileName}`;
+
+      // 2. Upload to Supabase
+      const { error: uploadError } = await supabase.storage.from('images').upload(filePath, compressedFile);
       if (uploadError) throw uploadError;
 
       const { data } = supabase.storage.from('images').getPublicUrl(filePath);
@@ -480,7 +577,8 @@ export const AdminPage: React.FC = () => {
       }
 
     } catch (error: any) {
-      alert('图片上传失败: ' + error.message);
+      console.error(error);
+      alert('图片处理或上传失败: ' + error.message);
     } finally {
       setUploading(false);
     }
@@ -556,6 +654,18 @@ export const AdminPage: React.FC = () => {
           </h1>
           
           <div className="flex items-center gap-3">
+             {/* Batch Optimization Button */}
+             {!loading && (
+               <button
+                  onClick={handleBatchOptimize}
+                  className="bg-orange-50 hover:bg-orange-100 text-orange-600 px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors border border-orange-200"
+                  title="自动压缩所有存量图片，节省带宽"
+               >
+                 <Icons.Wand2 size={16} />
+                 一键优化图片
+               </button>
+             )}
+             
              {/* Import/Export Buttons */}
              {!loading && (
                <>
@@ -615,7 +725,15 @@ export const AdminPage: React.FC = () => {
         </header>
 
         <main className="p-8">
-          {loading && !isModalOpen ? (
+           {/* Optimization Progress Bar */}
+           {optimizationStatus && (
+            <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3 text-blue-800 animate-pulse">
+              <Icons.Loader2 className="animate-spin" />
+              <span className="font-bold">{optimizationStatus}</span>
+            </div>
+          )}
+
+          {loading && !isModalOpen && !optimizationStatus ? (
             <div className="flex justify-center items-center h-64 text-slate-400">
               <Icons.Loader2 className="animate-spin mr-2" /> 加载中...
             </div>

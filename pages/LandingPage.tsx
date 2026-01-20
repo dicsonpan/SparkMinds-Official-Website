@@ -134,7 +134,7 @@ export const LandingPage: React.FC = () => {
   // --- Render Functions for Each Section ---
 
   const renderHero = () => (
-    <header key="hero" className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden">
+    <header key="hero" className="relative pt-28 pb-12 md:pt-40 md:pb-20 overflow-hidden">
         {/* Abstract Background Shapes */}
         <div className="absolute top-0 right-0 w-1/2 h-full bg-blue-50/50 skew-x-12 transform translate-x-20 -z-10"></div>
         <div className="absolute top-20 left-10 w-64 h-64 bg-orange-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
@@ -173,7 +173,7 @@ export const LandingPage: React.FC = () => {
   );
 
   const renderPhilosophy = () => (
-    <section key="philosophy" id="核心理念" className="py-20 bg-white">
+    <section key="philosophy" id="核心理念" className="py-16 md:py-20 bg-white">
         <div className="container mx-auto px-4 md:px-6">
           <SectionHeading 
             subtitle={philosophySec.subtitle || 'OUR MISSION'} 
@@ -202,7 +202,7 @@ export const LandingPage: React.FC = () => {
   );
 
   const renderCurriculum = () => (
-    <section key="curriculum" id="成长路径" className="py-24 bg-slate-50 relative overflow-hidden">
+    <section key="curriculum" id="成长路径" className="py-16 md:py-20 bg-slate-50 relative overflow-hidden">
         <div className="circuit-pattern absolute inset-0 opacity-50 pointer-events-none"></div>
         <div className="container mx-auto px-4 md:px-6 relative z-10">
           <SectionHeading 
@@ -244,7 +244,7 @@ export const LandingPage: React.FC = () => {
   );
 
   const renderShowcases = () => (
-    <section key="showcases" id="学员作品" className="py-20 bg-white">
+    <section key="showcases" id="学员作品" className="py-16 md:py-20 bg-white">
         <div className="container mx-auto px-4 md:px-6">
           <SectionHeading 
             subtitle={showcasesSec.subtitle || 'SUCCESS STORIES'} 
@@ -317,7 +317,7 @@ export const LandingPage: React.FC = () => {
   );
 
   const renderSocialPractice = () => (
-    <section key="social_practice" id="社会实践" className="py-24 bg-blue-900 text-white relative overflow-hidden">
+    <section key="social_practice" id="社会实践" className="py-16 md:py-20 bg-blue-900 text-white relative overflow-hidden">
         {/* Background Effects */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600 rounded-full mix-blend-overlay filter blur-[100px] opacity-20 pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-orange-600 rounded-full mix-blend-overlay filter blur-[100px] opacity-20 pointer-events-none"></div>

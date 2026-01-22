@@ -73,6 +73,10 @@ const COMPRESSION_OPTIONS = {
   fileType: 'image/jpeg'   // Normalize to JPEG for better compression
 };
 
+// Cache Control Setting: 1 Year (31536000 seconds)
+// This forces the browser to use local disk cache instead of asking Supabase CDN, saving Cached Egress.
+const CACHE_CONTROL_MAX_AGE = '31536000';
+
 export const AdminPage: React.FC = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -307,7 +311,7 @@ export const AdminPage: React.FC = () => {
   // --- Image Optimization Logic ---
 
   const handleBatchOptimize = async () => {
-    if (!confirm('确定要优化所有存量图片吗？\n\n这将自动：\n1. 下载存储桶中所有图片\n2. 在本地压缩 (最大1920px, 800KB)\n3. 覆盖上传原文件\n\n过程可能需要几分钟，请勿关闭页面。')) {
+    if (!confirm('确定要优化所有存量图片吗？\n\n这将自动：\n1. 下载存储桶中所有图片\n2. 在本地压缩 (最大1920px, 800KB)\n3. 覆盖上传原文件并设置1年缓存\n\n注意：此操作能显著降低流量消耗。过程可能需要几分钟，请勿关闭页面。')) {
       return;
     }
 
@@ -361,12 +365,12 @@ export const AdminPage: React.FC = () => {
           const originalFile = new File([blob], fileMeta.name, { type: blob.type });
           const compressedFile = await imageCompression(originalFile, COMPRESSION_OPTIONS);
 
-          // 4. Update (Overwrite)
+          // 4. Update (Overwrite) with LONG CACHE CONTROL
           const { error: updateError } = await supabase
             .storage
             .from('images')
             .update(fileMeta.name, compressedFile, {
-              cacheControl: '3600', // Update cache control to standard 1 hour
+              cacheControl: CACHE_CONTROL_MAX_AGE, // Set to 1 year
               upsert: true
             });
 
@@ -379,7 +383,7 @@ export const AdminPage: React.FC = () => {
         }
       }
 
-      alert(`优化完成！\n成功: ${successCount}\n失败: ${failCount}\n跳过: ${skippedCount}`);
+      alert(`优化完成！\n成功: ${successCount}\n失败: ${failCount}\n跳过: ${skippedCount}\n\n所有图片缓存已更新为1年。`);
 
     } catch (err: any) {
       alert('批量优化失败: ' + err.message);
@@ -560,8 +564,12 @@ export const AdminPage: React.FC = () => {
       const fileName = `${Math.random().toString(36).substring(2)}.${fileExt || 'jpg'}`;
       const filePath = `${fileName}`;
 
-      // 2. Upload to Supabase
-      const { error: uploadError } = await supabase.storage.from('images').upload(filePath, compressedFile);
+      // 2. Upload to Supabase with Cache Control set to 1 Year
+      const { error: uploadError } = await supabase.storage.from('images').upload(filePath, compressedFile, {
+        cacheControl: CACHE_CONTROL_MAX_AGE,
+        upsert: false
+      });
+      
       if (uploadError) throw uploadError;
 
       const { data } = supabase.storage.from('images').getPublicUrl(filePath);

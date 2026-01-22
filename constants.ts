@@ -217,7 +217,7 @@ export const PAGE_SECTIONS_DEFAULT: PageSection[] = [
     metadata: {
       address: '广州/深圳 线下创新中心',
       email: 'contact@sparkminds.edu',
-      phone: '400-123-4567',
+      phone: '13370001068(微信同号)',
       copyright: '© 2024 SparkMinds 创智实验室. All rights reserved.',
       explore_title: '探索',
       contact_title: '联系我们'

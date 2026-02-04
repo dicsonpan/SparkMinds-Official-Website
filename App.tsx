@@ -4,6 +4,7 @@ import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { AdminPage } from './pages/AdminPage';
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import { Analytics } from "@vercel/analytics/react";
 
 const App: React.FC = () => {
   return (
@@ -14,9 +15,9 @@ const App: React.FC = () => {
         <Route path="/admin" element={<AdminPage />} />
       </Routes>
       <SpeedInsights />
+      <Analytics />
     </Router>
   );
 };
-
 
 export default App;

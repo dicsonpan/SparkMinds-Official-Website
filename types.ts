@@ -61,3 +61,28 @@ export interface SocialProject {
   imageUrls: string[];
   sort_order?: number; // Added for sorting
 }
+
+// === New Student Portfolio Types ===
+
+export type ContentBlockType = 'header' | 'text' | 'image_grid' | 'video';
+
+export interface ContentBlock {
+  id: string;
+  type: ContentBlockType;
+  data: {
+    title?: string;
+    content?: string; // For text or description
+    urls?: string[]; // For images or single video URL
+    date?: string;
+    layout?: 'grid' | 'carousel' | 'single'; // For images
+  };
+}
+
+export interface StudentPortfolio {
+  id?: number;
+  slug: string; // e.g., 'jaydenyip'
+  student_name: string;
+  access_password: string; // Stored simply for this use case
+  content_blocks: ContentBlock[]; // JSONB in DB
+  created_at?: string;
+}

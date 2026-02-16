@@ -166,7 +166,8 @@ export const StudentPortfolioPage: React.FC = () => {
       };
 
       const systemPrompt = `You are a professional translator. Translate the following Student Portfolio JSON content from Chinese to English. 
-      Keep the JSON structure exactly the same. Only translate the values of 'title', 'content', 'student_title', 'summary_bio', 'star_situation', 'star_task', 'star_action', 'star_result', 'name' (in skills).
+      Ensure that all value fields (title, content, descriptions, bio, skills) are translated into English. Do not leave Chinese characters in the output.
+      Keep the JSON structure exactly the same. Only translate the values.
       Return ONLY the raw JSON.`;
 
       const response = await fetch(`${aiConfig.baseUrl}/chat/completions`, {

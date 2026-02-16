@@ -6,6 +6,8 @@ import { Logo } from '../components/Logo';
 import * as Icons from 'lucide-react';
 import html2canvas from 'html2canvas';
 
+const AI_SETTINGS_KEY = 'SM_AI_CONFIG';
+
 const THEMES: Record<PortfolioTheme, any> = {
   tech_dark: {
     bg: 'bg-slate-950',
@@ -45,15 +47,66 @@ const THEMES: Record<PortfolioTheme, any> = {
   }
 };
 
+const LABELS = {
+  zh: {
+    skills: "技能矩阵",
+    featured: "精选项目",
+    situation: "背景 (Situation)",
+    task: "任务 (Task)",
+    action: "行动 (Action)",
+    result: "结果 (Result)",
+    loading: "数据加载中...",
+    error: "无法访问档案",
+    unlock: "解锁访问",
+    passwordPlaceholder: "在此输入密码",
+    passwordError: "密码错误",
+    footerTitle: "SparkMinds 创智实验室",
+    footerSubtitle: "青少年硬核科技创新教育",
+    generating: "生成中...",
+    saveImage: "保存长图",
+    mobileMode: "手机模式",
+    webMode: "网页模式",
+    translateBtn: "English",
+    translating: "AI翻译中..."
+  },
+  en: {
+    skills: "Skills Matrix",
+    featured: "Featured Project",
+    situation: "Situation",
+    task: "Task",
+    action: "Action & Challenges",
+    result: "Result",
+    loading: "Loading data...",
+    error: "Access Denied",
+    unlock: "Unlock Access",
+    passwordPlaceholder: "Enter Password",
+    passwordError: "Incorrect Password",
+    footerTitle: "SparkMinds Lab",
+    footerSubtitle: "Hardcore Tech Education for Youth",
+    generating: "Rendering...",
+    saveImage: "Save Image",
+    mobileMode: "Mobile View",
+    webMode: "Web View",
+    translateBtn: "中文",
+    translating: "Translating..."
+  }
+};
+
 export const StudentPortfolioPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
-  const [portfolio, setPortfolio] = useState<StudentPortfolio | null>(null);
+  const [originalPortfolio, setOriginalPortfolio] = useState<StudentPortfolio | null>(null);
+  const [translatedPortfolio, setTranslatedPortfolio] = useState<StudentPortfolio | null>(null);
+  
+  const [language, setLanguage] = useState<'zh' | 'en'>('zh');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
   const [authError, setAuthError] = useState(false);
   const [isSnapshotting, setIsSnapshotting] = useState(false);
+  const [isMobileMode, setIsMobileMode] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -66,7 +119,7 @@ export const StudentPortfolioPage: React.FC = () => {
     try {
       const { data, error } = await supabase.from('student_portfolios').select('*').eq('slug', slug).single();
       if (error) throw error;
-      setPortfolio(data);
+      setOriginalPortfolio(data);
     } catch (err: any) {
       console.error(err);
       setError('未找到该学生的成长档案，请检查链接是否正确。');
@@ -77,7 +130,7 @@ export const StudentPortfolioPage: React.FC = () => {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (portfolio && passwordInput === portfolio.access_password) {
+    if (originalPortfolio && passwordInput === originalPortfolio.access_password) {
       setIsAuthenticated(true);
       setAuthError(false);
     } else {
@@ -85,23 +138,104 @@ export const StudentPortfolioPage: React.FC = () => {
     }
   };
 
+  const handleTranslate = async () => {
+    if (language === 'en') {
+      setLanguage('zh');
+      return;
+    }
+
+    if (translatedPortfolio) {
+      setLanguage('en');
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      const aiConfigStr = localStorage.getItem(AI_SETTINGS_KEY);
+      if (!aiConfigStr) throw new Error("AI未配置");
+      const aiConfig = JSON.parse(aiConfigStr);
+
+      if (!aiConfig.apiKey || !originalPortfolio) throw new Error("Missing config");
+
+      // Prepare payload - only translate text fields
+      const payload = {
+        student_title: originalPortfolio.student_title,
+        summary_bio: originalPortfolio.summary_bio,
+        skills: originalPortfolio.skills, // Skills names might need translation
+        content_blocks: originalPortfolio.content_blocks
+      };
+
+      const systemPrompt = `You are a professional translator. Translate the following Student Portfolio JSON content from Chinese to English. 
+      Keep the JSON structure exactly the same. Only translate the values of 'title', 'content', 'student_title', 'summary_bio', 'star_situation', 'star_task', 'star_action', 'star_result', 'name' (in skills).
+      Return ONLY the raw JSON.`;
+
+      const response = await fetch(`${aiConfig.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${aiConfig.apiKey}`
+        },
+        body: JSON.stringify({
+          model: aiConfig.model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: JSON.stringify(payload) }
+          ],
+          temperature: 0.3
+        })
+      });
+
+      const data = await response.json();
+      let content = data.choices?.[0]?.message?.content;
+      if (!content) throw new Error("Translation failed");
+      
+      content = content.replace(/```json/g, '').replace(/```/g, '').trim();
+      const translatedData = JSON.parse(content);
+
+      setTranslatedPortfolio({
+        ...originalPortfolio,
+        ...translatedData
+      });
+      setLanguage('en');
+
+    } catch (err) {
+      console.error(err);
+      alert("AI 翻译服务不可用，仅切换界面语言。请在后台配置 AI Key。");
+      setLanguage('en'); // Fallback to just label switch
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
   const handleSnapshot = async () => {
     if (!contentRef.current) return;
     setIsSnapshotting(true);
     try {
-      const theme = portfolio?.theme_config?.theme || 'tech_dark';
+      const theme = originalPortfolio?.theme_config?.theme || 'tech_dark';
       const bgColor = theme === 'tech_dark' ? '#020617' : '#f8fafc';
+      
+      // Force scroll to top to ensure clean capture
+      window.scrollTo(0,0);
+      await new Promise(r => setTimeout(r, 500)); // Wait for any layouts
+
       const canvas = await html2canvas(contentRef.current, {
-        useCORS: true, scale: 2, backgroundColor: bgColor,
+        useCORS: true, 
+        scale: 2, 
+        backgroundColor: bgColor,
         ignoreElements: (element) => element.classList.contains('no-snapshot'),
         logging: false,
+        windowWidth: isMobileMode ? 420 : document.body.scrollWidth, // Simulate mobile width context if needed
       });
+      
       const link = document.createElement('a');
-      link.download = `SparkMinds_${portfolio?.student_name}.png`;
+      link.download = `SparkMinds_${originalPortfolio?.student_name}_${isMobileMode ? 'Mobile' : 'Web'}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
     } catch (err) { alert('生成长图失败'); } finally { setIsSnapshotting(false); }
   };
+
+  const currentPortfolio = language === 'en' && translatedPortfolio ? translatedPortfolio : originalPortfolio;
+  const t = LABELS[language];
 
   // --- Components ---
 
@@ -117,12 +251,11 @@ export const StudentPortfolioPage: React.FC = () => {
   const SkillsMatrix = ({ skills, styles }: { skills: Skill[], styles: any }) => {
      if (!skills || skills.length === 0) return null;
      
-     // Group by category if needed, for now just a clean list bar chart
      return (
        <div className={`mb-20 animate-fade-in-up`}>
           <div className="flex items-center gap-4 mb-8">
              <div className="h-px flex-1 bg-gradient-to-r from-transparent to-blue-500/50"></div>
-             <h3 className={`text-xl font-bold uppercase tracking-widest ${styles.text}`}>Skills Matrix</h3>
+             <h3 className={`text-xl font-bold uppercase tracking-widest ${styles.text}`}>{t.skills}</h3>
              <div className="h-px flex-1 bg-gradient-to-l from-transparent to-blue-500/50"></div>
           </div>
           
@@ -153,7 +286,7 @@ export const StudentPortfolioPage: React.FC = () => {
       <div className={`mb-24 animate-fade-in-up`}>
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 border-b border-slate-800/50 pb-4">
              <div>
-                <span className="text-blue-500 font-bold text-xs uppercase tracking-widest mb-2 block">Featured Project</span>
+                <span className="text-blue-500 font-bold text-xs uppercase tracking-widest mb-2 block">{t.featured}</span>
                 <h3 className={`text-3xl md:text-4xl font-bold ${styles.text}`}>{title}</h3>
              </div>
              {date && <span className="text-slate-500 font-mono text-sm border border-slate-700 px-3 py-1 rounded-full">{date}</span>}
@@ -164,12 +297,12 @@ export const StudentPortfolioPage: React.FC = () => {
              <div className="space-y-6">
                 <div className={`p-6 rounded-2xl ${styles.cardBg} border ${styles.border} relative overflow-hidden group`}>
                    <div className="absolute top-0 right-0 p-4 opacity-10 font-black text-6xl select-none group-hover:opacity-20 transition-opacity">S</div>
-                   <h4 className="text-blue-400 font-bold mb-2 uppercase text-sm">Situation</h4>
+                   <h4 className="text-blue-400 font-bold mb-2 uppercase text-sm">{t.situation}</h4>
                    <p className={`${styles.text} opacity-90`}>{star_situation}</p>
                 </div>
                 <div className={`p-6 rounded-2xl ${styles.cardBg} border ${styles.border} relative overflow-hidden group`}>
                    <div className="absolute top-0 right-0 p-4 opacity-10 font-black text-6xl select-none group-hover:opacity-20 transition-opacity">T</div>
-                   <h4 className="text-purple-400 font-bold mb-2 uppercase text-sm">Task</h4>
+                   <h4 className="text-purple-400 font-bold mb-2 uppercase text-sm">{t.task}</h4>
                    <p className={`${styles.text} opacity-90`}>{star_task}</p>
                 </div>
              </div>
@@ -177,7 +310,7 @@ export const StudentPortfolioPage: React.FC = () => {
              {/* Action (Larger) */}
              <div className={`p-6 rounded-2xl ${styles.cardBg} border ${styles.border} relative overflow-hidden group flex flex-col`}>
                  <div className="absolute top-0 right-0 p-4 opacity-10 font-black text-6xl select-none group-hover:opacity-20 transition-opacity">A</div>
-                 <h4 className="text-orange-400 font-bold mb-2 uppercase text-sm">Action & Challenges</h4>
+                 <h4 className="text-orange-400 font-bold mb-2 uppercase text-sm">{t.action}</h4>
                  <p className={`${styles.text} opacity-90 whitespace-pre-wrap leading-relaxed flex-1`}>{star_action}</p>
              </div>
           </div>
@@ -185,7 +318,7 @@ export const StudentPortfolioPage: React.FC = () => {
           {/* Result & Evidence */}
           <div className="grid md:grid-cols-3 gap-6">
               <div className={`md:col-span-1 p-6 rounded-2xl bg-gradient-to-br from-blue-900/20 to-purple-900/20 border border-blue-500/30 relative overflow-hidden`}>
-                 <h4 className="text-green-400 font-bold mb-2 uppercase text-sm">Result</h4>
+                 <h4 className="text-green-400 font-bold mb-2 uppercase text-sm">{t.result}</h4>
                  <p className="text-white font-medium">{star_result}</p>
               </div>
               <div className="md:col-span-2 grid grid-cols-4 gap-2">
@@ -204,10 +337,21 @@ export const StudentPortfolioPage: React.FC = () => {
     switch (block.type) {
       case 'header':
         return (
-          <div key={block.id} className="mb-12 relative pl-6 border-l-4 border-blue-500/50 animate-fade-in-up">
-            {block.data.date && <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-2 uppercase tracking-widest ${styles.accent} bg-blue-500/10`}>{block.data.date}</span>}
-            <h2 className={`text-2xl md:text-3xl font-bold mb-3 ${styles.text}`}>{block.data.title}</h2>
-            {block.data.content && <p className={`text-lg opacity-80 leading-relaxed ${styles.text}`}>{block.data.content}</p>}
+          <div key={block.id} className="mb-12 relative pl-6 flex items-start gap-6 animate-fade-in-up">
+             {/* Timeline Node Visual */}
+             <div className="absolute left-0 top-2 w-1.5 h-full bg-blue-600/30 rounded-full">
+                <div className="absolute top-0 left-0 w-1.5 h-8 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.6)]"></div>
+             </div>
+             
+             <div className="pt-1">
+                <h2 className={`text-3xl md:text-4xl font-bold mb-2 ${styles.text} tracking-tight`}>{block.data.title}</h2>
+                {(block.data.date || block.data.content) && (
+                   <div className="flex flex-col gap-1 opacity-60">
+                      {block.data.date && <span className={`font-mono text-sm uppercase tracking-widest ${styles.accent}`}>{block.data.date}</span>}
+                      {block.data.content && <span className="text-lg font-light">{block.data.content}</span>}
+                   </div>
+                )}
+             </div>
           </div>
         );
       case 'text':
@@ -244,26 +388,30 @@ export const StudentPortfolioPage: React.FC = () => {
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-950"><Icons.Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
-  if (error || !portfolio) return <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4"><div className="text-slate-300 mb-4"><Icons.FileQuestion size={64} /></div><h1 className="text-2xl font-bold text-slate-800 mb-2">无法访问档案</h1><p className="text-slate-500">{error}</p><a href="/" className="mt-8 text-blue-600 hover:underline">返回首页</a></div>;
+  if (error || !originalPortfolio) return <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4"><div className="text-slate-300 mb-4"><Icons.FileQuestion size={64} /></div><h1 className="text-2xl font-bold text-slate-800 mb-2">无法访问档案</h1><p className="text-slate-500">{error}</p><a href="/" className="mt-8 text-blue-600 hover:underline">返回首页</a></div>;
   if (!isAuthenticated) return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 relative overflow-hidden">
         <div className="absolute inset-0 overflow-hidden"><div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-900/20 rounded-full blur-[100px]"></div><div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-purple-900/20 rounded-full blur-[100px]"></div></div>
         <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 p-8 rounded-3xl shadow-2xl w-full max-w-md relative z-10">
           <div className="flex justify-center mb-8"><div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg transform rotate-3"><Icons.Lock size={32} className="text-white" /></div></div>
-          <h2 className="text-2xl font-bold text-center text-white mb-2">受保护的成长档案</h2>
-          <p className="text-center text-slate-400 text-sm mb-8">请输入访问密码以查看 {portfolio.student_name} 的作品集</p>
-          <form onSubmit={handleLogin} className="space-y-4"><div><input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="在此输入密码" className={`w-full px-4 py-4 text-center text-xl tracking-[0.5em] bg-slate-950 border rounded-xl focus:ring-2 outline-none transition-all text-white placeholder-slate-600 ${authError ? 'border-red-500 focus:ring-red-500/50' : 'border-slate-700 focus:ring-blue-500/50 focus:border-blue-500'}`} autoFocus />{authError && <p className="text-red-400 text-xs text-center mt-2 font-medium">密码错误</p>}</div><button type="submit" className="w-full bg-white text-slate-950 hover:bg-blue-50 font-bold py-4 rounded-xl transition-all shadow-lg mt-2">解锁访问</button></form>
+          <h2 className="text-2xl font-bold text-center text-white mb-2">{LABELS['zh'].error}</h2>
+          <p className="text-center text-slate-400 text-sm mb-8">请输入访问密码以查看 {originalPortfolio.student_name} 的作品集</p>
+          <form onSubmit={handleLogin} className="space-y-4"><div><input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder={LABELS['zh'].passwordPlaceholder} className={`w-full px-4 py-4 text-center text-xl tracking-[0.5em] bg-slate-950 border rounded-xl focus:ring-2 outline-none transition-all text-white placeholder-slate-600 ${authError ? 'border-red-500 focus:ring-red-500/50' : 'border-slate-700 focus:ring-blue-500/50 focus:border-blue-500'}`} autoFocus />{authError && <p className="text-red-400 text-xs text-center mt-2 font-medium">{LABELS['zh'].passwordError}</p>}</div><button type="submit" className="w-full bg-white text-slate-950 hover:bg-blue-50 font-bold py-4 rounded-xl transition-all shadow-lg mt-2">{LABELS['zh'].unlock}</button></form>
           <div className="mt-8 pt-6 border-t border-slate-800 flex justify-center opacity-50"><Logo className="h-6 w-auto brightness-200 grayscale contrast-0" /></div>
         </div>
       </div>
   );
 
-  const themeName = portfolio.theme_config?.theme || 'tech_dark';
+  const themeName = currentPortfolio?.theme_config?.theme || 'tech_dark';
   const styles = THEMES[themeName];
 
   return (
     <div className={`min-h-screen ${styles.bg} ${styles.text} ${styles.font} selection:bg-blue-500/30 selection:text-white`}>
-      <div ref={contentRef} className={`${styles.bg} min-h-screen relative pb-32`}>
+      {/* --- Main Content Capture Area --- */}
+      <div 
+        ref={contentRef} 
+        className={`${styles.bg} min-h-screen relative pb-32 transition-all duration-500 ease-in-out ${isMobileMode ? 'max-w-[390px] mx-auto border-x border-slate-800 shadow-2xl my-8 overflow-hidden rounded-3xl' : 'w-full'}`}
+      >
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
            <div className={`absolute top-0 right-0 w-[800px] h-[800px] ${styles.blobColor1} rounded-full mix-blend-screen filter blur-[120px] opacity-10 translate-x-1/3 -translate-y-1/3`}></div>
            <div className={`absolute bottom-0 left-0 w-[600px] h-[600px] ${styles.blobColor2} rounded-full mix-blend-screen filter blur-[100px] opacity-10 -translate-x-1/3 translate-y-1/3`}></div>
@@ -271,18 +419,18 @@ export const StudentPortfolioPage: React.FC = () => {
 
         {/* --- Hero Section --- */}
         <header className="relative w-full h-[60vh] md:h-[70vh] flex items-end">
-           {portfolio.hero_image_url ? (
+           {currentPortfolio?.hero_image_url ? (
              <div className="absolute inset-0 z-0">
                <div className={`absolute inset-0 bg-gradient-to-t ${themeName === 'tech_dark' ? 'from-slate-950 via-slate-950/50' : 'from-slate-50 via-slate-50/50'} to-transparent z-10`}></div>
-               <img src={portfolio.hero_image_url} className="w-full h-full object-cover" />
+               <img src={currentPortfolio.hero_image_url} className="w-full h-full object-cover" />
              </div>
            ) : null}
            
            <div className="relative z-20 px-6 md:px-12 max-w-6xl mx-auto w-full pb-12">
               <div className="flex flex-col md:flex-row md:items-end gap-8">
                   {/* Avatar */}
-                  <div className={`w-32 h-32 md:w-40 md:h-40 rounded-full ${styles.cardBg} border-4 ${styles.border} flex items-center justify-center text-5xl font-bold shadow-2xl overflow-hidden relative backdrop-blur-md`}>
-                      {portfolio.student_name[0]}
+                  <div className={`w-32 h-32 md:w-40 md:h-40 rounded-full ${styles.cardBg} border-4 ${styles.border} flex items-center justify-center text-5xl font-bold shadow-2xl overflow-hidden relative backdrop-blur-md shrink-0`}>
+                      {currentPortfolio?.student_name[0]}
                   </div>
                   
                   <div className="flex-1 mb-2">
@@ -290,14 +438,14 @@ export const StudentPortfolioPage: React.FC = () => {
                           SparkMinds Portfolio
                       </div>
                       <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight leading-none mb-4 drop-shadow-lg">
-                        {portfolio.student_name}
+                        {currentPortfolio?.student_name}
                       </h1>
                       <p className={`text-xl md:text-2xl font-light opacity-90 ${styles.font} max-w-2xl`}>
-                        {portfolio.student_title || 'Future Innovator & Builder'}
+                        {currentPortfolio?.student_title || 'Future Innovator & Builder'}
                       </p>
-                      {portfolio.summary_bio && (
+                      {currentPortfolio?.summary_bio && (
                          <p className="mt-4 text-sm md:text-base opacity-70 max-w-xl leading-relaxed">
-                            {portfolio.summary_bio}
+                            {currentPortfolio.summary_bio}
                          </p>
                       )}
                   </div>
@@ -307,12 +455,12 @@ export const StudentPortfolioPage: React.FC = () => {
 
         <main className="px-6 md:px-12 max-w-5xl mx-auto relative z-10 pt-12">
            {/* Skills Matrix */}
-           {portfolio.skills && portfolio.skills.length > 0 && <SkillsMatrix skills={portfolio.skills} styles={styles} />}
+           {currentPortfolio?.skills && currentPortfolio.skills.length > 0 && <SkillsMatrix skills={currentPortfolio.skills} styles={styles} />}
            
            {/* Content Stream */}
-           {portfolio.content_blocks && portfolio.content_blocks.length > 0 ? (
+           {currentPortfolio?.content_blocks && currentPortfolio.content_blocks.length > 0 ? (
              <div className="flex flex-col gap-8">
-                {portfolio.content_blocks.map(block => renderBlock(block, styles))}
+                {currentPortfolio.content_blocks.map(block => renderBlock(block, styles))}
              </div>
            ) : (
              <div className="text-center py-32 opacity-30"><p className="text-xl">Waiting for data signal...</p></div>
@@ -321,25 +469,50 @@ export const StudentPortfolioPage: React.FC = () => {
            {/* Footer */}
            <div className={`mt-32 pt-12 border-t ${styles.border} text-center opacity-60`}>
               <div className="flex justify-center mb-6"><div className={`w-16 h-16 ${styles.cardBg} rounded-2xl flex items-center justify-center`}><Icons.QrCode size={32} /></div></div>
-              <p className="font-bold text-lg mb-1">SparkMinds 创智实验室</p>
-              <p className="text-sm">青少年硬核科技创新教育</p>
+              <p className="font-bold text-lg mb-1">{t.footerTitle}</p>
+              <p className="text-sm">{t.footerSubtitle}</p>
               <p className="text-xs mt-4 font-mono">sparkminds.cn</p>
            </div>
         </main>
       </div>
 
-      <div className="fixed bottom-8 right-8 z-50 flex flex-col gap-4 no-snapshot">
-         <button onClick={handleSnapshot} disabled={isSnapshotting} className={`${styles.button} w-14 h-14 rounded-full shadow-2xl flex items-center justify-center group relative hover:scale-110 transition-transform`} title="Export Image">
-            {isSnapshotting ? <Icons.Loader2 className="animate-spin" /> : <Icons.Share2 />}
-            <span className="absolute right-full mr-4 bg-slate-900 text-white text-xs px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-bold">生成长图</span>
+      {/* --- Floating Action Bar --- */}
+      <div className="fixed bottom-8 right-8 z-50 flex flex-col gap-4 no-snapshot items-end">
+         
+         {/* Language Toggle */}
+         <button 
+            onClick={handleTranslate} 
+            disabled={isTranslating}
+            className={`${styles.button} h-12 px-6 rounded-full shadow-xl flex items-center gap-2 font-bold backdrop-blur-md bg-opacity-90 transition-all hover:scale-105 active:scale-95`}
+         >
+            {isTranslating ? <Icons.Loader2 className="animate-spin w-4 h-4" /> : <Icons.Languages className="w-4 h-4" />}
+            {isTranslating ? t.translating : t.translateBtn}
+         </button>
+
+         {/* Mobile Mode Toggle */}
+         <button 
+            onClick={() => setIsMobileMode(!isMobileMode)} 
+            className={`${isMobileMode ? 'bg-white text-slate-900' : 'bg-slate-800 text-white'} h-12 px-6 rounded-full shadow-xl flex items-center gap-2 font-bold transition-all hover:scale-105 active:scale-95 border border-slate-700`}
+         >
+            {isMobileMode ? <Icons.Monitor className="w-4 h-4" /> : <Icons.Smartphone className="w-4 h-4" />}
+            {isMobileMode ? t.webMode : t.mobileMode}
+         </button>
+
+         {/* Snapshot Button */}
+         <button 
+            onClick={handleSnapshot} 
+            disabled={isSnapshotting} 
+            className={`${styles.button} w-14 h-14 rounded-full shadow-2xl flex items-center justify-center group relative hover:scale-110 transition-transform`} 
+            title={t.saveImage}
+         >
+            {isSnapshotting ? <Icons.Loader2 className="animate-spin" /> : <Icons.Download />}
          </button>
       </div>
 
       {isSnapshotting && (
         <div className="fixed inset-0 bg-black/90 z-[100] flex flex-col items-center justify-center text-white no-snapshot backdrop-blur-md">
           <div className="relative"><div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div><div className="absolute inset-0 flex items-center justify-center"><Icons.Aperture size={24} className="text-blue-500 animate-pulse" /></div></div>
-          <p className="text-xl font-bold mt-8 tracking-widest uppercase">Rendering High-Res Image</p>
-          <p className="text-sm text-slate-400 mt-2">Please wait while we capture your portfolio...</p>
+          <p className="text-xl font-bold mt-8 tracking-widest uppercase">{t.generating}</p>
         </div>
       )}
     </div>

@@ -64,25 +64,33 @@ export interface SocialProject {
 
 // === New Student Portfolio Types ===
 
-export type ContentBlockType = 'header' | 'text' | 'image_grid' | 'video';
+export type ContentBlockType = 'header' | 'text' | 'image_grid' | 'video' | 'skills';
 
 export interface ContentBlock {
   id: string;
   type: ContentBlockType;
   data: {
     title?: string;
-    content?: string; // For text or description
-    urls?: string[]; // For images or single video URL
+    content?: string; 
+    urls?: string[]; 
     date?: string;
-    layout?: 'grid' | 'carousel' | 'single'; // For images
+    layout?: 'grid' | 'carousel' | 'single' | 'bento'; // Added bento
+    tags?: string[]; // For skills
   };
 }
 
+export type PortfolioTheme = 'tech_dark' | 'academic_light' | 'creative_color';
+
 export interface StudentPortfolio {
   id?: number;
-  slug: string; // e.g., 'jaydenyip'
+  slug: string; 
   student_name: string;
-  access_password: string; // Stored simply for this use case
-  content_blocks: ContentBlock[]; // JSONB in DB
+  student_title?: string; // New: e.g. "Future Robotics Engineer"
+  access_password: string; 
+  content_blocks: ContentBlock[]; 
+  theme_config?: {
+    theme: PortfolioTheme;
+    primary_color?: string;
+  };
   created_at?: string;
 }

@@ -340,7 +340,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
       const parsed = JSON.parse(content);
       
       // Update state with AI result
-      setEditingItem(prev => ({
+      setEditingItem((prev: any) => ({
         ...prev,
         student_title: parsed.student_title || prev.student_title,
         summary_bio: parsed.summary_bio || prev.summary_bio,

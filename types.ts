@@ -64,7 +64,13 @@ export interface SocialProject {
 
 // === New Student Portfolio Types ===
 
-export type ContentBlockType = 'header' | 'text' | 'image_grid' | 'video' | 'skills';
+export type ContentBlockType = 'header' | 'text' | 'image_grid' | 'video' | 'skills' | 'project_highlight';
+
+export interface Skill {
+  category: string; // e.g., "Hardware", "Software", "Soft Skills"
+  name: string;     // e.g., "Python", "Soldering"
+  value: number;    // 0-100
+}
 
 export interface ContentBlock {
   id: string;
@@ -74,8 +80,14 @@ export interface ContentBlock {
     content?: string; 
     urls?: string[]; 
     date?: string;
-    layout?: 'grid' | 'carousel' | 'single' | 'bento'; // Added bento
-    tags?: string[]; // For skills
+    layout?: 'grid' | 'carousel' | 'single' | 'bento'; 
+    tags?: string[]; 
+    // STAR Method Fields for Project Highlight
+    star_situation?: string;
+    star_task?: string;
+    star_action?: string;
+    star_result?: string;
+    evidence_urls?: string[]; // For process sketches/failures
   };
 }
 
@@ -85,9 +97,12 @@ export interface StudentPortfolio {
   id?: number;
   slug: string; 
   student_name: string;
-  student_title?: string; // New: e.g. "Future Robotics Engineer"
+  student_title?: string; 
+  summary_bio?: string; // New: Short biography
+  hero_image_url?: string; // New: Custom hero background
   access_password: string; 
   content_blocks: ContentBlock[]; 
+  skills?: Skill[]; // New: Skills Matrix
   theme_config?: {
     theme: PortfolioTheme;
     primary_color?: string;

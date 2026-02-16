@@ -289,21 +289,22 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
         You are a Student Portfolio Architect for SparkMinds.
         Convert the following raw unstructured notes into a structured JSON portfolio.
         
-        CRITICAL INSTRUCTION:
-        All generated content (student_title, summary_bio, descriptions, star_situation, etc.) MUST BE IN SIMPLIFIED CHINESE (简体中文), unless the user explicitly asks for English.
-        The keys of the JSON must remain in English.
-        
+        LANGUAGE RULE: 
+        1. All text values (title, content, summary_bio, star_situation, etc.) MUST BE IN SIMPLIFIED CHINESE (简体中文).
+        2. Do NOT output English content.
+        3. Only the JSON keys (field names) should be in English.
+
         Output JSON Format:
         {
-          "student_title": "string (e.g. 12岁创客)",
+          "student_title": "string (e.g. 12岁创客 - Chinese)",
           "summary_bio": "string (2-3 sentences, in Chinese)",
-          "skills": [ {"category": "Hardware"|"Software"|"Design", "name": "string", "value": number (0-100)} ],
+          "skills": [ {"category": "Hardware"|"Software"|"Design", "name": "string (English/Chinese mixed is ok for skill names)", "value": number (0-100)} ],
           "content_blocks": [
             {
               "id": "random_string",
               "type": "header" | "text" | "project_highlight",
               "data": {
-                "title": "string",
+                "title": "string (Chinese)",
                 "content": "string (for text blocks, in Chinese)",
                 "date": "string (for header)",
                 "star_situation": "string (for project_highlight, in Chinese)",

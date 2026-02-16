@@ -47,7 +47,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
   const [aiConfig, setAiConfig] = useState({
     baseUrl: 'https://api.siliconflow.cn/v1',
     apiKey: '',
-    model: 'deepseek-ai/DeepSeek-V3'
+    model: 'deepseek-ai/DeepSeek-R1'
   });
   const [aiPrompt, setAiPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -286,37 +286,44 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
     setIsGenerating(true);
     try {
       const systemPrompt = `
-        You are a Student Portfolio Architect for SparkMinds.
-        Convert the following raw unstructured notes into a structured JSON portfolio.
-        
-        LANGUAGE RULE: 
-        1. All text values (title, content, summary_bio, star_situation, etc.) MUST BE IN SIMPLIFIED CHINESE (简体中文).
-        2. Do NOT output English content.
-        3. Only the JSON keys (field names) should be in English.
+        你是由 SparkMinds 指定的学生档案架构师 (Student Portfolio Architect)。
+        你的任务是将以下非结构化的原始笔记，整理并转换为一份结构化的 JSON 档案。
 
-        Output JSON Format:
+        【语言规则 - 必须严格遵守】
+        1. 所有**文本字段的值**（如 title, content, summary_bio, star_situation 等）必须严格使用**简体中文**。
+        2. 内容描述部分**严禁**输出英文（除非是无法翻译的专有技术名词）。
+        3. 只有 JSON 的**键名 (Keys)** 必须保持**英文**。
+
+        【输出 JSON 格式规范】
         {
-          "student_title": "string (e.g. 12岁创客 - Chinese)",
-          "summary_bio": "string (2-3 sentences, in Chinese)",
-          "skills": [ {"category": "Hardware"|"Software"|"Design", "name": "string (English/Chinese mixed is ok for skill names)", "value": number (0-100)} ],
+          "student_title": "string (例如：12岁创客 - 必须为中文)",
+          "summary_bio": "string (2-3句话的个人简介，中文)",
+          "skills": [ 
+            {
+              "category": "Hardware" | "Software" | "Design", 
+              "name": "string (技能名称可为中英文混合)", 
+              "value": number (0-100之间的数值)
+            } 
+          ],
           "content_blocks": [
             {
-              "id": "random_string",
+              "id": "随机生成的字符串",
               "type": "header" | "text" | "project_highlight",
               "data": {
-                "title": "string (Chinese)",
-                "content": "string (for text blocks, in Chinese)",
-                "date": "string (for header)",
-                "star_situation": "string (for project_highlight, in Chinese)",
-                "star_task": "string (in Chinese)",
-                "star_action": "string (in Chinese)",
-                "star_result": "string (in Chinese)"
+                "title": "string (中文标题)",
+                "content": "string (针对 text 类型的内容，中文)",
+                "date": "string (针对 header 类型)",
+                "star_situation": "string (针对 project_highlight 类型 - 情境，中文)",
+                "star_task": "string (针对 project_highlight 类型 - 任务，中文)",
+                "star_action": "string (针对 project_highlight 类型 - 行动，中文)",
+                "star_result": "string (针对 project_highlight 类型 - 结果，中文)"
               }
             }
           ]
         }
-        
-        IMPORTANT: Return ONLY the raw JSON. Do not use Markdown code blocks.
+
+        【重要提示】
+        请直接返回原始的 JSON 数据。严禁使用 Markdown 代码块格式（即不要包含 \`\`\`json ... \`\`\` 标记）。
       `;
 
       const response = await fetch(`${aiConfig.baseUrl}/chat/completions`, {

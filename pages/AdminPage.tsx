@@ -172,6 +172,23 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
     setEditingItem({ ...editingItem, content_blocks: blocks });
   };
 
+  const addSkill = () => {
+    const newSkill: Skill = { category: 'Software', name: 'New Skill', value: 50 };
+    setEditingItem({ ...editingItem, skills: [...(editingItem.skills || []), newSkill] });
+  };
+
+  const updateSkill = (index: number, field: keyof Skill, value: any) => {
+    const newSkills = [...(editingItem.skills || [])];
+    newSkills[index] = { ...newSkills[index], [field]: value };
+    setEditingItem({ ...editingItem, skills: newSkills });
+  };
+
+  const removeSkill = (index: number) => {
+    const newSkills = [...(editingItem.skills || [])];
+    newSkills.splice(index, 1);
+    setEditingItem({ ...editingItem, skills: newSkills });
+  };
+
   // --- CRUD ---
   const handleCreateNew = () => {
     setIsNewRecord(true);
@@ -264,18 +281,83 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
 
   // --- AI Gen ---
   const handleAIGenerate = async () => {
-    if (!aiConfig.apiKey || !aiPrompt.trim()) return alert("请配置API Key并输入提示词");
+    if (!aiConfig.apiKey || !aiPrompt.trim()) return alert("请在系统设置中配置 API Key 并输入提示词");
+    
     setIsGenerating(true);
     try {
+      const systemPrompt = `
+        You are a Student Portfolio Architect for SparkMinds.
+        Convert the following raw unstructured notes into a structured JSON portfolio.
+        
+        Output JSON Format:
+        {
+          "student_title": "string (e.g. 12yo Maker)",
+          "summary_bio": "string (2-3 sentences)",
+          "skills": [ {"category": "Hardware"|"Software"|"Design", "name": "string", "value": number (0-100)} ],
+          "content_blocks": [
+            {
+              "id": "random_string",
+              "type": "header" | "text" | "project_highlight",
+              "data": {
+                "title": "string",
+                "content": "string (for text blocks)",
+                "date": "string (for header)",
+                "star_situation": "string (for project_highlight)",
+                "star_task": "string",
+                "star_action": "string",
+                "star_result": "string"
+              }
+            }
+          ]
+        }
+        
+        IMPORTANT: Return ONLY the raw JSON. Do not use Markdown code blocks.
+      `;
+
       const response = await fetch(`${aiConfig.baseUrl}/chat/completions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${aiConfig.apiKey}` },
-        body: JSON.stringify({ model: aiConfig.model, messages: [{ role: "system", content: "You are a JSON generator." }, { role: "user", content: `Generate Student Portfolio JSON from: ${aiPrompt}` }], temperature: 0.7 })
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${aiConfig.apiKey}`
+        },
+        body: JSON.stringify({
+          model: aiConfig.model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: aiPrompt }
+          ],
+          temperature: 0.7
+        })
       });
+
       const data = await response.json();
-      // ... Parsing logic ...
-      alert("AI功能暂未完全接入解析逻辑，仅作演示");
-    } catch (e: any) { alert("AI Error: " + e.message); } finally { setIsGenerating(false); }
+      if (data.error) throw new Error(data.error.message);
+
+      let content = data.choices[0].message.content;
+      // Cleanup markdown if present
+      content = content.replace(/```json/g, '').replace(/```/g, '').trim();
+      
+      const parsed = JSON.parse(content);
+      
+      // Update state with AI result
+      setEditingItem(prev => ({
+        ...prev,
+        student_title: parsed.student_title || prev.student_title,
+        summary_bio: parsed.summary_bio || prev.summary_bio,
+        skills: parsed.skills || prev.skills || [],
+        content_blocks: [...(prev.content_blocks || []), ...(parsed.content_blocks || [])]
+      }));
+      
+      setAiPrompt('');
+      alert("AI 生成成功！请检查并保存。");
+      setStudentEditorTab('content'); // Switch to content tab to show result
+
+    } catch (e: any) {
+      console.error(e);
+      alert("AI 生成失败: " + e.message);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   // --- Header Title Logic ---
@@ -387,8 +469,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                    <div className="max-w-2xl bg-white p-8">
                       <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><Icons.Sparkles className="text-blue-500" /> AI 助手配置</h3>
                       <div className="space-y-4">
-                         <input type="text" value={aiConfig.baseUrl} onChange={e => setAiConfig({...aiConfig, baseUrl: e.target.value})} className="w-full px-3 py-2 border rounded-lg" placeholder="Base URL" />
-                         <input type="password" value={aiConfig.apiKey} onChange={e => setAiConfig({...aiConfig, apiKey: e.target.value})} className="w-full px-3 py-2 border rounded-lg" placeholder="API Key" />
+                         <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-1">Base URL</label>
+                            <input type="text" value={aiConfig.baseUrl} onChange={e => setAiConfig({...aiConfig, baseUrl: e.target.value})} className="w-full px-3 py-2 border rounded-lg" placeholder="https://api.siliconflow.cn/v1" />
+                         </div>
+                         <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-1">API Key</label>
+                            <input type="password" value={aiConfig.apiKey} onChange={e => setAiConfig({...aiConfig, apiKey: e.target.value})} className="w-full px-3 py-2 border rounded-lg" placeholder="sk-..." />
+                         </div>
+                         <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-1">Model Name</label>
+                            <input type="text" value={aiConfig.model} onChange={e => setAiConfig({...aiConfig, model: e.target.value})} className="w-full px-3 py-2 border rounded-lg" placeholder="deepseek-ai/DeepSeek-V3" />
+                         </div>
                          <button onClick={handleSaveSettings} className="bg-slate-900 text-white px-6 py-2 rounded-lg font-bold hover:bg-slate-700">保存配置</button>
                       </div>
                    </div>
@@ -475,21 +567,84 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                             <input type="file" onChange={e => handleImageUpload(e, 'hero')} />
                          </div>
                       )}
-                      {/* ... Other tabs ... */}
+                      
+                      {studentEditorTab === 'skills' && (
+                         <div>
+                            <button onClick={addSkill} className="text-xs bg-slate-900 text-white px-3 py-1 rounded mb-4">+ 添加技能</button>
+                            <div className="space-y-2">
+                               {(editingItem.skills || []).map((skill: Skill, idx: number) => (
+                                  <div key={idx} className="flex gap-2">
+                                     <input className="border p-1 rounded text-sm w-24" placeholder="分类" value={skill.category} onChange={e => updateSkill(idx, 'category', e.target.value)} />
+                                     <input className="border p-1 rounded text-sm flex-1" placeholder="技能名" value={skill.name} onChange={e => updateSkill(idx, 'name', e.target.value)} />
+                                     <input className="border p-1 rounded text-sm w-16" type="number" placeholder="%" value={skill.value} onChange={e => updateSkill(idx, 'value', parseInt(e.target.value))} />
+                                     <button onClick={() => removeSkill(idx)} className="text-red-500"><Icons.X size={16} /></button>
+                                  </div>
+                               ))}
+                            </div>
+                         </div>
+                      )}
+
                       {studentEditorTab === 'content' && (
                          <div className="space-y-2">
-                            <div className="flex gap-2">
-                               <button onClick={() => addContentBlock('header')} className="text-xs bg-slate-100 p-2 rounded">+ Header</button>
-                               <button onClick={() => addContentBlock('text')} className="text-xs bg-slate-100 p-2 rounded">+ Text</button>
-                               <button onClick={() => addContentBlock('image_grid')} className="text-xs bg-slate-100 p-2 rounded">+ Images</button>
+                            <div className="flex gap-2 sticky top-0 bg-white p-2 z-10 border-b">
+                               <button onClick={() => addContentBlock('header')} className="text-xs bg-slate-100 p-2 rounded border">+ 节点</button>
+                               <button onClick={() => addContentBlock('project_highlight')} className="text-xs bg-blue-100 text-blue-700 p-2 rounded border border-blue-200 font-bold">+ STAR项目</button>
+                               <button onClick={() => addContentBlock('text')} className="text-xs bg-slate-100 p-2 rounded border">+ 文本</button>
+                               <button onClick={() => addContentBlock('image_grid')} className="text-xs bg-slate-100 p-2 rounded border">+ 图集</button>
                             </div>
                             {editingItem.content_blocks?.map((b: any, i: number) => (
-                               <div key={b.id} className="border p-2 rounded flex gap-2">
-                                  <span className="text-xs font-bold w-12">{b.type}</span>
-                                  <input className="border p-1 text-xs flex-1" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="Title" />
-                                  <button onClick={() => removeContentBlock(b.id)} className="text-red-500 text-xs">Del</button>
+                               <div key={b.id} className="border p-4 rounded bg-slate-50 relative group">
+                                  <div className="absolute right-2 top-2 flex gap-1 opacity-50 group-hover:opacity-100">
+                                     <button onClick={() => moveContentBlock(i, 'up')}><Icons.ArrowUp size={14}/></button>
+                                     <button onClick={() => moveContentBlock(i, 'down')}><Icons.ArrowDown size={14}/></button>
+                                     <button onClick={() => removeContentBlock(b.id)} className="text-red-500"><Icons.Trash2 size={14}/></button>
+                                  </div>
+                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">{b.type}</span>
+                                  
+                                  {b.type === 'project_highlight' ? (
+                                     <div className="space-y-2">
+                                        <input className="w-full border p-2 rounded font-bold" placeholder="项目名称" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} />
+                                        <textarea className="w-full border p-2 rounded text-sm h-16" placeholder="Situation (背景)" value={b.data.star_situation || ''} onChange={e => updateContentBlock(b.id, 'star_situation', e.target.value)} />
+                                        <textarea className="w-full border p-2 rounded text-sm h-16" placeholder="Task (任务)" value={b.data.star_task || ''} onChange={e => updateContentBlock(b.id, 'star_task', e.target.value)} />
+                                        <textarea className="w-full border p-2 rounded text-sm h-24" placeholder="Action (行动)" value={b.data.star_action || ''} onChange={e => updateContentBlock(b.id, 'star_action', e.target.value)} />
+                                        <textarea className="w-full border p-2 rounded text-sm h-16" placeholder="Result (结果)" value={b.data.star_result || ''} onChange={e => updateContentBlock(b.id, 'star_result', e.target.value)} />
+                                     </div>
+                                  ) : (
+                                     <div className="space-y-2">
+                                        {b.type !== 'text' && <input className="w-full border p-2 rounded" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="标题" />}
+                                        <textarea className="w-full border p-2 rounded h-20" value={b.data.content || ''} onChange={e => updateContentBlock(b.id, 'content', e.target.value)} placeholder="内容..." />
+                                     </div>
+                                  )}
                                </div>
                             ))}
+                         </div>
+                      )}
+
+                      {/* 4. AI Tab (Restored) */}
+                      {studentEditorTab === 'ai' && (
+                         <div className="space-y-4">
+                            <div className="bg-blue-50 p-4 rounded-lg text-sm text-blue-700 mb-4 flex gap-3">
+                               <Icons.Sparkles className="shrink-0" />
+                               <div>
+                                  <p className="font-bold">AI 智能策展人</p>
+                                  <p className="opacity-80">将杂乱的笔记、文档或简历粘贴在下方，AI 将自动提取技能点、构建时间轴，并按 STAR 法则梳理项目经历。</p>
+                                  <p className="mt-1 text-xs opacity-60">当前模型: {aiConfig.model}</p>
+                               </div>
+                            </div>
+                            <textarea 
+                               className="w-full h-64 p-4 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-700" 
+                               placeholder="在此粘贴原始资料 (例如: Jayden, 12岁, 擅长Python... 2023年做了一个智能垃圾桶项目...)" 
+                               value={aiPrompt} 
+                               onChange={e => setAiPrompt(e.target.value)} 
+                            />
+                            <button 
+                               onClick={handleAIGenerate} 
+                               disabled={isGenerating} 
+                               className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-slate-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                               {isGenerating ? <Icons.Loader2 className="animate-spin" /> : <Icons.Wand2 />}
+                               {isGenerating ? '正在分析并生成...' : '一键生成档案结构'}
+                            </button>
                          </div>
                       )}
                    </div>

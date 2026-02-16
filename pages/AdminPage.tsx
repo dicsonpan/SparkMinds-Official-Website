@@ -197,7 +197,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
     else if (activeTab === 'showcase') template = { title: '', category: '商业级产品', description: '', image_urls: [], sort_order: 99 };
     else if (activeTab === 'social') template = { title: '商业化案例', subtitle: '', quote: '', footer_note: '', image_urls: [], sort_order: 99 };
     else if (activeTab === 'philosophy') template = { title: '', content: '', icon_name: 'Star', sort_order: 99 };
-    else if (activeTab === 'students') template = { slug: '', student_name: '', student_title: '', summary_bio: '', access_password: '', content_blocks: [], skills: [], theme_config: { theme: 'tech_dark' } };
+    else if (activeTab === 'students') template = { slug: '', student_name: '', student_title: '', summary_bio: '', access_password: '', content_blocks: [], skills: [], theme_config: { theme: 'tech_dark' }, avatar_url: '' };
     
     setEditingItem(template);
     setStudentEditorTab('profile'); 
@@ -264,6 +264,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
 
       if (activeTab === 'students') {
          if (targetType === 'hero') setEditingItem({ ...editingItem, hero_image_url: publicUrl });
+         else if (targetType === 'avatar') setEditingItem({ ...editingItem, avatar_url: publicUrl });
          else if (blockId) {
             const field = targetType === 'evidence' ? 'evidence_urls' : 'urls';
             const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => b.id === blockId ? { ...b, data: { ...b.data, [field]: [...(b.data[field] || []), publicUrl] } } : b);
@@ -456,7 +457,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                              </div>
                              <div className="flex items-center gap-4 mb-4">
                                 <div className="w-16 h-16 rounded-full bg-slate-100 overflow-hidden border-2 border-slate-50 shadow-sm flex-shrink-0">
-                                   {s.hero_image_url ? <img src={s.hero_image_url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-300 font-bold text-2xl">{s.student_name[0]}</div>}
+                                   {s.avatar_url ? <img src={s.avatar_url} className="w-full h-full object-cover" /> : 
+                                    s.hero_image_url ? <img src={s.hero_image_url} className="w-full h-full object-cover" /> : 
+                                    <div className="w-full h-full flex items-center justify-center text-slate-300 font-bold text-2xl">{s.student_name[0]}</div>}
                                 </div>
                                 <div>
                                    <h3 className="font-bold text-lg text-slate-900">{s.student_name}</h3>
@@ -565,11 +568,35 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                          ))}
                       </div>
                       {studentEditorTab === 'profile' && (
-                         <div className="grid grid-cols-2 gap-4">
-                            <input className="border p-2 rounded" placeholder="姓名" value={editingItem.student_name} onChange={e => setEditingItem({...editingItem, student_name: e.target.value})} />
-                            <input className="border p-2 rounded" placeholder="Slug" value={editingItem.slug} onChange={e => setEditingItem({...editingItem, slug: e.target.value})} />
-                            <input className="border p-2 rounded" placeholder="密码" value={editingItem.access_password} onChange={e => setEditingItem({...editingItem, access_password: e.target.value})} />
-                            <input type="file" onChange={e => handleImageUpload(e, 'hero')} />
+                         <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                               <input className="border p-2 rounded" placeholder="姓名" value={editingItem.student_name} onChange={e => setEditingItem({...editingItem, student_name: e.target.value})} />
+                               <input className="border p-2 rounded" placeholder="Slug (URL后缀)" value={editingItem.slug} onChange={e => setEditingItem({...editingItem, slug: e.target.value})} />
+                               <input className="border p-2 rounded" placeholder="访问密码" value={editingItem.access_password} onChange={e => setEditingItem({...editingItem, access_password: e.target.value})} />
+                               <input className="border p-2 rounded" placeholder="头衔/Slogan" value={editingItem.student_title || ''} onChange={e => setEditingItem({...editingItem, student_title: e.target.value})} />
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 mb-2 uppercase">Hero 背景大图 (建议横屏 16:9)</label>
+                                    <div className="flex items-center gap-2">
+                                        <input type="file" onChange={e => handleImageUpload(e, 'hero')} className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                                        {editingItem.hero_image_url && <div className="w-10 h-10 rounded overflow-hidden bg-slate-200"><img src={editingItem.hero_image_url} className="w-full h-full object-cover"/></div>}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 mb-2 uppercase">学生头像 (建议正方形 1:1)</label>
+                                    <div className="flex items-center gap-2">
+                                        <input type="file" onChange={e => handleImageUpload(e, 'avatar')} className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                                        {editingItem.avatar_url && <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200"><img src={editingItem.avatar_url} className="w-full h-full object-cover"/></div>}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">个人简介 (Summary Bio)</label>
+                                <textarea className="w-full border p-2 rounded h-20 text-sm" value={editingItem.summary_bio || ''} onChange={e => setEditingItem({...editingItem, summary_bio: e.target.value})} placeholder="一句话介绍..." />
+                            </div>
                          </div>
                       )}
                       

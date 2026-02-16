@@ -422,8 +422,11 @@ export const StudentPortfolioPage: React.FC = () => {
         <header className="relative w-full h-[60vh] md:h-[70vh] flex items-end">
            {currentPortfolio?.hero_image_url ? (
              <div className="absolute inset-0 z-0">
+               <div 
+                 className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+                 style={{ backgroundImage: `url(${currentPortfolio.hero_image_url})` }}
+               />
                <div className={`absolute inset-0 bg-gradient-to-t ${themeName === 'tech_dark' ? 'from-slate-950 via-slate-950/50' : 'from-slate-50 via-slate-50/50'} to-transparent z-10`}></div>
-               <img src={currentPortfolio.hero_image_url} className="w-full h-full object-cover" />
              </div>
            ) : null}
            
@@ -431,7 +434,11 @@ export const StudentPortfolioPage: React.FC = () => {
               <div className="flex flex-col md:flex-row md:items-end gap-8">
                   {/* Avatar */}
                   <div className={`w-32 h-32 md:w-40 md:h-40 rounded-full ${styles.cardBg} border-4 ${styles.border} flex items-center justify-center text-5xl font-bold shadow-2xl overflow-hidden relative backdrop-blur-md shrink-0`}>
-                      {currentPortfolio?.student_name[0]}
+                      {currentPortfolio?.avatar_url ? (
+                        <img src={currentPortfolio.avatar_url} className="w-full h-full object-cover" />
+                      ) : (
+                        currentPortfolio?.student_name[0]
+                      )}
                   </div>
                   
                   <div className="flex-1 mb-2">

@@ -100,6 +100,7 @@ export interface StudentPortfolio {
   student_title?: string; 
   summary_bio?: string; // New: Short biography
   hero_image_url?: string; // New: Custom hero background
+  avatar_url?: string; // New: Custom avatar image
   access_password: string; 
   content_blocks: ContentBlock[]; 
   skills?: Skill[]; // New: Skills Matrix

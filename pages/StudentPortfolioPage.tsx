@@ -448,6 +448,14 @@ export const StudentPortfolioPage: React.FC = () => {
              {block.data.content && <p className={`text-center text-sm mt-4 opacity-60 italic ${styles.text}`}>{block.data.content}</p>}
           </div>
         );
+      case 'section_heading':
+         return (
+           <div key={block.id} className="flex items-center gap-4 mb-12 mt-16 animate-fade-in-up">
+             <div className="h-px flex-1 bg-gradient-to-r from-transparent to-blue-500/50"></div>
+             <h3 className={`text-2xl font-bold uppercase tracking-widest ${styles.text}`}>{block.data.title}</h3>
+             <div className="h-px flex-1 bg-gradient-to-l from-transparent to-blue-500/50"></div>
+           </div>
+         );
       case 'video':
          const videoUrl = block.data.urls?.[0];
          if (!videoUrl) return null;

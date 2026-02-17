@@ -463,7 +463,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                       )}
                       {studentEditorTab === 'content' && (
                          <div className="space-y-2">
-                            <div className="flex gap-2 sticky top-0 bg-white p-2 z-10 border-b"><button onClick={() => addContentBlock('timeline_node')} className="text-xs bg-blue-100 text-blue-700 p-2 rounded border border-blue-200 font-bold">+ 时间节点</button><button onClick={() => addContentBlock('project_highlight')} className="text-xs bg-blue-100 text-blue-700 p-2 rounded border border-blue-200 font-bold">+ STAR项目</button><button onClick={() => addContentBlock('text')} className="text-xs bg-slate-100 p-2 rounded border">+ 文本</button><button onClick={() => addContentBlock('image_grid')} className="text-xs bg-slate-100 p-2 rounded border">+ 图集</button></div>
+                            <div className="flex gap-2 sticky top-0 bg-white p-2 z-10 border-b">
+                                <button onClick={() => addContentBlock('timeline_node')} className="text-xs bg-blue-100 text-blue-700 p-2 rounded border border-blue-200 font-bold">+ 时间节点</button>
+                                <button onClick={() => addContentBlock('project_highlight')} className="text-xs bg-blue-100 text-blue-700 p-2 rounded border border-blue-200 font-bold">+ STAR项目</button>
+                                <button onClick={() => addContentBlock('section_heading')} className="text-xs bg-blue-100 text-blue-700 p-2 rounded border border-blue-200 font-bold">+ 章节标题</button>
+                                <button onClick={() => addContentBlock('image_grid')} className="text-xs bg-slate-100 p-2 rounded border">+ 图集</button>
+                            </div>
                             {editingItem.content_blocks?.map((b: any, i: number) => (
                                <div key={b.id} className="border p-4 rounded bg-slate-50 relative group">
                                   <div className="absolute right-2 top-2 flex gap-1 opacity-50 group-hover:opacity-100"><button onClick={() => moveContentBlock(i, 'up')}><Icons.ArrowUp size={14}/></button><button onClick={() => moveContentBlock(i, 'down')}><Icons.ArrowDown size={14}/></button><button onClick={() => removeContentBlock(b.id)} className="text-red-500"><Icons.Trash2 size={14}/></button></div>
@@ -496,6 +501,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                                 </button>
                                             </div>
                                         </div>
+                                     </div>
+                                  ) : b.type === 'section_heading' ? (
+                                     <div className="space-y-2 text-center py-4">
+                                        <label className="block text-xs font-bold text-blue-500 uppercase tracking-widest mb-2">章节大标题</label>
+                                        <input className="w-full border-b-2 border-blue-100 p-2 text-center text-xl font-bold focus:border-blue-500 outline-none bg-transparent" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="输入标题 (例如: 个人荣誉)" />
                                      </div>
                                   ) : (
                                      <div className="space-y-2">{b.type !== 'text' && <input className="w-full border p-2 rounded" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="标题" />}<textarea className="w-full border p-2 rounded h-24" value={b.data.content || ''} onChange={e => updateContentBlock(b.id, 'content', e.target.value)} placeholder="内容..." /></div>

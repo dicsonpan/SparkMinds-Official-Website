@@ -108,9 +108,6 @@ export const StudentPortfolioPage: React.FC = () => {
   const [isMobileMode, setIsMobileMode] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   
-  // Media Lightbox State
-  const [lightboxData, setLightboxData] = useState<{urls: string[], index: number} | null>(null);
-  
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -256,7 +253,6 @@ export const StudentPortfolioPage: React.FC = () => {
   const SkillsMatrix = ({ skills, styles }: { skills: Skill[], styles: any }) => {
      if (!skills || skills.length === 0) return null;
      
-     // Group skills by category
      const groupedSkills = skills.reduce((acc, skill) => {
        const category = skill.category || 'General';
        if (!acc[category]) acc[category] = [];
@@ -290,7 +286,6 @@ export const StudentPortfolioPage: React.FC = () => {
                            <div className={`w-full h-2 rounded-full ${styles.cardBg} overflow-hidden bg-opacity-30`}>
                               <div 
                                 className="h-full bg-gradient-to-r from-blue-600 to-purple-500 rounded-full transition-all duration-1000 ease-out"
-                                // If unit is %, use value directly. Otherwise, just show full bar or clamp if sensible
                                 style={{ width: skill.unit === '%' ? `${Math.min(skill.value, 100)}%` : '100%' }}
                               ></div>
                            </div>
@@ -306,46 +301,71 @@ export const StudentPortfolioPage: React.FC = () => {
 
   const TimelineNode = ({ block, styles }: { block: ContentBlock, styles: any }) => {
     const { date, title, content, urls } = block.data;
+    const [activeVideos, setActiveVideos] = useState<Record<number, boolean>>({});
+
+    const toggleVideo = (index: number) => {
+        setActiveVideos(prev => ({...prev, [index]: !prev[index]}));
+    };
     
     return (
       <div className="relative pl-8 md:pl-12 pb-16 last:pb-0 animate-fade-in-up group">
-         {/* Timeline Line */}
          <div className="absolute left-0 top-2 bottom-0 w-px bg-slate-800 group-last:bottom-auto group-last:h-full"></div>
-         {/* Timeline Dot */}
          <div className="absolute left-[-4px] top-2 w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)] z-10"></div>
          
          <div className="flex flex-col md:flex-row md:items-start gap-4 md:gap-8">
-            {/* Date - Desktop: Left, Mobile: Top */}
             <div className="md:w-32 flex-shrink-0">
                <span className={`inline-block py-1 px-3 rounded-full text-sm font-bold font-mono tracking-wider ${styles.accent} bg-blue-500/10 border border-blue-500/20`}>
                   {date}
                </span>
             </div>
 
-            {/* Content Card */}
             <div className={`flex-1 ${styles.cardBg} border ${styles.border} rounded-2xl p-6 hover:border-blue-500/30 transition-colors`}>
                {title && <h3 className={`text-xl font-bold mb-3 ${styles.text}`}>{title}</h3>}
                {content && <div className={`prose prose-sm ${styles.text === 'text-slate-200' ? 'prose-invert' : ''} max-w-none opacity-80 whitespace-pre-wrap mb-4`}>{content}</div>}
                
-               {/* Evidence Media Grid */}
+               {/* Media Grid: Direct Display */}
                {urls && urls.length > 0 && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4">
-                     {urls.map((url, i) => (
-                        <div 
-                            key={i} 
-                            onClick={() => setLightboxData({ urls: urls, index: i })}
-                            className="relative aspect-video rounded-lg overflow-hidden border border-slate-700/50 group/media cursor-pointer hover:border-blue-500/50 transition-colors"
-                        >
-                           {url.trim().startsWith('<iframe') || url.startsWith('http') ? (
-                              <div className="w-full h-full bg-black flex items-center justify-center relative">
-                                 <Icons.PlayCircle className="text-white opacity-70 group-hover/media:scale-110 transition-transform duration-300 w-10 h-10" />
-                                 <div className="absolute bottom-2 right-2 text-[10px] text-white/50 bg-black/50 px-1 rounded">VIDEO</div>
-                              </div>
-                           ) : (
-                              <img src={url} className="w-full h-full object-cover group-hover/media:scale-110 transition-transform duration-500" />
-                           )}
-                        </div>
-                     ))}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                     {urls.map((url, i) => {
+                        // Heuristic: If it contains HTML tag (iframe) or looks like a video link, treat as video. 
+                        // Note: Our Admin upload ensures photos are proper Supabase URLs (http...)
+                        // We check for '<' for iframe.
+                        const isIframe = url.trim().startsWith('<');
+                        
+                        if (isIframe) {
+                            return (
+                                <div key={i} className="relative aspect-video rounded-lg overflow-hidden bg-black shadow-sm">
+                                    {activeVideos[i] ? (
+                                        <div className="w-full h-full [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0 animate-fade-in" dangerouslySetInnerHTML={{__html: url}} />
+                                    ) : (
+                                        <div 
+                                            onClick={() => toggleVideo(i)}
+                                            className="w-full h-full flex items-center justify-center cursor-pointer group/video"
+                                        >
+                                            <div className="absolute inset-0 bg-slate-900 flex items-center justify-center">
+                                                <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-sm group-hover/video:bg-white/20 transition-all group-hover/video:scale-110 border border-white/10">
+                                                    <Icons.Play className="text-white fill-current translate-x-0.5" size={24} />
+                                                </div>
+                                                <span className="absolute bottom-3 right-3 text-[10px] font-bold text-white/50 tracking-widest bg-black/50 px-2 py-1 rounded">VIDEO</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        }
+
+                        // Image: Direct Display (No Lightbox)
+                        return (
+                            <div key={i} className="relative aspect-video rounded-lg overflow-hidden border border-slate-700/50 shadow-sm bg-slate-900/50">
+                                <img 
+                                    src={url} 
+                                    alt="Evidence" 
+                                    loading="lazy"
+                                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" 
+                                />
+                            </div>
+                        );
+                     })}
                   </div>
                )}
             </div>
@@ -446,6 +466,7 @@ export const StudentPortfolioPage: React.FC = () => {
     }
   };
 
+  // ... (Rest of the component remains the same: loading, error, auth, footer render)
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-950"><Icons.Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
   if (error || !originalPortfolio) return <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4"><div className="text-slate-300 mb-4"><Icons.FileQuestion size={64} /></div><h1 className="text-2xl font-bold text-slate-800 mb-2">无法访问档案</h1><p className="text-slate-500">{error}</p><a href="/" className="mt-8 text-blue-600 hover:underline">返回首页</a></div>;
   if (!isAuthenticated) return (
@@ -466,64 +487,36 @@ export const StudentPortfolioPage: React.FC = () => {
 
   return (
     <div className={`min-h-screen ${styles.bg} ${styles.text} ${styles.font} selection:bg-blue-500/30 selection:text-white`}>
-      {/* --- Main Content Capture Area --- */}
-      <div 
-        ref={contentRef} 
-        className={`${styles.bg} min-h-screen relative pb-32 transition-all duration-500 ease-in-out ${isMobileMode ? 'max-w-[390px] mx-auto border-x border-slate-800 shadow-2xl my-8 overflow-hidden rounded-3xl' : 'w-full'}`}
-      >
+      <div ref={contentRef} className={`${styles.bg} min-h-screen relative pb-32 transition-all duration-500 ease-in-out ${isMobileMode ? 'max-w-[390px] mx-auto border-x border-slate-800 shadow-2xl my-8 overflow-hidden rounded-3xl' : 'w-full'}`}>
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
            <div className={`absolute top-0 right-0 w-[800px] h-[800px] ${styles.blobColor1} rounded-full mix-blend-screen filter blur-[120px] opacity-10 translate-x-1/3 -translate-y-1/3`}></div>
            <div className={`absolute bottom-0 left-0 w-[600px] h-[600px] ${styles.blobColor2} rounded-full mix-blend-screen filter blur-[100px] opacity-10 -translate-x-1/3 translate-y-1/3`}></div>
         </div>
 
-        {/* --- Hero Section --- */}
         <header className="relative w-full h-[60vh] md:h-[70vh] flex items-end">
            {currentPortfolio?.hero_image_url ? (
              <div className="absolute inset-0 z-0">
-               <div 
-                 className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-                 style={{ backgroundImage: `url(${currentPortfolio.hero_image_url})` }}
-               />
+               <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url(${currentPortfolio.hero_image_url})` }} />
                <div className={`absolute inset-0 bg-gradient-to-t ${themeName === 'tech_dark' ? 'from-slate-950 via-slate-950/50' : 'from-slate-50 via-slate-50/50'} to-transparent z-10`}></div>
              </div>
            ) : null}
-           
            <div className="relative z-20 px-6 md:px-12 max-w-6xl mx-auto w-full pb-12">
               <div className="flex flex-col md:flex-row md:items-end gap-8">
-                  {/* Avatar */}
                   <div className={`w-32 h-32 md:w-40 md:h-40 rounded-full ${styles.cardBg} border-4 ${styles.border} flex items-center justify-center text-5xl font-bold shadow-2xl overflow-hidden relative backdrop-blur-md shrink-0`}>
-                      {currentPortfolio?.avatar_url ? (
-                        <img src={currentPortfolio.avatar_url} className="w-full h-full object-cover" />
-                      ) : (
-                        currentPortfolio?.student_name[0]
-                      )}
+                      {currentPortfolio?.avatar_url ? <img src={currentPortfolio.avatar_url} className="w-full h-full object-cover" /> : currentPortfolio?.student_name[0]}
                   </div>
-                  
                   <div className="flex-1 mb-2">
-                      <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-4 ${styles.cardBg} ${styles.accent} border ${styles.border}`}>
-                          SparkMinds Portfolio
-                      </div>
-                      <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight leading-none mb-4 drop-shadow-lg">
-                        {currentPortfolio?.student_name}
-                      </h1>
-                      <p className={`text-xl md:text-2xl font-light opacity-90 ${styles.font} max-w-2xl`}>
-                        {currentPortfolio?.student_title || 'Future Innovator & Builder'}
-                      </p>
-                      {currentPortfolio?.summary_bio && (
-                         <p className="mt-4 text-sm md:text-base opacity-70 max-w-xl leading-relaxed">
-                            {currentPortfolio.summary_bio}
-                         </p>
-                      )}
+                      <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-4 ${styles.cardBg} ${styles.accent} border ${styles.border}`}>SparkMinds Portfolio</div>
+                      <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight leading-none mb-4 drop-shadow-lg">{currentPortfolio?.student_name}</h1>
+                      <p className={`text-xl md:text-2xl font-light opacity-90 ${styles.font} max-w-2xl`}>{currentPortfolio?.student_title || 'Future Innovator & Builder'}</p>
+                      {currentPortfolio?.summary_bio && <p className="mt-4 text-sm md:text-base opacity-70 max-w-xl leading-relaxed">{currentPortfolio.summary_bio}</p>}
                   </div>
               </div>
            </div>
         </header>
 
         <main className="px-6 md:px-12 max-w-5xl mx-auto relative z-10 pt-12">
-           {/* Skills Matrix */}
            {currentPortfolio?.skills && currentPortfolio.skills.length > 0 && <SkillsMatrix skills={currentPortfolio.skills} styles={styles} />}
-           
-           {/* Content Stream */}
            {currentPortfolio?.content_blocks && currentPortfolio.content_blocks.length > 0 ? (
              <div className="flex flex-col gap-0">
                 {currentPortfolio.content_blocks.map(block => renderBlock(block, styles))}
@@ -531,8 +524,6 @@ export const StudentPortfolioPage: React.FC = () => {
            ) : (
              <div className="text-center py-32 opacity-30"><p className="text-xl">Waiting for data signal...</p></div>
            )}
-
-           {/* Footer */}
            <div className={`mt-32 pt-12 border-t ${styles.border} text-center opacity-60`}>
               <div className="flex justify-center mb-6"><div className={`w-16 h-16 ${styles.cardBg} rounded-2xl flex items-center justify-center`}><Icons.QrCode size={32} /></div></div>
               <p className="font-bold text-lg mb-1">{t.footerTitle}</p>
@@ -542,61 +533,11 @@ export const StudentPortfolioPage: React.FC = () => {
         </main>
       </div>
 
-      {/* --- Floating Action Bar --- */}
       <div className="fixed bottom-8 right-8 z-50 flex flex-col gap-4 no-snapshot items-end">
-         
-         {/* Language Toggle */}
-         <button 
-            onClick={handleTranslate} 
-            disabled={isTranslating}
-            className={`${styles.button} h-12 px-6 rounded-full shadow-xl flex items-center gap-2 font-bold backdrop-blur-md bg-opacity-90 transition-all hover:scale-105 active:scale-95`}
-         >
-            {isTranslating ? <Icons.Loader2 className="animate-spin w-4 h-4" /> : <Icons.Languages className="w-4 h-4" />}
-            {isTranslating ? t.translating : t.translateBtn}
-         </button>
-
-         {/* Mobile Mode Toggle */}
-         <button 
-            onClick={() => setIsMobileMode(!isMobileMode)} 
-            className={`${isMobileMode ? 'bg-white text-slate-900' : 'bg-slate-800 text-white'} h-12 px-6 rounded-full shadow-xl flex items-center gap-2 font-bold transition-all hover:scale-105 active:scale-95 border border-slate-700`}
-         >
-            {isMobileMode ? <Icons.Monitor className="w-4 h-4" /> : <Icons.Smartphone className="w-4 h-4" />}
-            {isMobileMode ? t.webMode : t.mobileMode}
-         </button>
-
-         {/* Snapshot Button */}
-         <button 
-            onClick={handleSnapshot} 
-            disabled={isSnapshotting} 
-            className={`${styles.button} w-14 h-14 rounded-full shadow-2xl flex items-center justify-center group relative hover:scale-110 transition-transform`} 
-            title={t.saveImage}
-         >
-            {isSnapshotting ? <Icons.Loader2 className="animate-spin" /> : <Icons.Download />}
-         </button>
+         <button onClick={handleTranslate} disabled={isTranslating} className={`${styles.button} h-12 px-6 rounded-full shadow-xl flex items-center gap-2 font-bold backdrop-blur-md bg-opacity-90 transition-all hover:scale-105 active:scale-95`}>{isTranslating ? <Icons.Loader2 className="animate-spin w-4 h-4" /> : <Icons.Languages className="w-4 h-4" />}{isTranslating ? t.translating : t.translateBtn}</button>
+         <button onClick={() => setIsMobileMode(!isMobileMode)} className={`${isMobileMode ? 'bg-white text-slate-900' : 'bg-slate-800 text-white'} h-12 px-6 rounded-full shadow-xl flex items-center gap-2 font-bold transition-all hover:scale-105 active:scale-95 border border-slate-700`}>{isMobileMode ? <Icons.Monitor className="w-4 h-4" /> : <Icons.Smartphone className="w-4 h-4" />}{isMobileMode ? t.webMode : t.mobileMode}</button>
+         <button onClick={handleSnapshot} disabled={isSnapshotting} className={`${styles.button} w-14 h-14 rounded-full shadow-2xl flex items-center justify-center group relative hover:scale-110 transition-transform`} title={t.saveImage}>{isSnapshotting ? <Icons.Loader2 className="animate-spin" /> : <Icons.Download />}</button>
       </div>
-
-      {/* Lightbox Modal */}
-      {lightboxData && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8 bg-black/95 backdrop-blur-md animate-fade-in">
-           <button 
-              onClick={() => setLightboxData(null)}
-              className="absolute top-4 right-4 z-50 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-colors backdrop-blur-sm"
-           >
-              <Icons.X size={24} />
-           </button>
-           
-           <div className="w-full max-w-6xl h-full md:h-auto md:aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl relative border border-white/10">
-              <ImageCarousel 
-                 images={lightboxData.urls} 
-                 alt="Gallery" 
-                 className="w-full h-full"
-                 // If you want to start at the clicked index, you might need to update ImageCarousel to accept `initialIndex`
-                 // For now, it will start at 0, which is acceptable or we can modify ImageCarousel later.
-                 autoPlayInterval={0} // Disable autoplay rotation in lightbox to let user focus on video
-              />
-           </div>
-        </div>
-      )}
 
       {isSnapshotting && (
         <div className="fixed inset-0 bg-black/90 z-[100] flex flex-col items-center justify-center text-white no-snapshot backdrop-blur-md">

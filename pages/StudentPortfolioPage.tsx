@@ -252,6 +252,14 @@ export const StudentPortfolioPage: React.FC = () => {
   const SkillsMatrix = ({ skills, styles }: { skills: Skill[], styles: any }) => {
      if (!skills || skills.length === 0) return null;
      
+     // Group skills by category
+     const groupedSkills = skills.reduce((acc, skill) => {
+       const category = skill.category || 'General';
+       if (!acc[category]) acc[category] = [];
+       acc[category].push(skill);
+       return acc;
+     }, {} as Record<string, Skill[]>);
+
      return (
        <div className={`mb-20 animate-fade-in-up`}>
           <div className="flex items-center gap-4 mb-8">
@@ -260,18 +268,30 @@ export const StudentPortfolioPage: React.FC = () => {
              <div className="h-px flex-1 bg-gradient-to-l from-transparent to-blue-500/50"></div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-             {skills.map((skill, idx) => (
-                <div key={idx} className="group">
-                   <div className="flex justify-between mb-2 text-sm font-medium">
-                      <span className={`${styles.text} group-hover:text-blue-400 transition-colors`}>{skill.name}</span>
-                      <span className="text-slate-500 font-mono">{skill.value}%</span>
-                   </div>
-                   <div className={`w-full h-2 rounded-full ${styles.cardBg} overflow-hidden`}>
-                      <div 
-                        className="h-full bg-gradient-to-r from-blue-600 to-purple-500 rounded-full transition-all duration-1000 ease-out"
-                        style={{ width: `${skill.value}%` }}
-                      ></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-10">
+             {Object.entries(groupedSkills).map(([category, items], catIdx) => (
+                <div key={category} className="space-y-4">
+                   <h4 className={`font-bold text-sm uppercase tracking-wider opacity-60 border-b border-dashed border-slate-700/50 pb-2 mb-4 ${styles.text}`}>
+                      {category}
+                   </h4>
+                   <div className="space-y-5">
+                      {items.map((skill, idx) => (
+                        <div key={idx} className="group">
+                           <div className="flex justify-between mb-2 text-sm font-medium items-end">
+                              <span className={`${styles.text} group-hover:text-blue-400 transition-colors`}>{skill.name}</span>
+                              <span className="text-slate-500 font-mono text-xs">
+                                {skill.value}{skill.unit || ''}
+                              </span>
+                           </div>
+                           <div className={`w-full h-2 rounded-full ${styles.cardBg} overflow-hidden bg-opacity-30`}>
+                              <div 
+                                className="h-full bg-gradient-to-r from-blue-600 to-purple-500 rounded-full transition-all duration-1000 ease-out"
+                                // If unit is %, use value directly. Otherwise, just show full bar or clamp if sensible
+                                style={{ width: skill.unit === '%' ? `${Math.min(skill.value, 100)}%` : '100%' }}
+                              ></div>
+                           </div>
+                        </div>
+                      ))}
                    </div>
                 </div>
              ))}

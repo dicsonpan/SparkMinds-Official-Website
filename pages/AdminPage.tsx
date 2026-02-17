@@ -42,6 +42,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
   const [isNewRecord, setIsNewRecord] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
+  const [draggedSkillIndex, setDraggedSkillIndex] = useState<number | null>(null); // Separate state for skills DnD
   
   // AI States
   const [aiConfig, setAiConfig] = useState({
@@ -120,7 +121,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
       }
   };
 
-  // --- Drag and Drop ---
+  // --- Drag and Drop (Main List) ---
   const handleDragStart = (index: number) => setDraggedItemIndex(index);
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault(); 
@@ -144,6 +145,25 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
     try {
       await supabase.from(current.table).upsert(updates, { onConflict: 'id' });
     } catch (err: any) { alert("排序保存失败"); fetchData(); }
+  };
+
+  // --- Drag and Drop (Skills List) ---
+  const handleSkillDragStart = (index: number) => setDraggedSkillIndex(index);
+  const handleSkillDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedSkillIndex === null || draggedSkillIndex === index) return;
+    
+    const newSkills = [...(editingItem.skills || [])];
+    const draggedItem = newSkills[draggedSkillIndex];
+    newSkills.splice(draggedSkillIndex, 1);
+    newSkills.splice(index, 0, draggedItem);
+    
+    setEditingItem({ ...editingItem, skills: newSkills });
+    setDraggedSkillIndex(index);
+  };
+  const handleSkillDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDraggedSkillIndex(null);
   };
 
   // --- Editor Logic ---
@@ -173,7 +193,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
   };
 
   const addSkill = () => {
-    const newSkill: Skill = { category: 'Software', name: 'New Skill', value: 50 };
+    const newSkill: Skill = { category: 'Ability', name: 'New Skill', value: 80, unit: '%' };
     setEditingItem({ ...editingItem, skills: [...(editingItem.skills || []), newSkill] });
   };
 
@@ -299,7 +319,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
         {
           "student_title": "string (e.g. 12岁创客 - Chinese)",
           "summary_bio": "string (2-3 sentences, in Chinese)",
-          "skills": [ {"category": "Hardware"|"Software"|"Design", "name": "string (English/Chinese mixed is ok for skill names)", "value": number (0-100)} ],
+          "skills": [ {"category": "Hardware"|"Software"|"Design"|"Academic", "name": "string", "value": number (float or int), "unit": "%" or "分"} ],
           "content_blocks": [
             {
               "id": "random_string",
@@ -560,7 +580,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
              {/* Content Area */}
              <div className="flex-1 overflow-y-auto p-6">
                 {activeTab === 'students' ? (
-                   // Student specific editor inputs (Abbreviated to focus on logic fix)
+                   // Student specific editor inputs
                    <div className="space-y-4">
                       <div className="flex gap-4 border-b pb-4">
                          {['profile', 'skills', 'content', 'ai'].map(t => (
@@ -605,14 +625,38 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                             <button onClick={addSkill} className="text-xs bg-slate-900 text-white px-3 py-1 rounded mb-4">+ 添加技能</button>
                             <div className="space-y-2">
                                {(editingItem.skills || []).map((skill: Skill, idx: number) => (
-                                  <div key={idx} className="flex gap-2">
-                                     <input className="border p-1 rounded text-sm w-24" placeholder="分类" value={skill.category} onChange={e => updateSkill(idx, 'category', e.target.value)} />
-                                     <input className="border p-1 rounded text-sm flex-1" placeholder="技能名" value={skill.name} onChange={e => updateSkill(idx, 'name', e.target.value)} />
-                                     <input className="border p-1 rounded text-sm w-16" type="number" placeholder="%" value={skill.value} onChange={e => updateSkill(idx, 'value', parseInt(e.target.value))} />
-                                     <button onClick={() => removeSkill(idx)} className="text-red-500"><Icons.X size={16} /></button>
+                                  <div 
+                                    key={idx} 
+                                    draggable
+                                    onDragStart={() => handleSkillDragStart(idx)}
+                                    onDragOver={(e) => handleSkillDragOver(e, idx)}
+                                    onDrop={handleSkillDrop}
+                                    className="flex gap-2 items-center group bg-white border border-transparent hover:border-slate-200 hover:shadow-sm rounded p-1"
+                                  >
+                                     <div className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 p-1">
+                                        <Icons.GripVertical size={14} />
+                                     </div>
+                                     <input className="border p-1 rounded text-sm w-24" placeholder="分类 (Category)" value={skill.category} onChange={e => updateSkill(idx, 'category', e.target.value)} />
+                                     <input className="border p-1 rounded text-sm flex-1" placeholder="技能名 (Name)" value={skill.name} onChange={e => updateSkill(idx, 'name', e.target.value)} />
+                                     <input 
+                                        className="border p-1 rounded text-sm w-20" 
+                                        type="number" 
+                                        step="0.1"
+                                        placeholder="数值" 
+                                        value={skill.value} 
+                                        onChange={e => updateSkill(idx, 'value', parseFloat(e.target.value))} 
+                                     />
+                                     <input 
+                                        className="border p-1 rounded text-sm w-16" 
+                                        placeholder="单位" 
+                                        value={skill.unit || ''} 
+                                        onChange={e => updateSkill(idx, 'unit', e.target.value)} 
+                                     />
+                                     <button onClick={() => removeSkill(idx)} className="text-red-500 p-1 hover:bg-red-50 rounded"><Icons.X size={16} /></button>
                                   </div>
                                ))}
                             </div>
+                            <p className="text-xs text-slate-400 mt-2">提示：拖动左侧图标调整顺序；数值支持小数；单位可填"%"、"分"或留空。</p>
                          </div>
                       )}
 

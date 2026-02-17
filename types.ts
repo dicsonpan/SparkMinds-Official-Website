@@ -69,7 +69,8 @@ export type ContentBlockType = 'header' | 'text' | 'image_grid' | 'video' | 'ski
 export interface Skill {
   category: string; // e.g., "Hardware", "Software", "Soft Skills"
   name: string;     // e.g., "Python", "Soldering"
-  value: number;    // 0-100
+  value: number;    // Float
+  unit?: string;    // e.g. "%", "分", or empty
 }
 
 export interface ContentBlock {

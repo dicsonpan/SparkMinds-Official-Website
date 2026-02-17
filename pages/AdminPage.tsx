@@ -52,6 +52,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
   const [aiPrompt, setAiPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [studentEditorTab, setStudentEditorTab] = useState<'profile' | 'skills' | 'content' | 'ai'>('profile');
+  
+  // AI Polish State
+  const [prePolishState, setPrePolishState] = useState<any | null>(null);
+  const [isPolishing, setIsPolishing] = useState(false);
 
   // Check auth & Load AI Config
   useEffect(() => {
@@ -218,6 +222,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
   // --- CRUD ---
   const handleCreateNew = () => {
     setIsNewRecord(true);
+    setPrePolishState(null); // Clear polish state
     let template: any = {};
     if (activeTab === 'curriculum') template = { id: 'New', level: '', age: '', title: '', description: '', skills: [], icon_name: 'Box', image_urls: [], sort_order: 99 };
     else if (activeTab === 'showcase') template = { title: '', category: '商业级产品', description: '', image_urls: [], sort_order: 99 };
@@ -232,6 +237,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
 
   const openEditModal = (item: any) => {
     setIsNewRecord(false);
+    setPrePolishState(null); // Clear polish state
     
     // Special handling for Student Portfolio migration
     let editableItem = { ...item };
@@ -267,6 +273,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
       await fetchData(); 
       setIsModalOpen(false);
       setEditingItem(null);
+      setPrePolishState(null);
     } catch (error: any) { alert('保存失败: ' + error.message); } finally { setLoading(false); }
   };
 
@@ -444,6 +451,100 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
     }
   };
 
+  // --- AI Polish (New Feature) ---
+  const handleAIPolish = async () => {
+    if (!aiConfig.apiKey) return alert("请先在系统设置中配置 API Key");
+    if (isPolishing) return;
+
+    // 1. Backup current state
+    setPrePolishState(JSON.parse(JSON.stringify(editingItem)));
+    setIsPolishing(true);
+
+    try {
+        const payload = {
+            student_title: editingItem.student_title,
+            summary_bio: editingItem.summary_bio,
+            content_blocks: editingItem.content_blocks.map((b: any) => ({
+                id: b.id, // Keep ID to match later if needed (though we replace whole object)
+                type: b.type,
+                data: {
+                    ...b.data,
+                    // Send text fields, strip large arrays of URLs to save tokens if needed, 
+                    // but keeping them is safer to avoid losing them in AI hallucination.
+                    // Let's send everything relevant to text.
+                }
+            }))
+        };
+
+        const systemPrompt = `
+            You are a professional editor for Ivy League admissions. 
+            Your task is to POLISH the text content of this Student Portfolio to be more academic, professional, and impressive.
+            
+            RULES:
+            1. Keep the language in SIMPLIFIED CHINESE (简体中文).
+            2. Do NOT change the data structure, IDs, or URLs.
+            3. Only improve the phrasing, vocabulary, and flow of:
+               - 'student_title' (Make it catchy/professional)
+               - 'summary_bio' (Make it a compelling narrative)
+               - 'content_blocks' (Especially project_highlight STAR sections: Situation, Task, Action, Result)
+            4. Use strong action verbs and quantitative descriptions where possible.
+            5. Return the JSON object with the exact same keys as input.
+            6. Return ONLY the raw JSON.
+        `;
+
+        const response = await fetch(`${aiConfig.baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${aiConfig.apiKey}` },
+            body: JSON.stringify({
+              model: aiConfig.model,
+              messages: [
+                  { role: "system", content: systemPrompt }, 
+                  { role: "user", content: JSON.stringify(payload) }
+              ],
+              temperature: 0.4
+            })
+        });
+
+        const data = await response.json();
+        if (data.error) throw new Error(data.error.message);
+        
+        let content = data.choices[0].message.content;
+        content = content.replace(/```json/g, '').replace(/```/g, '').trim();
+        const polishedData = JSON.parse(content);
+
+        // Merge polished data back into editingItem
+        // We preserve skills and other fields that might not have been sent or modified
+        setEditingItem((prev: any) => ({
+            ...prev,
+            student_title: polishedData.student_title || prev.student_title,
+            summary_bio: polishedData.summary_bio || prev.summary_bio,
+            content_blocks: polishedData.content_blocks || prev.content_blocks
+        }));
+
+        alert("AI 润色完成！请预览效果，不满意可点击“放弃回滚”。");
+
+    } catch (e: any) {
+        console.error(e);
+        alert("AI 润色失败: " + e.message);
+        setPrePolishState(null); // Clear backup if failed
+    } finally {
+        setIsPolishing(false);
+    }
+  };
+
+  const handleRollbackPolish = () => {
+      if (prePolishState) {
+          setEditingItem(prePolishState);
+          setPrePolishState(null);
+          alert("已恢复到润色前的内容。");
+      }
+  };
+
+  const handleConfirmPolish = () => {
+      setPrePolishState(null);
+      alert("已保留润色内容。请记得点击下方的“保存”按钮写入数据库。");
+  };
+
   const getHeaderTitle = () => {
       if (activeTab === 'students') return '学生成长档案管理';
       if (activeTab === 'bookings') return '试听预约管理';
@@ -548,7 +649,24 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className={`bg-white rounded-2xl shadow-2xl w-full ${activeTab === 'students' ? 'max-w-6xl h-[90vh]' : 'max-w-lg'} flex flex-col overflow-hidden`}>
              <div className="px-6 py-4 border-b flex justify-between items-center bg-slate-50"><h3 className="font-bold text-lg">{isNewRecord ? '添加' : '编辑'} {getHeaderTitle()}</h3><button onClick={() => setIsModalOpen(false)}><Icons.X className="text-slate-400 hover:text-slate-600" /></button></div>
-             <div className="flex-1 overflow-y-auto p-6">
+             <div className="flex-1 overflow-y-auto p-6 relative">
+                {prePolishState && (
+                    <div className="sticky top-0 z-20 mb-4 bg-orange-50 border border-orange-200 text-orange-800 p-3 rounded-lg flex items-center justify-between shadow-sm animate-fade-in-down">
+                        <div className="flex items-center gap-2 text-sm font-bold">
+                            <Icons.Sparkles className="w-4 h-4 animate-pulse" />
+                            <span>AI 润色预览模式</span>
+                        </div>
+                        <div className="flex gap-2">
+                            <button onClick={handleRollbackPolish} className="px-3 py-1 bg-white border border-orange-300 rounded text-xs font-bold hover:bg-orange-100 flex items-center gap-1">
+                                <Icons.RotateCcw size={12} /> 放弃回滚
+                            </button>
+                            <button onClick={handleConfirmPolish} className="px-3 py-1 bg-orange-600 text-white rounded text-xs font-bold hover:bg-orange-700 flex items-center gap-1">
+                                <Icons.Check size={12} /> 确认采用
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {activeTab === 'students' ? (
                    <div className="space-y-4">
                       <div className="flex gap-4 border-b pb-4">{['profile', 'skills', 'content', 'ai'].map(t => (<button key={t} onClick={() => setStudentEditorTab(t as any)} className={`px-4 py-2 rounded-lg font-bold text-sm ${studentEditorTab === t ? 'bg-blue-100 text-blue-700' : 'text-slate-500'}`}>{t.toUpperCase()}</button>))}</div>
@@ -691,7 +809,36 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                          </div>
                       )}
                       {studentEditorTab === 'ai' && (
-                         <div className="space-y-4"><div className="bg-blue-50 p-4 rounded-lg text-sm text-blue-700 mb-4 flex gap-3"><Icons.Sparkles className="shrink-0" /><div><p className="font-bold">AI 智能策展人</p><p className="opacity-80">将原始资料粘贴在下方，AI 自动生成结构化档案。</p></div></div><textarea className="w-full h-64 p-4 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-700" placeholder="粘贴资料..." value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} /><button onClick={handleAIGenerate} disabled={isGenerating} className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-slate-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50">{isGenerating ? <Icons.Loader2 className="animate-spin" /> : <Icons.Wand2 />}{isGenerating ? '正在分析...' : '生成档案'}</button></div>
+                         <div className="space-y-6">
+                            <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
+                                <h3 className="font-bold text-blue-900 text-lg mb-4 flex items-center gap-2"><Icons.Wand2 className="text-blue-500" /> 从零生成</h3>
+                                <p className="text-sm text-blue-600/80 mb-4">将原始资料（如简历、笔记）粘贴在下方，AI 自动整理成结构化档案。</p>
+                                <textarea className="w-full h-40 p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-700 bg-white" placeholder="在此粘贴原始资料..." value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} />
+                                <button onClick={handleAIGenerate} disabled={isGenerating || isPolishing} className="mt-4 w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    {isGenerating ? <Icons.Loader2 className="animate-spin" /> : <Icons.Sparkles />}
+                                    {isGenerating ? '正在分析生成...' : '开始生成结构化档案'}
+                                </button>
+                            </div>
+
+                            <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100">
+                                <h3 className="font-bold text-orange-900 text-lg mb-4 flex items-center gap-2"><Icons.PenTool className="text-orange-500" /> 润色现有内容</h3>
+                                <p className="text-sm text-orange-600/80 mb-4">对当前已编辑的内容进行文字润色，使其更具学术感和专业度，保持事实不变。</p>
+                                {prePolishState ? (
+                                    <div className="text-center p-4 bg-white rounded-xl border border-orange-200">
+                                        <p className="font-bold text-orange-600 mb-2">正在预览润色效果</p>
+                                        <div className="flex gap-2 justify-center">
+                                            <button onClick={handleRollbackPolish} className="px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 flex items-center gap-2 font-bold"><Icons.Undo size={16}/> 撤销回滚</button>
+                                            <button onClick={handleConfirmPolish} className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2 font-bold"><Icons.Check size={16}/> 确认采用</button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <button onClick={handleAIPolish} disabled={isGenerating || isPolishing} className="w-full bg-white border-2 border-orange-200 text-orange-700 py-3 rounded-xl font-bold hover:bg-orange-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                                        {isPolishing ? <Icons.Loader2 className="animate-spin" /> : <Icons.Feather />}
+                                        {isPolishing ? 'AI 正在润色中...' : '一键润色 (提升专业度)'}
+                                    </button>
+                                )}
+                            </div>
+                         </div>
                       )}
                    </div>
                 ) : (

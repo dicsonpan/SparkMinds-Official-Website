@@ -93,6 +93,7 @@ export interface ContentBlock {
 }
 
 export type PortfolioTheme = 'tech_dark' | 'academic_light' | 'creative_color';
+export type SkillsLayout = 'bar' | 'radar' | 'circle' | 'stat_grid';
 
 export interface StudentPortfolio {
   id?: number;
@@ -105,6 +106,9 @@ export interface StudentPortfolio {
   access_password: string; 
   content_blocks: ContentBlock[]; 
   skills?: Skill[]; // New: Skills Matrix
+  skills_config?: {
+    layout: SkillsLayout;
+  };
   theme_config?: {
     theme: PortfolioTheme;
     primary_color?: string;

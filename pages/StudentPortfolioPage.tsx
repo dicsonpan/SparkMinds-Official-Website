@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
-import { StudentPortfolio, ContentBlock, PortfolioTheme, Skill } from '../types';
+import { StudentPortfolio, ContentBlock, PortfolioTheme, Skill, SkillsLayout } from '../types';
 import { Logo } from '../components/Logo';
 import { ImageCarousel } from '../components/ImageCarousel';
 import * as Icons from 'lucide-react';
@@ -250,15 +250,123 @@ export const StudentPortfolioPage: React.FC = () => {
     return <div className="grid grid-cols-2 md:grid-cols-3 gap-4">{images.map((url, idx) => <div key={idx} className="rounded-2xl overflow-hidden aspect-square relative group shadow-lg"><img src={url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"/></div>)}</div>;
   };
 
-  const SkillsMatrix = ({ skills, styles }: { skills: Skill[], styles: any }) => {
+  // --- Charts Components ---
+
+  // 1. Radar Chart (SVG Implementation)
+  const RadarChart = ({ data, styles }: { data: { label: string, value: number }[], styles: any }) => {
+    const size = 300;
+    const center = size / 2;
+    const radius = 100;
+    const angleStep = (Math.PI * 2) / data.length;
+
+    const points = data.map((d, i) => {
+      const value = Math.min(Math.max(d.value, 0), 100);
+      const r = (value / 100) * radius;
+      const x = center + r * Math.sin(i * angleStep);
+      const y = center - r * Math.cos(i * angleStep);
+      return `${x},${y}`;
+    }).join(' ');
+
+    const axisLines = data.map((_, i) => {
+      const x = center + radius * Math.sin(i * angleStep);
+      const y = center - radius * Math.cos(i * angleStep);
+      return <line key={i} x1={center} y1={center} x2={x} y2={y} className="stroke-slate-700/30" strokeWidth="1" />;
+    });
+
+    const labels = data.map((d, i) => {
+      const x = center + (radius + 25) * Math.sin(i * angleStep);
+      const y = center - (radius + 25) * Math.cos(i * angleStep);
+      return (
+        <text 
+          key={i} x={x} y={y} 
+          textAnchor="middle" 
+          dominantBaseline="middle" 
+          className={`text-[10px] font-bold fill-current opacity-80 ${styles.text}`}
+        >
+          {d.label} ({d.value})
+        </text>
+      );
+    });
+
+    // Background polygons (grids)
+    const grids = [0.25, 0.5, 0.75, 1].map((scale, idx) => {
+        const gridPoints = data.map((_, i) => {
+            const r = radius * scale;
+            const x = center + r * Math.sin(i * angleStep);
+            const y = center - r * Math.cos(i * angleStep);
+            return `${x},${y}`;
+        }).join(' ');
+        return <polygon key={idx} points={gridPoints} fill="none" className="stroke-slate-700/20" strokeWidth="1" />;
+    });
+
+    return (
+      <div className="flex justify-center my-8">
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          {grids}
+          {axisLines}
+          <polygon points={points} className="fill-blue-500/20 stroke-blue-500" strokeWidth="2" />
+          {labels}
+        </svg>
+      </div>
+    );
+  };
+
+  // 2. Circular Gauge
+  const CircularGauge = ({ skill, styles }: { skill: Skill, styles: any }) => {
+    const size = 120;
+    const strokeWidth = 8;
+    const radius = (size - strokeWidth) / 2;
+    const circumference = radius * 2 * Math.PI;
+    const offset = circumference - (Math.min(skill.value, 100) / 100) * circumference;
+
+    return (
+        <div className="flex flex-col items-center">
+            <div className="relative flex items-center justify-center">
+                <svg width={size} height={size} className="transform -rotate-90">
+                    <circle cx={size/2} cy={size/2} r={radius} stroke="currentColor" strokeWidth={strokeWidth} fill="transparent" className="text-slate-700/20" />
+                    <circle 
+                        cx={size/2} cy={size/2} r={radius} 
+                        stroke="currentColor" strokeWidth={strokeWidth} fill="transparent" 
+                        strokeDasharray={circumference} 
+                        strokeDashoffset={offset} 
+                        strokeLinecap="round"
+                        className="text-blue-500 transition-all duration-1000 ease-out" 
+                    />
+                </svg>
+                <div className="absolute flex flex-col items-center">
+                    <span className={`text-xl font-bold ${styles.text}`}>{skill.value}</span>
+                    <span className="text-[10px] text-slate-500 uppercase">{skill.unit || '%'}</span>
+                </div>
+            </div>
+            <span className={`mt-3 font-medium text-sm ${styles.text}`}>{skill.name}</span>
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider">{skill.category}</span>
+        </div>
+    );
+  };
+
+  // 3. Stat Card
+  const StatCard = ({ skill, styles }: { skill: Skill, styles: any }) => (
+      <div className={`${styles.cardBg} border ${styles.border} p-4 rounded-xl flex flex-col items-center justify-center text-center shadow-sm h-full`}>
+          <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">{skill.category}</span>
+          <h4 className={`font-bold text-md mb-2 ${styles.text}`}>{skill.name}</h4>
+          <div className="mt-auto pt-2 border-t border-slate-700/10 w-full">
+             <span className={`text-2xl font-black text-blue-500`}>{skill.value}</span>
+             <span className="text-xs text-slate-400 ml-1">{skill.unit}</span>
+          </div>
+      </div>
+  );
+
+  const SkillsMatrix = ({ skills, layout = 'bar', styles }: { skills: Skill[], layout?: SkillsLayout, styles: any }) => {
      if (!skills || skills.length === 0) return null;
      
-     const groupedSkills = skills.reduce((acc, skill) => {
-       const category = skill.category || 'General';
-       if (!acc[category]) acc[category] = [];
-       acc[category].push(skill);
-       return acc;
-     }, {} as Record<string, Skill[]>);
+     // Data Prep for Radar
+     // Group by category and average
+     const categories = Array.from(new Set(skills.map(s => s.category || 'General')));
+     const radarData = categories.map(cat => {
+         const catSkills = skills.filter(s => (s.category || 'General') === cat);
+         const avg = catSkills.reduce((sum, s) => sum + s.value, 0) / catSkills.length;
+         return { label: cat, value: Math.round(avg) };
+     });
 
      return (
        <div className={`mb-20 animate-fade-in-up`}>
@@ -268,33 +376,60 @@ export const StudentPortfolioPage: React.FC = () => {
              <div className="h-px flex-1 bg-gradient-to-l from-transparent to-blue-500/50"></div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-10">
-             {Object.entries(groupedSkills).map(([category, items], catIdx) => (
-                <div key={category} className="space-y-4">
-                   <h4 className={`font-bold text-sm uppercase tracking-wider opacity-60 border-b border-dashed border-slate-700/50 pb-2 mb-4 ${styles.text}`}>
-                      {category}
-                   </h4>
-                   <div className="space-y-5">
-                      {items.map((skill, idx) => (
-                        <div key={idx} className="group">
-                           <div className="flex justify-between mb-2 text-sm font-medium items-end">
-                              <span className={`${styles.text} group-hover:text-blue-400 transition-colors`}>{skill.name}</span>
-                              <span className="text-slate-500 font-mono text-xs">
-                                {skill.value}{skill.unit || ''}
-                              </span>
-                           </div>
-                           <div className={`w-full h-2 rounded-full ${styles.cardBg} overflow-hidden bg-opacity-30`}>
-                              <div 
-                                className="h-full bg-gradient-to-r from-blue-600 to-purple-500 rounded-full transition-all duration-1000 ease-out"
-                                style={{ width: skill.unit === '%' ? `${Math.min(skill.value, 100)}%` : '100%' }}
-                              ></div>
-                           </div>
+          {layout === 'radar' && radarData.length >= 3 ? (
+             <div className="grid md:grid-cols-2 gap-8 items-center">
+                 <RadarChart data={radarData} styles={styles} />
+                 {/* Detail List for Radar view */}
+                 <div className="grid grid-cols-2 gap-4">
+                    {skills.map((skill, idx) => (
+                        <div key={idx} className={`flex justify-between items-center p-3 rounded-lg ${styles.cardBg} border ${styles.border}`}>
+                            <div>
+                                <div className="text-xs text-slate-500">{skill.category}</div>
+                                <div className={`font-bold ${styles.text}`}>{skill.name}</div>
+                            </div>
+                            <div className="font-mono text-blue-500 font-bold">{skill.value}{skill.unit}</div>
                         </div>
-                      ))}
-                   </div>
-                </div>
-             ))}
-          </div>
+                    ))}
+                 </div>
+             </div>
+          ) : layout === 'circle' ? (
+             <div className="flex flex-wrap justify-center gap-8 md:gap-12">
+                 {skills.map((skill, idx) => <CircularGauge key={idx} skill={skill} styles={styles} />)}
+             </div>
+          ) : layout === 'stat_grid' ? (
+             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                 {skills.map((skill, idx) => <StatCard key={idx} skill={skill} styles={styles} />)}
+             </div>
+          ) : (
+             // Default: Bar Layout
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-10">
+                {categories.map((category) => (
+                    <div key={category} className="space-y-4">
+                    <h4 className={`font-bold text-sm uppercase tracking-wider opacity-60 border-b border-dashed border-slate-700/50 pb-2 mb-4 ${styles.text}`}>
+                        {category}
+                    </h4>
+                    <div className="space-y-5">
+                        {skills.filter(s => (s.category || 'General') === category).map((skill, idx) => (
+                            <div key={idx} className="group">
+                            <div className="flex justify-between mb-2 text-sm font-medium items-end">
+                                <span className={`${styles.text} group-hover:text-blue-400 transition-colors`}>{skill.name}</span>
+                                <span className="text-slate-500 font-mono text-xs">
+                                    {skill.value}{skill.unit || ''}
+                                </span>
+                            </div>
+                            <div className={`w-full h-2 rounded-full ${styles.cardBg} overflow-hidden bg-opacity-30`}>
+                                <div 
+                                    className="h-full bg-gradient-to-r from-blue-600 to-purple-500 rounded-full transition-all duration-1000 ease-out"
+                                    style={{ width: skill.unit === '%' || !skill.unit ? `${Math.min(skill.value, 100)}%` : '100%' }}
+                                ></div>
+                            </div>
+                            </div>
+                        ))}
+                    </div>
+                    </div>
+                ))}
+             </div>
+          )}
        </div>
      )
   };
@@ -533,7 +668,7 @@ export const StudentPortfolioPage: React.FC = () => {
         </header>
 
         <main className="px-6 md:px-12 max-w-5xl mx-auto relative z-10 pt-12">
-           {currentPortfolio?.skills && currentPortfolio.skills.length > 0 && <SkillsMatrix skills={currentPortfolio.skills} styles={styles} />}
+           {currentPortfolio?.skills && currentPortfolio.skills.length > 0 && <SkillsMatrix skills={currentPortfolio.skills} layout={currentPortfolio.skills_config?.layout} styles={styles} />}
            {currentPortfolio?.content_blocks && currentPortfolio.content_blocks.length > 0 ? (
              <div className="flex flex-col gap-0">
                 {currentPortfolio.content_blocks.map(block => renderBlock(block, styles))}

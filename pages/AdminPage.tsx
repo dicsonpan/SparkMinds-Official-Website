@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { Logo } from '../components/Logo';
 import * as Icons from 'lucide-react';
-import { Booking, StudentPortfolio, ContentBlock, ContentBlockType, Skill } from '../types';
+import { Booking, StudentPortfolio, ContentBlock, ContentBlockType, Skill, SkillsLayout } from '../types';
 import imageCompression from 'browser-image-compression';
 
 const COMPRESSION_OPTIONS = {
@@ -171,6 +171,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
     setEditingItem({ ...editingItem, skills: newSkills });
   };
 
+  const updateSkillsLayout = (layout: SkillsLayout) => {
+    setEditingItem({ 
+      ...editingItem, 
+      skills_config: { ...editingItem.skills_config, layout } 
+    });
+  };
+
   // --- CRUD ---
   const handleCreateNew = () => {
     setIsNewRecord(true);
@@ -179,7 +186,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
     else if (activeTab === 'showcase') template = { title: '', category: '商业级产品', description: '', image_urls: [], sort_order: 99 };
     else if (activeTab === 'social') template = { title: '商业化案例', subtitle: '', quote: '', footer_note: '', image_urls: [], sort_order: 99 };
     else if (activeTab === 'philosophy') template = { title: '', content: '', icon_name: 'Star', sort_order: 99 };
-    else if (activeTab === 'students') template = { slug: '', student_name: '', student_title: '', summary_bio: '', access_password: '', content_blocks: [], skills: [], theme_config: { theme: 'tech_dark' }, avatar_url: '' };
+    else if (activeTab === 'students') template = { slug: '', student_name: '', student_title: '', summary_bio: '', access_password: '', content_blocks: [], skills: [], skills_config: { layout: 'bar' }, theme_config: { theme: 'tech_dark' }, avatar_url: '' };
     
     setEditingItem(template);
     setStudentEditorTab('profile'); 
@@ -459,7 +466,24 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                          </div>
                       )}
                       {studentEditorTab === 'skills' && (
-                         <div><button onClick={addSkill} className="text-xs bg-slate-900 text-white px-3 py-1 rounded mb-4">+ 添加技能</button><div className="space-y-2">{(editingItem.skills || []).map((skill: Skill, idx: number) => (<div key={idx} draggable onDragStart={() => handleSkillDragStart(idx)} onDragOver={(e) => handleSkillDragOver(e, idx)} onDrop={handleSkillDrop} className="flex gap-2 items-center group bg-white border border-transparent hover:border-slate-200 hover:shadow-sm rounded p-1"><div className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 p-1"><Icons.GripVertical size={14} /></div><input className="border p-1 rounded text-sm w-24" placeholder="分类 (Category)" value={skill.category} onChange={e => updateSkill(idx, 'category', e.target.value)} /><input className="border p-1 rounded text-sm flex-1" placeholder="技能名 (Name)" value={skill.name} onChange={e => updateSkill(idx, 'name', e.target.value)} /><input className="border p-1 rounded text-sm w-20" type="number" step="0.1" placeholder="数值" value={skill.value} onChange={e => updateSkill(idx, 'value', parseFloat(e.target.value))} /><input className="border p-1 rounded text-sm w-16" placeholder="单位" value={skill.unit || ''} onChange={e => updateSkill(idx, 'unit', e.target.value)} /><button onClick={() => removeSkill(idx)} className="text-red-500 p-1 hover:bg-red-50 rounded"><Icons.X size={16} /></button></div>))}</div><p className="text-xs text-slate-400 mt-2">提示：拖动左侧图标调整顺序；数值支持小数；单位可填"%"、"分"或留空。</p></div>
+                         <div>
+                            <div className="flex justify-between items-center mb-4">
+                                <button onClick={addSkill} className="text-xs bg-slate-900 text-white px-3 py-1 rounded">+ 添加技能</button>
+                                <div className="flex items-center gap-2">
+                                    <label className="text-xs font-bold text-slate-500 uppercase">展示样式:</label>
+                                    <select 
+                                        className="text-xs border rounded p-1"
+                                        value={editingItem.skills_config?.layout || 'bar'}
+                                        onChange={(e) => updateSkillsLayout(e.target.value as SkillsLayout)}
+                                    >
+                                        <option value="bar">条形图 (Bar Chart)</option>
+                                        <option value="radar">雷达图 (Radar Chart)</option>
+                                        <option value="circle">环形图 (Circular Gauge)</option>
+                                        <option value="stat_grid">数值卡片 (Stat Grid)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="space-y-2">{(editingItem.skills || []).map((skill: Skill, idx: number) => (<div key={idx} draggable onDragStart={() => handleSkillDragStart(idx)} onDragOver={(e) => handleSkillDragOver(e, idx)} onDrop={handleSkillDrop} className="flex gap-2 items-center group bg-white border border-transparent hover:border-slate-200 hover:shadow-sm rounded p-1"><div className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 p-1"><Icons.GripVertical size={14} /></div><input className="border p-1 rounded text-sm w-24" placeholder="分类 (Category)" value={skill.category} onChange={e => updateSkill(idx, 'category', e.target.value)} /><input className="border p-1 rounded text-sm flex-1" placeholder="技能名 (Name)" value={skill.name} onChange={e => updateSkill(idx, 'name', e.target.value)} /><input className="border p-1 rounded text-sm w-20" type="number" step="0.1" placeholder="数值" value={skill.value} onChange={e => updateSkill(idx, 'value', parseFloat(e.target.value))} /><input className="border p-1 rounded text-sm w-16" placeholder="单位" value={skill.unit || ''} onChange={e => updateSkill(idx, 'unit', e.target.value)} /><button onClick={() => removeSkill(idx)} className="text-red-500 p-1 hover:bg-red-50 rounded"><Icons.X size={16} /></button></div>))}</div><p className="text-xs text-slate-400 mt-2">提示：拖动左侧图标调整顺序；数值支持小数；单位可填"%"、"分"或留空。</p></div>
                       )}
                       {studentEditorTab === 'content' && (
                          <div className="space-y-2">

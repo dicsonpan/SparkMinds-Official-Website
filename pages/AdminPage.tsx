@@ -344,30 +344,61 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
     try {
       const systemPrompt = `
         You are a Student Portfolio Architect for SparkMinds.
-        Convert the following raw unstructured notes into a structured JSON portfolio.
-        LANGUAGE RULE: 
+        Your task is to analyze the raw unstructured notes provided by the user and convert them into a structured JSON portfolio matching the specific schema below.
+
+        LANGUAGE RULE:
         1. All text values MUST BE IN SIMPLIFIED CHINESE (简体中文).
-        2. Do NOT output English content.
-        3. Only JSON keys in English.
-        Output JSON Format:
+        2. Do NOT output English content unless it is a specific technical term or proper noun.
+        3. Only JSON keys should be in English.
+
+        OUTPUT JSON SCHEMA:
         {
-          "student_title": "string",
-          "summary_bio": "string",
-          "skills": [ 
+          "student_title": "A short, catchy slogan (e.g., '全栈少年工程师', '未来的AI科学家')",
+          "summary_bio": "A concise biography summarizing the student's interests and journey (100-200 words)",
+          "skills": [
              {
-               "name": "Category Name (e.g. Hardware)", 
-               "layout": "radar", 
-               "items": [{ "name": "Skill Name", "value": 85, "unit": "%" }]
-             } 
+               "name": "Category Name (e.g. '编程能力', '硬件创造', '综合素养')",
+               "layout": "radar" | "bar" | "circle" | "stat_grid" (Choose the best visualization),
+               "items": [
+                 { "name": "Skill Name", "value": 0-100, "unit": "%" or "分" }
+               ]
+             }
           ],
           "content_blocks": [
+            // Use 'section_heading' to divide sections (e.g., '竞赛荣誉', '项目经历')
             {
-              "id": "random",
+              "type": "section_heading",
+              "data": { "title": "Section Title" }
+            },
+            // Use 'project_highlight' for major projects using the STAR method
+            {
+              "type": "project_highlight",
+              "data": {
+                "title": "Project Name",
+                "date": "Date/Period",
+                "star_situation": "Situation (Background)",
+                "star_task": "Task (Goal)",
+                "star_action": "Action (What they did, technical details)",
+                "star_result": "Result (Outcome, awards, impact)"
+              }
+            },
+            // Use 'timeline_node' for milestones, awards, or smaller events
+            {
               "type": "timeline_node",
-              "data": { "title": "string", "content": "string", "date": "string" }
+              "data": {
+                "date": "Date string",
+                "title": "Event Title",
+                "content": "Description of the event"
+              }
             }
           ]
         }
+
+        INSTRUCTIONS:
+        - Organize the content logically. Group skills into meaningful categories.
+        - Identify STAR components (Situation, Task, Action, Result) for projects if possible. If not explicit, infer them.
+        - If input mentions awards, create timeline nodes or project highlights.
+        - Return ONLY the raw JSON. No markdown formatting.
       `;
       const response = await fetch(`${aiConfig.baseUrl}/chat/completions`, {
         method: 'POST',
@@ -383,15 +414,27 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
       let content = data.choices[0].message.content;
       content = content.replace(/```json/g, '').replace(/```/g, '').trim();
       const parsed = JSON.parse(content);
+      
+      // Ensure IDs and structure
+      const processedBlocks = (parsed.content_blocks || []).map((b: any) => ({
+        ...b,
+        id: Math.random().toString(36).substr(2, 9),
+        data: {
+            ...b.data,
+            urls: [], // Initialize arrays to prevent errors
+            evidence_urls: []
+        }
+      }));
+
       setEditingItem((prev: any) => ({
         ...prev,
         student_title: parsed.student_title || prev.student_title,
         summary_bio: parsed.summary_bio || prev.summary_bio,
         skills: parsed.skills || prev.skills || [],
-        content_blocks: [...(prev.content_blocks || []), ...(parsed.content_blocks || [])]
+        content_blocks: [...(prev.content_blocks || []), ...processedBlocks]
       }));
       setAiPrompt('');
-      alert("AI 生成成功！");
+      alert("AI 生成成功！请检查生成的内容。");
       setStudentEditorTab('content'); 
     } catch (e: any) {
       console.error(e);

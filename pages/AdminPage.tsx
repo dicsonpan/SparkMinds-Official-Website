@@ -323,11 +323,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
           "content_blocks": [
             {
               "id": "random_string",
-              "type": "header" | "text" | "project_highlight",
+              "type": "timeline_node" | "text" | "project_highlight",
               "data": {
                 "title": "string (Chinese)",
                 "content": "string (for text blocks, in Chinese)",
-                "date": "string (for header)",
+                "date": "string (e.g. 2023年5月)",
                 "star_situation": "string (for project_highlight, in Chinese)",
                 "star_task": "string (in Chinese)",
                 "star_action": "string (in Chinese)",
@@ -663,7 +663,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                       {studentEditorTab === 'content' && (
                          <div className="space-y-2">
                             <div className="flex gap-2 sticky top-0 bg-white p-2 z-10 border-b">
-                               <button onClick={() => addContentBlock('header')} className="text-xs bg-slate-100 p-2 rounded border">+ 节点</button>
+                               <button onClick={() => addContentBlock('timeline_node')} className="text-xs bg-blue-100 text-blue-700 p-2 rounded border border-blue-200 font-bold">+ 时间节点</button>
                                <button onClick={() => addContentBlock('project_highlight')} className="text-xs bg-blue-100 text-blue-700 p-2 rounded border border-blue-200 font-bold">+ STAR项目</button>
                                <button onClick={() => addContentBlock('text')} className="text-xs bg-slate-100 p-2 rounded border">+ 文本</button>
                                <button onClick={() => addContentBlock('image_grid')} className="text-xs bg-slate-100 p-2 rounded border">+ 图集</button>
@@ -685,20 +685,55 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                         <textarea className="w-full border p-2 rounded text-sm h-24" placeholder="Action (行动)" value={b.data.star_action || ''} onChange={e => updateContentBlock(b.id, 'star_action', e.target.value)} />
                                         <textarea className="w-full border p-2 rounded text-sm h-16" placeholder="Result (结果)" value={b.data.star_result || ''} onChange={e => updateContentBlock(b.id, 'star_result', e.target.value)} />
                                      </div>
+                                  ) : b.type === 'timeline_node' ? (
+                                     <div className="space-y-2">
+                                        <div className="flex gap-2">
+                                            <input 
+                                                className="w-1/3 border p-2 rounded text-sm font-mono text-slate-600 bg-slate-50" 
+                                                value={b.data.date || ''} 
+                                                onChange={e => updateContentBlock(b.id, 'date', e.target.value)} 
+                                                placeholder="时间点 (2023年5月)" 
+                                            />
+                                            <input 
+                                                className="w-2/3 border p-2 rounded font-bold" 
+                                                value={b.data.title || ''} 
+                                                onChange={e => updateContentBlock(b.id, 'title', e.target.value)} 
+                                                placeholder="事件标题 (例如: 参加全国创客大赛)" 
+                                            />
+                                        </div>
+                                        <textarea 
+                                            className="w-full border p-2 rounded h-20 text-sm" 
+                                            value={b.data.content || ''} 
+                                            onChange={e => updateContentBlock(b.id, 'content', e.target.value)} 
+                                            placeholder="成果详细描述..." 
+                                        />
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">佐证素材 (图片/视频)</label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {b.data.urls?.map((url: string, imgIdx: number) => (
+                                                    <div key={imgIdx} className="w-16 h-16 relative group">
+                                                        <img src={url} className="w-full h-full object-cover rounded" />
+                                                        <button 
+                                                            onClick={() => {
+                                                                const newUrls = b.data.urls.filter((_: any, idx: number) => idx !== imgIdx);
+                                                                updateContentBlock(b.id, 'urls', newUrls);
+                                                            }}
+                                                            className="absolute top-0 right-0 bg-red-500 text-white p-0.5 rounded-full opacity-0 group-hover:opacity-100"
+                                                        >
+                                                            <Icons.X size={12}/>
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                <label className="w-16 h-16 border-2 border-dashed border-slate-300 rounded flex items-center justify-center cursor-pointer hover:border-blue-400 text-slate-400 hover:text-blue-400">
+                                                    <Icons.Plus size={20} />
+                                                    <input type="file" className="hidden" onChange={e => handleImageUpload(e, 'standard', b.id)} />
+                                                </label>
+                                            </div>
+                                        </div>
+                                     </div>
                                   ) : (
                                      <div className="space-y-2">
                                         {b.type !== 'text' && <input className="w-full border p-2 rounded" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="标题" />}
-                                        
-                                        {/* Added Date Input for Header */}
-                                        {b.type === 'header' && (
-                                            <input 
-                                                className="w-full border p-2 rounded text-sm text-slate-600 font-mono" 
-                                                value={b.data.date || ''} 
-                                                onChange={e => updateContentBlock(b.id, 'date', e.target.value)} 
-                                                placeholder="时间节点 (例如: 2023年)" 
-                                            />
-                                        )}
-
                                         <textarea className="w-full border p-2 rounded h-20" value={b.data.content || ''} onChange={e => updateContentBlock(b.id, 'content', e.target.value)} placeholder="内容..." />
                                      </div>
                                   )}

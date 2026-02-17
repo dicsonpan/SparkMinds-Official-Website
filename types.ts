@@ -64,7 +64,7 @@ export interface SocialProject {
 
 // === New Student Portfolio Types ===
 
-export type ContentBlockType = 'header' | 'text' | 'image_grid' | 'video' | 'skills' | 'project_highlight';
+export type ContentBlockType = 'header' | 'text' | 'image_grid' | 'video' | 'skills' | 'project_highlight' | 'timeline_node';
 
 export interface Skill {
   category: string; // e.g., "Hardware", "Software", "Soft Skills"

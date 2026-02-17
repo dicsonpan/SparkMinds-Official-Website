@@ -300,6 +300,51 @@ export const StudentPortfolioPage: React.FC = () => {
      )
   };
 
+  const TimelineNode = ({ block, styles }: { block: ContentBlock, styles: any }) => {
+    const { date, title, content, urls } = block.data;
+    
+    return (
+      <div className="relative pl-8 md:pl-12 pb-16 last:pb-0 animate-fade-in-up group">
+         {/* Timeline Line */}
+         <div className="absolute left-0 top-2 bottom-0 w-px bg-slate-800 group-last:bottom-auto group-last:h-full"></div>
+         {/* Timeline Dot */}
+         <div className="absolute left-[-4px] top-2 w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)] z-10"></div>
+         
+         <div className="flex flex-col md:flex-row md:items-start gap-4 md:gap-8">
+            {/* Date - Desktop: Left, Mobile: Top */}
+            <div className="md:w-32 flex-shrink-0">
+               <span className={`inline-block py-1 px-3 rounded-full text-sm font-bold font-mono tracking-wider ${styles.accent} bg-blue-500/10 border border-blue-500/20`}>
+                  {date}
+               </span>
+            </div>
+
+            {/* Content Card */}
+            <div className={`flex-1 ${styles.cardBg} border ${styles.border} rounded-2xl p-6 hover:border-blue-500/30 transition-colors`}>
+               {title && <h3 className={`text-xl font-bold mb-3 ${styles.text}`}>{title}</h3>}
+               {content && <div className={`prose prose-sm ${styles.text === 'text-slate-200' ? 'prose-invert' : ''} max-w-none opacity-80 whitespace-pre-wrap mb-4`}>{content}</div>}
+               
+               {/* Evidence Media Grid */}
+               {urls && urls.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4">
+                     {urls.map((url, i) => (
+                        <div key={i} className="relative aspect-video rounded-lg overflow-hidden border border-slate-700/50 group/media cursor-pointer">
+                           {url.trim().startsWith('<iframe') ? (
+                              <div className="w-full h-full bg-black flex items-center justify-center">
+                                 <Icons.PlayCircle className="text-white opacity-50" />
+                              </div>
+                           ) : (
+                              <img src={url} className="w-full h-full object-cover group-hover/media:scale-110 transition-transform duration-500" />
+                           )}
+                        </div>
+                     ))}
+                  </div>
+               )}
+            </div>
+         </div>
+      </div>
+    );
+  };
+
   const ProjectHighlight = ({ block, styles }: { block: ContentBlock, styles: any }) => {
     const { title, date, star_situation, star_task, star_action, star_result, evidence_urls } = block.data;
     
@@ -356,25 +401,9 @@ export const StudentPortfolioPage: React.FC = () => {
 
   const renderBlock = (block: ContentBlock, styles: any) => {
     switch (block.type) {
-      case 'header':
-        return (
-          <div key={block.id} className="mb-12 relative pl-6 flex items-start gap-6 animate-fade-in-up">
-             {/* Timeline Node Visual */}
-             <div className="absolute left-0 top-2 w-1.5 h-full bg-blue-600/30 rounded-full">
-                <div className="absolute top-0 left-0 w-1.5 h-8 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.6)]"></div>
-             </div>
-             
-             <div className="pt-1">
-                <h2 className={`text-3xl md:text-4xl font-bold mb-2 ${styles.text} tracking-tight`}>{block.data.title}</h2>
-                {(block.data.date || block.data.content) && (
-                   <div className="flex flex-col gap-1 opacity-60">
-                      {block.data.date && <span className={`font-mono text-sm uppercase tracking-widest ${styles.accent}`}>{block.data.date}</span>}
-                      {block.data.content && <span className="text-lg font-light">{block.data.content}</span>}
-                   </div>
-                )}
-             </div>
-          </div>
-        );
+      case 'timeline_node':
+      case 'header': // Support legacy header as timeline node if it has date
+         return <TimelineNode key={block.id} block={block} styles={styles} />;
       case 'text':
         return (
           <div key={block.id} className={`mb-16 p-8 rounded-3xl ${styles.cardBg} border ${styles.border} backdrop-blur-sm animate-fade-in-up`}>
@@ -487,7 +516,7 @@ export const StudentPortfolioPage: React.FC = () => {
            
            {/* Content Stream */}
            {currentPortfolio?.content_blocks && currentPortfolio.content_blocks.length > 0 ? (
-             <div className="flex flex-col gap-8">
+             <div className="flex flex-col gap-0">
                 {currentPortfolio.content_blocks.map(block => renderBlock(block, styles))}
              </div>
            ) : (

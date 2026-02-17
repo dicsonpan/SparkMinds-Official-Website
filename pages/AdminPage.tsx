@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { Logo } from '../components/Logo';
 import * as Icons from 'lucide-react';
-import { Booking, StudentPortfolio, ContentBlock, ContentBlockType, Skill, SkillsLayout } from '../types';
+import { Booking, StudentPortfolio, ContentBlock, ContentBlockType, SkillCategory, SkillItem, SkillsLayout } from '../types';
 import imageCompression from 'browser-image-compression';
 
 const COMPRESSION_OPTIONS = {
@@ -42,7 +42,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
   const [isNewRecord, setIsNewRecord] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
-  const [draggedSkillIndex, setDraggedSkillIndex] = useState<number | null>(null); 
   
   // AI States
   const [aiConfig, setAiConfig] = useState({
@@ -124,9 +123,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
   const handleDragStart = (index: number) => setDraggedItemIndex(index);
   const handleDragOver = (e: React.DragEvent, index: number) => { e.preventDefault(); const current = getCurrentList(); if (!current || draggedItemIndex === null || draggedItemIndex === index) return; const newList = [...current.items]; const draggedItem = newList[draggedItemIndex]; newList.splice(draggedItemIndex, 1); newList.splice(index, 0, draggedItem); current.setter(newList); setDraggedItemIndex(index); };
   const handleDrop = async (e: React.DragEvent) => { e.preventDefault(); setDraggedItemIndex(null); const current = getCurrentList(); if (!current) return; const updates = current.items.map((item, index) => ({ ...item, sort_order: index + 1 })); try { await supabase.from(current.table).upsert(updates, { onConflict: 'id' }); } catch (err: any) { alert("排序保存失败"); fetchData(); } };
-  const handleSkillDragStart = (index: number) => setDraggedSkillIndex(index);
-  const handleSkillDragOver = (e: React.DragEvent, index: number) => { e.preventDefault(); if (draggedSkillIndex === null || draggedSkillIndex === index) return; const newSkills = [...(editingItem.skills || [])]; const draggedItem = newSkills[draggedSkillIndex]; newSkills.splice(draggedSkillIndex, 1); newSkills.splice(index, 0, draggedItem); setEditingItem({ ...editingItem, skills: newSkills }); setDraggedSkillIndex(index); };
-  const handleSkillDrop = (e: React.DragEvent) => { e.preventDefault(); setDraggedSkillIndex(null); };
 
   // --- Editor Logic ---
   const addContentBlock = (type: ContentBlockType) => {
@@ -154,28 +150,69 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
     setEditingItem({ ...editingItem, content_blocks: blocks });
   };
 
-  const addSkill = () => {
-    const newSkill: Skill = { category: 'Ability', name: 'New Skill', value: 80, unit: '%' };
-    setEditingItem({ ...editingItem, skills: [...(editingItem.skills || []), newSkill] });
+  // --- SKILLS LOGIC (Refactored) ---
+  const addSkillCategory = () => {
+    const newCategory: SkillCategory = { name: '新分类', layout: 'bar', items: [] };
+    setEditingItem({ ...editingItem, skills: [...(editingItem.skills || []), newCategory] });
   };
 
-  const updateSkill = (index: number, field: keyof Skill, value: any) => {
+  const updateCategory = (index: number, field: keyof SkillCategory, value: any) => {
     const newSkills = [...(editingItem.skills || [])];
     newSkills[index] = { ...newSkills[index], [field]: value };
     setEditingItem({ ...editingItem, skills: newSkills });
   };
 
-  const removeSkill = (index: number) => {
+  const removeCategory = (index: number) => {
+    if (!confirm('确定删除整个分类及其技能吗？')) return;
     const newSkills = [...(editingItem.skills || [])];
     newSkills.splice(index, 1);
     setEditingItem({ ...editingItem, skills: newSkills });
   };
 
-  const updateSkillsLayout = (layout: SkillsLayout) => {
-    setEditingItem({ 
-      ...editingItem, 
-      skills_config: { ...editingItem.skills_config, layout } 
-    });
+  const addSkillToCategory = (catIndex: number) => {
+    const newSkills = [...(editingItem.skills || [])];
+    const category = newSkills[catIndex];
+    category.items.push({ name: '新技能', value: 80, unit: '分' });
+    setEditingItem({ ...editingItem, skills: newSkills });
+  };
+
+  const updateSkillItem = (catIndex: number, itemIndex: number, field: keyof SkillItem, value: any) => {
+    const newSkills = [...(editingItem.skills || [])];
+    const item = newSkills[catIndex].items[itemIndex];
+    (item as any)[field] = value;
+    setEditingItem({ ...editingItem, skills: newSkills });
+  };
+
+  const removeSkillItem = (catIndex: number, itemIndex: number) => {
+    const newSkills = [...(editingItem.skills || [])];
+    newSkills[catIndex].items.splice(itemIndex, 1);
+    setEditingItem({ ...editingItem, skills: newSkills });
+  };
+
+  // Helper to migrate legacy flat skills to new category structure
+  const migrateSkillsData = (item: any) => {
+    if (!item.skills || !Array.isArray(item.skills)) return [];
+    
+    // Check if it's legacy flat structure (has 'category' prop on items)
+    const isLegacy = item.skills.length > 0 && 'category' in item.skills[0];
+    
+    if (isLegacy) {
+      // Group by category
+      const groups: Record<string, SkillItem[]> = {};
+      item.skills.forEach((s: any) => {
+        const cat = s.category || '默认';
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push({ name: s.name, value: s.value, unit: s.unit });
+      });
+      
+      return Object.entries(groups).map(([name, items]) => ({
+        name,
+        layout: 'bar', // Default layout
+        items
+      }));
+    }
+    
+    return item.skills; // Already grouped or empty
   };
 
   // --- CRUD ---
@@ -186,7 +223,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
     else if (activeTab === 'showcase') template = { title: '', category: '商业级产品', description: '', image_urls: [], sort_order: 99 };
     else if (activeTab === 'social') template = { title: '商业化案例', subtitle: '', quote: '', footer_note: '', image_urls: [], sort_order: 99 };
     else if (activeTab === 'philosophy') template = { title: '', content: '', icon_name: 'Star', sort_order: 99 };
-    else if (activeTab === 'students') template = { slug: '', student_name: '', student_title: '', summary_bio: '', access_password: '', content_blocks: [], skills: [], skills_config: { layout: 'bar' }, theme_config: { theme: 'tech_dark' }, avatar_url: '' };
+    else if (activeTab === 'students') template = { slug: '', student_name: '', student_title: '', summary_bio: '', access_password: '', content_blocks: [], skills: [], theme_config: { theme: 'tech_dark' }, avatar_url: '' };
     
     setEditingItem(template);
     setStudentEditorTab('profile'); 
@@ -195,7 +232,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
 
   const openEditModal = (item: any) => {
     setIsNewRecord(false);
-    setEditingItem({ ...item }); 
+    
+    // Special handling for Student Portfolio migration
+    let editableItem = { ...item };
+    if (activeTab === 'students') {
+        editableItem.skills = migrateSkillsData(item);
+    }
+
+    setEditingItem(editableItem); 
     setStudentEditorTab('profile');
     setIsModalOpen(true);
   };
@@ -309,7 +353,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
         {
           "student_title": "string",
           "summary_bio": "string",
-          "skills": [ {"category": "string", "name": "string", "value": number, "unit": "%"} ],
+          "skills": [ 
+             {
+               "name": "Category Name (e.g. Hardware)", 
+               "layout": "radar", 
+               "items": [{ "name": "Skill Name", "value": 85, "unit": "%" }]
+             } 
+          ],
           "content_blocks": [
             {
               "id": "random",
@@ -391,6 +441,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
         </header>
 
         <main className="p-8">
+           {/* ... (Table and List Views remain unchanged) ... */}
            {loading ? <div className="flex justify-center items-center h-64 text-slate-400"><Icons.Loader2 className="animate-spin mr-2" /> 加载中...</div> : (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[200px]">
                 {activeTab === 'bookings' && (
@@ -467,23 +518,81 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                       )}
                       {studentEditorTab === 'skills' && (
                          <div>
-                            <div className="flex justify-between items-center mb-4">
-                                <button onClick={addSkill} className="text-xs bg-slate-900 text-white px-3 py-1 rounded">+ 添加技能</button>
-                                <div className="flex items-center gap-2">
-                                    <label className="text-xs font-bold text-slate-500 uppercase">展示样式:</label>
-                                    <select 
-                                        className="text-xs border rounded p-1"
-                                        value={editingItem.skills_config?.layout || 'bar'}
-                                        onChange={(e) => updateSkillsLayout(e.target.value as SkillsLayout)}
-                                    >
-                                        <option value="bar">条形图 (Bar Chart)</option>
-                                        <option value="radar">雷达图 (Radar Chart)</option>
-                                        <option value="circle">环形图 (Circular Gauge)</option>
-                                        <option value="stat_grid">数值卡片 (Stat Grid)</option>
-                                    </select>
-                                </div>
+                            <div className="flex justify-between items-center mb-6">
+                                <h4 className="font-bold text-slate-800">技能矩阵配置</h4>
+                                <button onClick={addSkillCategory} className="text-xs bg-slate-900 text-white px-3 py-2 rounded-lg flex items-center gap-1 hover:bg-slate-700">
+                                    <Icons.Plus size={14} /> 添加新分类
+                                </button>
                             </div>
-                            <div className="space-y-2">{(editingItem.skills || []).map((skill: Skill, idx: number) => (<div key={idx} draggable onDragStart={() => handleSkillDragStart(idx)} onDragOver={(e) => handleSkillDragOver(e, idx)} onDrop={handleSkillDrop} className="flex gap-2 items-center group bg-white border border-transparent hover:border-slate-200 hover:shadow-sm rounded p-1"><div className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 p-1"><Icons.GripVertical size={14} /></div><input className="border p-1 rounded text-sm w-24" placeholder="分类 (Category)" value={skill.category} onChange={e => updateSkill(idx, 'category', e.target.value)} /><input className="border p-1 rounded text-sm flex-1" placeholder="技能名 (Name)" value={skill.name} onChange={e => updateSkill(idx, 'name', e.target.value)} /><input className="border p-1 rounded text-sm w-20" type="number" step="0.1" placeholder="数值" value={skill.value} onChange={e => updateSkill(idx, 'value', parseFloat(e.target.value))} /><input className="border p-1 rounded text-sm w-16" placeholder="单位" value={skill.unit || ''} onChange={e => updateSkill(idx, 'unit', e.target.value)} /><button onClick={() => removeSkill(idx)} className="text-red-500 p-1 hover:bg-red-50 rounded"><Icons.X size={16} /></button></div>))}</div><p className="text-xs text-slate-400 mt-2">提示：拖动左侧图标调整顺序；数值支持小数；单位可填"%"、"分"或留空。</p></div>
+                            
+                            <div className="space-y-6">
+                                {(editingItem.skills || []).map((category: SkillCategory, catIdx: number) => (
+                                    <div key={catIdx} className="border border-slate-200 rounded-xl bg-slate-50 overflow-hidden">
+                                        <div className="p-3 border-b border-slate-200 flex justify-between items-center bg-white">
+                                            <div className="flex items-center gap-3 flex-1">
+                                                <input 
+                                                    className="font-bold text-sm border-b border-transparent hover:border-slate-300 focus:border-blue-500 outline-none px-1"
+                                                    value={category.name}
+                                                    onChange={e => updateCategory(catIdx, 'name', e.target.value)}
+                                                    placeholder="分类名称 (如: 编程能力)"
+                                                />
+                                                <select 
+                                                    className="text-xs border rounded p-1 bg-slate-50 text-slate-600"
+                                                    value={category.layout}
+                                                    onChange={e => updateCategory(catIdx, 'layout', e.target.value)}
+                                                >
+                                                    <option value="bar">条形图 (Bar)</option>
+                                                    <option value="radar">雷达图 (Radar)</option>
+                                                    <option value="circle">环形图 (Circle)</option>
+                                                    <option value="stat_grid">数值卡片 (Grid)</option>
+                                                </select>
+                                            </div>
+                                            <button onClick={() => removeCategory(catIdx)} className="text-red-400 hover:text-red-600 p-1">
+                                                <Icons.Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                        
+                                        <div className="p-3 space-y-2">
+                                            {category.items.map((skill, itemIdx) => (
+                                                <div key={itemIdx} className="flex gap-2 items-center">
+                                                    <input 
+                                                        className="border p-1.5 rounded text-sm flex-1"
+                                                        placeholder="技能名称"
+                                                        value={skill.name}
+                                                        onChange={e => updateSkillItem(catIdx, itemIdx, 'name', e.target.value)}
+                                                    />
+                                                    <input 
+                                                        className="border p-1.5 rounded text-sm w-20"
+                                                        type="number"
+                                                        step="0.1"
+                                                        placeholder="数值"
+                                                        value={skill.value}
+                                                        onChange={e => updateSkillItem(catIdx, itemIdx, 'value', parseFloat(e.target.value))}
+                                                    />
+                                                    <input 
+                                                        className="border p-1.5 rounded text-sm w-16"
+                                                        placeholder="单位"
+                                                        value={skill.unit || ''}
+                                                        onChange={e => updateSkillItem(catIdx, itemIdx, 'unit', e.target.value)}
+                                                    />
+                                                    <button onClick={() => removeSkillItem(catIdx, itemIdx)} className="text-slate-400 hover:text-red-500">
+                                                        <Icons.X size={14} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            <button onClick={() => addSkillToCategory(catIdx)} className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-2 flex items-center gap-1 px-1">
+                                                <Icons.Plus size={12} /> 添加技能项
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {(editingItem.skills || []).length === 0 && (
+                                    <div className="text-center py-8 text-slate-400 text-sm border-2 border-dashed rounded-xl">
+                                        点击上方按钮添加技能分类
+                                    </div>
+                                )}
+                            </div>
+                         </div>
                       )}
                       {studentEditorTab === 'content' && (
                          <div className="space-y-2">

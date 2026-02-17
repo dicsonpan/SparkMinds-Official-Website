@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
-import { StudentPortfolio, ContentBlock, PortfolioTheme, Skill, SkillsLayout } from '../types';
+import { StudentPortfolio, ContentBlock, PortfolioTheme, SkillCategory, SkillItem, SkillsLayout } from '../types';
 import { Logo } from '../components/Logo';
 import { ImageCarousel } from '../components/ImageCarousel';
 import * as Icons from 'lucide-react';
@@ -120,6 +120,27 @@ export const StudentPortfolioPage: React.FC = () => {
     try {
       const { data, error } = await supabase.from('student_portfolios').select('*').eq('slug', slug).single();
       if (error) throw error;
+      
+      // Legacy Data Migration Logic (Frontend Side)
+      // Ensures old data format (flat list) works with new grouped structure
+      if (data.skills && data.skills.length > 0 && 'category' in data.skills[0]) {
+         const groups: Record<string, SkillItem[]> = {};
+         data.skills.forEach((s: any) => {
+            const cat = s.category || 'General';
+            if (!groups[cat]) groups[cat] = [];
+            groups[cat].push({ name: s.name, value: s.value, unit: s.unit });
+         });
+         
+         // Use the old global layout config if available, otherwise default to bar
+         const globalLayout = data.skills_config?.layout || 'bar';
+         
+         data.skills = Object.entries(groups).map(([name, items]) => ({
+            name,
+            layout: globalLayout,
+            items
+         }));
+      }
+
       setOriginalPortfolio(data);
     } catch (err: any) {
       console.error(err);
@@ -283,7 +304,7 @@ export const StudentPortfolioPage: React.FC = () => {
           dominantBaseline="middle" 
           className={`text-[10px] font-bold fill-current opacity-80 ${styles.text}`}
         >
-          {d.label} ({d.value})
+          {d.label}
         </text>
       );
     });
@@ -312,7 +333,7 @@ export const StudentPortfolioPage: React.FC = () => {
   };
 
   // 2. Circular Gauge
-  const CircularGauge = ({ skill, styles }: { skill: Skill, styles: any }) => {
+  const CircularGauge = ({ skill, styles }: { skill: SkillItem, styles: any }) => {
     const size = 120;
     const strokeWidth = 8;
     const radius = (size - strokeWidth) / 2;
@@ -339,15 +360,13 @@ export const StudentPortfolioPage: React.FC = () => {
                 </div>
             </div>
             <span className={`mt-3 font-medium text-sm ${styles.text}`}>{skill.name}</span>
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider">{skill.category}</span>
         </div>
     );
   };
 
   // 3. Stat Card
-  const StatCard = ({ skill, styles }: { skill: Skill, styles: any }) => (
+  const StatCard = ({ skill, styles }: { skill: SkillItem, styles: any }) => (
       <div className={`${styles.cardBg} border ${styles.border} p-4 rounded-xl flex flex-col items-center justify-center text-center shadow-sm h-full`}>
-          <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">{skill.category}</span>
           <h4 className={`font-bold text-md mb-2 ${styles.text}`}>{skill.name}</h4>
           <div className="mt-auto pt-2 border-t border-slate-700/10 w-full">
              <span className={`text-2xl font-black text-blue-500`}>{skill.value}</span>
@@ -356,17 +375,8 @@ export const StudentPortfolioPage: React.FC = () => {
       </div>
   );
 
-  const SkillsMatrix = ({ skills, layout = 'bar', styles }: { skills: Skill[], layout?: SkillsLayout, styles: any }) => {
+  const SkillsMatrix = ({ skills, styles }: { skills: SkillCategory[], styles: any }) => {
      if (!skills || skills.length === 0) return null;
-     
-     // Data Prep for Radar
-     // Group by category and average
-     const categories = Array.from(new Set(skills.map(s => s.category || 'General')));
-     const radarData = categories.map(cat => {
-         const catSkills = skills.filter(s => (s.category || 'General') === cat);
-         const avg = catSkills.reduce((sum, s) => sum + s.value, 0) / catSkills.length;
-         return { label: cat, value: Math.round(avg) };
-     });
 
      return (
        <div className={`mb-20 animate-fade-in-up`}>
@@ -376,60 +386,60 @@ export const StudentPortfolioPage: React.FC = () => {
              <div className="h-px flex-1 bg-gradient-to-l from-transparent to-blue-500/50"></div>
           </div>
           
-          {layout === 'radar' && radarData.length >= 3 ? (
-             <div className="grid md:grid-cols-2 gap-8 items-center">
-                 <RadarChart data={radarData} styles={styles} />
-                 {/* Detail List for Radar view */}
-                 <div className="grid grid-cols-2 gap-4">
-                    {skills.map((skill, idx) => (
-                        <div key={idx} className={`flex justify-between items-center p-3 rounded-lg ${styles.cardBg} border ${styles.border}`}>
-                            <div>
-                                <div className="text-xs text-slate-500">{skill.category}</div>
-                                <div className={`font-bold ${styles.text}`}>{skill.name}</div>
-                            </div>
-                            <div className="font-mono text-blue-500 font-bold">{skill.value}{skill.unit}</div>
-                        </div>
-                    ))}
-                 </div>
-             </div>
-          ) : layout === 'circle' ? (
-             <div className="flex flex-wrap justify-center gap-8 md:gap-12">
-                 {skills.map((skill, idx) => <CircularGauge key={idx} skill={skill} styles={styles} />)}
-             </div>
-          ) : layout === 'stat_grid' ? (
-             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                 {skills.map((skill, idx) => <StatCard key={idx} skill={skill} styles={styles} />)}
-             </div>
-          ) : (
-             // Default: Bar Layout
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-10">
-                {categories.map((category) => (
-                    <div key={category} className="space-y-4">
-                    <h4 className={`font-bold text-sm uppercase tracking-wider opacity-60 border-b border-dashed border-slate-700/50 pb-2 mb-4 ${styles.text}`}>
-                        {category}
+          <div className="space-y-16">
+             {skills.map((category, idx) => (
+                <div key={idx} className="w-full">
+                    {/* Category Header */}
+                    <h4 className={`font-bold text-sm uppercase tracking-wider opacity-60 border-b border-dashed border-slate-700/50 pb-2 mb-8 ${styles.text} flex justify-between`}>
+                        <span>{category.name}</span>
+                        <span className="text-[10px] opacity-50">{category.layout} VIEW</span>
                     </h4>
-                    <div className="space-y-5">
-                        {skills.filter(s => (s.category || 'General') === category).map((skill, idx) => (
-                            <div key={idx} className="group">
-                            <div className="flex justify-between mb-2 text-sm font-medium items-end">
-                                <span className={`${styles.text} group-hover:text-blue-400 transition-colors`}>{skill.name}</span>
-                                <span className="text-slate-500 font-mono text-xs">
-                                    {skill.value}{skill.unit || ''}
-                                </span>
+
+                    {/* Visualization Switch */}
+                    {category.layout === 'radar' && category.items.length >= 3 ? (
+                        <div className="grid md:grid-cols-2 gap-8 items-center">
+                            <RadarChart data={category.items.map(i => ({ label: i.name, value: i.value }))} styles={styles} />
+                            <div className="grid grid-cols-2 gap-4">
+                                {category.items.map((skill, sIdx) => (
+                                    <div key={sIdx} className={`flex justify-between items-center p-3 rounded-lg ${styles.cardBg} border ${styles.border}`}>
+                                        <div className={`font-bold ${styles.text}`}>{skill.name}</div>
+                                        <div className="font-mono text-blue-500 font-bold">{skill.value}{skill.unit}</div>
+                                    </div>
+                                ))}
                             </div>
-                            <div className={`w-full h-2 rounded-full ${styles.cardBg} overflow-hidden bg-opacity-30`}>
-                                <div 
-                                    className="h-full bg-gradient-to-r from-blue-600 to-purple-500 rounded-full transition-all duration-1000 ease-out"
-                                    style={{ width: skill.unit === '%' || !skill.unit ? `${Math.min(skill.value, 100)}%` : '100%' }}
-                                ></div>
-                            </div>
-                            </div>
-                        ))}
-                    </div>
-                    </div>
-                ))}
-             </div>
-          )}
+                        </div>
+                    ) : category.layout === 'circle' ? (
+                        <div className="flex flex-wrap justify-center gap-8 md:gap-12">
+                            {category.items.map((skill, sIdx) => <CircularGauge key={sIdx} skill={skill} styles={styles} />)}
+                        </div>
+                    ) : category.layout === 'stat_grid' ? (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {category.items.map((skill, sIdx) => <StatCard key={sIdx} skill={skill} styles={styles} />)}
+                        </div>
+                    ) : (
+                        // Default: Bar
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-6">
+                            {category.items.map((skill, sIdx) => (
+                                <div key={sIdx} className="group">
+                                    <div className="flex justify-between mb-2 text-sm font-medium items-end">
+                                        <span className={`${styles.text} group-hover:text-blue-400 transition-colors`}>{skill.name}</span>
+                                        <span className="text-slate-500 font-mono text-xs">
+                                            {skill.value}{skill.unit || ''}
+                                        </span>
+                                    </div>
+                                    <div className={`w-full h-2 rounded-full ${styles.cardBg} overflow-hidden bg-opacity-30`}>
+                                        <div 
+                                            className="h-full bg-gradient-to-r from-blue-600 to-purple-500 rounded-full transition-all duration-1000 ease-out"
+                                            style={{ width: skill.unit === '%' || !skill.unit ? `${Math.min(skill.value, 100)}%` : '100%' }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+             ))}
+          </div>
        </div>
      )
   };
@@ -668,7 +678,7 @@ export const StudentPortfolioPage: React.FC = () => {
         </header>
 
         <main className="px-6 md:px-12 max-w-5xl mx-auto relative z-10 pt-12">
-           {currentPortfolio?.skills && currentPortfolio.skills.length > 0 && <SkillsMatrix skills={currentPortfolio.skills} layout={currentPortfolio.skills_config?.layout} styles={styles} />}
+           {currentPortfolio?.skills && currentPortfolio.skills.length > 0 && <SkillsMatrix skills={currentPortfolio.skills as any} styles={styles} />}
            {currentPortfolio?.content_blocks && currentPortfolio.content_blocks.length > 0 ? (
              <div className="flex flex-col gap-0">
                 {currentPortfolio.content_blocks.map(block => renderBlock(block, styles))}

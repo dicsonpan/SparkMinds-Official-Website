@@ -66,11 +66,21 @@ export interface SocialProject {
 
 export type ContentBlockType = 'header' | 'text' | 'image_grid' | 'video' | 'skills' | 'project_highlight' | 'timeline_node' | 'section_heading';
 
-export interface Skill {
-  category: string; // e.g., "Hardware", "Software", "Soft Skills"
+export type PortfolioTheme = 'tech_dark' | 'academic_light' | 'creative_color';
+export type SkillsLayout = 'bar' | 'radar' | 'circle' | 'stat_grid';
+
+// Basic skill item
+export interface SkillItem {
   name: string;     // e.g., "Python", "Soldering"
   value: number;    // Float
   unit?: string;    // e.g. "%", "分", or empty
+}
+
+// Grouped skill category with its own layout config
+export interface SkillCategory {
+  name: string; // e.g., "Hardware", "Software"
+  layout: SkillsLayout;
+  items: SkillItem[];
 }
 
 export interface ContentBlock {
@@ -92,9 +102,6 @@ export interface ContentBlock {
   };
 }
 
-export type PortfolioTheme = 'tech_dark' | 'academic_light' | 'creative_color';
-export type SkillsLayout = 'bar' | 'radar' | 'circle' | 'stat_grid';
-
 export interface StudentPortfolio {
   id?: number;
   slug: string; 
@@ -105,10 +112,8 @@ export interface StudentPortfolio {
   avatar_url?: string; // New: Custom avatar image
   access_password: string; 
   content_blocks: ContentBlock[]; 
-  skills?: Skill[]; // New: Skills Matrix
-  skills_config?: {
-    layout: SkillsLayout;
-  };
+  skills?: SkillCategory[]; // Refactored to grouped structure
+  // Legacy support or global overrides can go here if needed, but we moved layout to SkillCategory
   theme_config?: {
     theme: PortfolioTheme;
     primary_color?: string;

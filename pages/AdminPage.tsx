@@ -688,6 +688,17 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                   ) : (
                                      <div className="space-y-2">
                                         {b.type !== 'text' && <input className="w-full border p-2 rounded" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="标题" />}
+                                        
+                                        {/* Added Date Input for Header */}
+                                        {b.type === 'header' && (
+                                            <input 
+                                                className="w-full border p-2 rounded text-sm text-slate-600 font-mono" 
+                                                value={b.data.date || ''} 
+                                                onChange={e => updateContentBlock(b.id, 'date', e.target.value)} 
+                                                placeholder="时间节点 (例如: 2023年)" 
+                                            />
+                                        )}
+
                                         <textarea className="w-full border p-2 rounded h-20" value={b.data.content || ''} onChange={e => updateContentBlock(b.id, 'content', e.target.value)} placeholder="内容..." />
                                      </div>
                                   )}

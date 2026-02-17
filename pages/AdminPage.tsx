@@ -7,7 +7,7 @@ import { Booking, StudentPortfolio, ContentBlock, ContentBlockType, SkillCategor
 import imageCompression from 'browser-image-compression';
 
 const COMPRESSION_OPTIONS = {
-  maxSizeMB: 0.6, // Slightly more aggressive compression for "slimming"
+  maxSizeMB: 0.6,
   maxWidthOrHeight: 1920,
   useWebWorker: true,
   fileType: 'image/jpeg'
@@ -17,6 +17,7 @@ const CACHE_CONTROL_MAX_AGE = '31536000';
 const AI_SETTINGS_KEY = 'SM_AI_CONFIG';
 
 type AdminTab = 'curriculum' | 'showcase' | 'social' | 'philosophy' | 'pages' | 'bookings' | 'students' | 'settings';
+type PolishScope = 'profile' | 'skills' | 'content';
 
 interface AdminPageProps {
   defaultTab?: AdminTab;
@@ -56,6 +57,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
   // AI Polish State
   const [prePolishState, setPrePolishState] = useState<any | null>(null);
   const [isPolishing, setIsPolishing] = useState(false);
+  const [polishScope, setPolishScope] = useState<PolishScope | null>(null);
 
   // Check auth & Load AI Config
   useEffect(() => {
@@ -123,7 +125,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
       }
   };
 
-  // --- Drag and Drop Logic --- (Omitted for brevity, kept same)
+  // --- Drag and Drop Logic --- 
   const handleDragStart = (index: number) => setDraggedItemIndex(index);
   const handleDragOver = (e: React.DragEvent, index: number) => { e.preventDefault(); const current = getCurrentList(); if (!current || draggedItemIndex === null || draggedItemIndex === index) return; const newList = [...current.items]; const draggedItem = newList[draggedItemIndex]; newList.splice(draggedItemIndex, 1); newList.splice(index, 0, draggedItem); current.setter(newList); setDraggedItemIndex(index); };
   const handleDrop = async (e: React.DragEvent) => { e.preventDefault(); setDraggedItemIndex(null); const current = getCurrentList(); if (!current) return; const updates = current.items.map((item, index) => ({ ...item, sort_order: index + 1 })); try { await supabase.from(current.table).upsert(updates, { onConflict: 'id' }); } catch (err: any) { alert("排序保存失败"); fetchData(); } };
@@ -193,36 +195,26 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
     setEditingItem({ ...editingItem, skills: newSkills });
   };
 
-  // Helper to migrate legacy flat skills to new category structure
   const migrateSkillsData = (item: any) => {
     if (!item.skills || !Array.isArray(item.skills)) return [];
-    
-    // Check if it's legacy flat structure (has 'category' prop on items)
     const isLegacy = item.skills.length > 0 && 'category' in item.skills[0];
-    
     if (isLegacy) {
-      // Group by category
       const groups: Record<string, SkillItem[]> = {};
       item.skills.forEach((s: any) => {
         const cat = s.category || '默认';
         if (!groups[cat]) groups[cat] = [];
         groups[cat].push({ name: s.name, value: s.value, unit: s.unit });
       });
-      
-      return Object.entries(groups).map(([name, items]) => ({
-        name,
-        layout: 'bar', // Default layout
-        items
-      }));
+      return Object.entries(groups).map(([name, items]) => ({ name, layout: 'bar', items }));
     }
-    
-    return item.skills; // Already grouped or empty
+    return item.skills;
   };
 
   // --- CRUD ---
   const handleCreateNew = () => {
     setIsNewRecord(true);
-    setPrePolishState(null); // Clear polish state
+    setPrePolishState(null);
+    setPolishScope(null);
     let template: any = {};
     if (activeTab === 'curriculum') template = { id: 'New', level: '', age: '', title: '', description: '', skills: [], icon_name: 'Box', image_urls: [], sort_order: 99 };
     else if (activeTab === 'showcase') template = { title: '', category: '商业级产品', description: '', image_urls: [], sort_order: 99 };
@@ -237,9 +229,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
 
   const openEditModal = (item: any) => {
     setIsNewRecord(false);
-    setPrePolishState(null); // Clear polish state
+    setPrePolishState(null);
+    setPolishScope(null);
     
-    // Special handling for Student Portfolio migration
     let editableItem = { ...item };
     if (activeTab === 'students') {
         editableItem.skills = migrateSkillsData(item);
@@ -274,6 +266,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
       setIsModalOpen(false);
       setEditingItem(null);
       setPrePolishState(null);
+      setPolishScope(null);
     } catch (error: any) { alert('保存失败: ' + error.message); } finally { setLoading(false); }
   };
 
@@ -294,18 +287,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, targetType: string = 'standard', blockId?: string) => {
     if (!event.target.files?.length) return;
     const file = event.target.files[0];
-    
-    // Strict image check
-    if (!file.type.startsWith('image/')) {
-      alert("仅支持上传图片格式文件 (jpg, png, webp 等)");
-      return;
-    }
+    if (!file.type.startsWith('image/')) { alert("仅支持上传图片格式文件"); return; }
 
     setUploading(true);
     try {
-      // Compression
       const compressedFile = await imageCompression(file, COMPRESSION_OPTIONS);
-      
       const fileName = `${Math.random().toString(36).substr(2)}.${compressedFile.name.split('.').pop() || 'jpg'}`;
       await supabase.storage.from('images').upload(fileName, compressedFile, { cacheControl: CACHE_CONTROL_MAX_AGE, upsert: false });
       const { data } = supabase.storage.from('images').getPublicUrl(fileName);
@@ -329,84 +315,32 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
     } catch (error: any) { alert('上传失败: ' + error.message); } finally { setUploading(false); }
   };
 
-  // --- Add Video Embed ---
   const handleAddVideo = (blockId: string) => {
-    const videoCode = prompt("请输入视频代码 (推荐使用 <iframe> 嵌入代码，支持 Bilibili / YouTube):");
+    const videoCode = prompt("请输入视频代码 (推荐使用 <iframe> 嵌入代码):");
     if (videoCode) {
-      if (!videoCode.includes('<iframe') && !videoCode.startsWith('http')) {
-        alert("无效的视频代码。请粘贴 iframe 代码或有效的视频链接。");
-        return;
-      }
-      const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => 
-        b.id === blockId ? { ...b, data: { ...b.data, urls: [...(b.data.urls || []), videoCode] } } : b
-      );
+      if (!videoCode.includes('<iframe') && !videoCode.startsWith('http')) { alert("无效的视频代码"); return; }
+      const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => b.id === blockId ? { ...b, data: { ...b.data, urls: [...(b.data.urls || []), videoCode] } } : b);
       setEditingItem({ ...editingItem, content_blocks: newBlocks });
     }
   };
 
-  // --- AI Gen ---
+  // --- AI Gen (From Scratch) ---
   const handleAIGenerate = async () => {
-    if (!aiConfig.apiKey || !aiPrompt.trim()) return alert("请在系统设置中配置 API Key 并输入提示词");
+    if (!aiConfig.apiKey || !aiPrompt.trim()) return alert("请配置 API Key 并输入资料");
     setIsGenerating(true);
     try {
-      const systemPrompt = `
-        You are a Student Portfolio Architect for SparkMinds.
-        Your task is to analyze the raw unstructured notes provided by the user and convert them into a structured JSON portfolio matching the specific schema below.
-
-        LANGUAGE RULE:
-        1. All text values MUST BE IN SIMPLIFIED CHINESE (简体中文).
-        2. Do NOT output English content unless it is a specific technical term or proper noun.
-        3. Only JSON keys should be in English.
-
-        OUTPUT JSON SCHEMA:
-        {
-          "student_title": "A short, catchy slogan (e.g., '全栈少年工程师', '未来的AI科学家')",
-          "summary_bio": "A concise biography summarizing the student's interests and journey (100-200 words)",
-          "skills": [
-             {
-               "name": "Category Name (e.g. '编程能力', '硬件创造', '综合素养')",
-               "layout": "radar" | "bar" | "circle" | "stat_grid" (Choose the best visualization),
-               "items": [
-                 { "name": "Skill Name", "value": 0-100, "unit": "%" or "分" }
-               ]
-             }
-          ],
+      const systemPrompt = `You are a Student Portfolio Architect. Convert raw notes into structured JSON.
+        LANGUAGE: Simplified Chinese.
+        OUTPUT SCHEMA: {
+          "student_title": "Short slogan",
+          "summary_bio": "100-200 words bio",
+          "skills": [{"name": "Category", "layout": "bar", "items": [{"name": "Skill", "value": 80, "unit": "%"}]}],
           "content_blocks": [
-            // Use 'section_heading' to divide sections (e.g., '竞赛荣誉', '项目经历')
-            {
-              "type": "section_heading",
-              "data": { "title": "Section Title" }
-            },
-            // Use 'project_highlight' for major projects using the STAR method
-            {
-              "type": "project_highlight",
-              "data": {
-                "title": "Project Name",
-                "date": "Date/Period",
-                "star_situation": "Situation (Background)",
-                "star_task": "Task (Goal)",
-                "star_action": "Action (What they did, technical details)",
-                "star_result": "Result (Outcome, awards, impact)"
-              }
-            },
-            // Use 'timeline_node' for milestones, awards, or smaller events
-            {
-              "type": "timeline_node",
-              "data": {
-                "date": "Date string",
-                "title": "Event Title",
-                "content": "Description of the event"
-              }
-            }
+            {"type": "section_heading", "data": {"title": "Section Title"}},
+            {"type": "project_highlight", "data": {"title": "Project", "star_situation": "...", "star_task": "...", "star_action": "...", "star_result": "..."}},
+            {"type": "timeline_node", "data": {"date": "...", "title": "...", "content": "..."}}
           ]
-        }
-
-        INSTRUCTIONS:
-        - Organize the content logically. Group skills into meaningful categories.
-        - Identify STAR components (Situation, Task, Action, Result) for projects if possible. If not explicit, infer them.
-        - If input mentions awards, create timeline nodes or project highlights.
-        - Return ONLY the raw JSON. No markdown formatting.
-      `;
+        }`;
       const response = await fetch(`${aiConfig.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${aiConfig.apiKey}` },
@@ -418,20 +352,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
       });
       const data = await response.json();
       if (data.error) throw new Error(data.error.message);
-      let content = data.choices[0].message.content;
-      content = content.replace(/```json/g, '').replace(/```/g, '').trim();
+      let content = data.choices[0].message.content.replace(/```json/g, '').replace(/```/g, '').trim();
       const parsed = JSON.parse(content);
-      
-      // Ensure IDs and structure
-      const processedBlocks = (parsed.content_blocks || []).map((b: any) => ({
-        ...b,
-        id: Math.random().toString(36).substr(2, 9),
-        data: {
-            ...b.data,
-            urls: [], // Initialize arrays to prevent errors
-            evidence_urls: []
-        }
-      }));
+      const processedBlocks = (parsed.content_blocks || []).map((b: any) => ({ ...b, id: Math.random().toString(36).substr(2, 9), data: { ...b.data, urls: [], evidence_urls: [] } }));
 
       setEditingItem((prev: any) => ({
         ...prev,
@@ -441,66 +364,53 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
         content_blocks: [...(prev.content_blocks || []), ...processedBlocks]
       }));
       setAiPrompt('');
-      alert("AI 生成成功！请检查生成的内容。");
+      alert("AI 生成成功！");
       setStudentEditorTab('content'); 
-    } catch (e: any) {
-      console.error(e);
-      alert("AI 生成失败: " + e.message);
-    } finally {
-      setIsGenerating(false);
-    }
+    } catch (e: any) { alert("AI 生成失败: " + e.message); } finally { setIsGenerating(false); }
   };
 
-  // --- AI Polish (New Feature) ---
-  const handleAIPolish = async () => {
+  // --- AI Polish (Scope Based) ---
+  const handleAIPolish = async (scope: PolishScope) => {
     if (!aiConfig.apiKey) return alert("请先在系统设置中配置 API Key");
     if (isPolishing) return;
 
-    // 1. Backup current state
+    // 1. Backup
     setPrePolishState(JSON.parse(JSON.stringify(editingItem)));
+    setPolishScope(scope);
     setIsPolishing(true);
 
     try {
-        const payload = {
-            student_title: editingItem.student_title,
-            summary_bio: editingItem.summary_bio,
-            content_blocks: editingItem.content_blocks.map((b: any) => ({
-                id: b.id, // Keep ID to match later if needed (though we replace whole object)
-                type: b.type,
-                data: {
-                    ...b.data,
-                    // Send text fields, strip large arrays of URLs to save tokens if needed, 
-                    // but keeping them is safer to avoid losing them in AI hallucination.
-                    // Let's send everything relevant to text.
-                }
-            }))
-        };
+        let payload = {};
+        let specificPrompt = "";
 
-        const systemPrompt = `
-            You are a professional editor for Ivy League admissions. 
-            Your task is to POLISH the text content of this Student Portfolio to be more academic, professional, and impressive.
-            
-            RULES:
-            1. Keep the language in SIMPLIFIED CHINESE (简体中文).
-            2. Do NOT change the data structure, IDs, or URLs.
-            3. Only improve the phrasing, vocabulary, and flow of:
-               - 'student_title' (Make it catchy/professional)
-               - 'summary_bio' (Make it a compelling narrative)
-               - 'content_blocks' (Especially project_highlight STAR sections: Situation, Task, Action, Result)
-            4. Use strong action verbs and quantitative descriptions where possible.
-            5. Return the JSON object with the exact same keys as input.
-            6. Return ONLY the raw JSON.
-        `;
+        if (scope === 'profile') {
+            payload = { student_title: editingItem.student_title, summary_bio: editingItem.summary_bio };
+            specificPrompt = "Focus on 'student_title' (make it catchy/professional) and 'summary_bio' (compelling narrative). Output only these fields in JSON.";
+        } else if (scope === 'skills') {
+            payload = { skills: editingItem.skills };
+            specificPrompt = "Focus on 'skills'. Standardize skill names, ensure categories are logical. Output only the 'skills' array in JSON.";
+        } else if (scope === 'content') {
+            // Strip URLs to save tokens and prevent hallucination
+            payload = {
+                content_blocks: editingItem.content_blocks.map((b: any) => ({
+                    id: b.id, type: b.type, data: { ...b.data, urls: [], evidence_urls: [] }
+                }))
+            };
+            specificPrompt = "Focus on 'content_blocks'. Enhance 'content' and STAR fields (star_situation, star_task, star_action, star_result). Make them academic and impressive. Keep the same IDs. Output only 'content_blocks' in JSON.";
+        }
+
+        const systemPrompt = `You are a professional Ivy League admissions editor.
+            TASK: Polish the text content to be more academic and professional.
+            LANGUAGE: Simplified Chinese (简体中文).
+            INSTRUCTION: ${specificPrompt}
+            RETURN: Raw JSON only.`;
 
         const response = await fetch(`${aiConfig.baseUrl}/chat/completions`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${aiConfig.apiKey}` },
             body: JSON.stringify({
               model: aiConfig.model,
-              messages: [
-                  { role: "system", content: systemPrompt }, 
-                  { role: "user", content: JSON.stringify(payload) }
-              ],
+              messages: [{ role: "system", content: systemPrompt }, { role: "user", content: JSON.stringify(payload) }],
               temperature: 0.4
             })
         });
@@ -508,25 +418,45 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
         const data = await response.json();
         if (data.error) throw new Error(data.error.message);
         
-        let content = data.choices[0].message.content;
-        content = content.replace(/```json/g, '').replace(/```/g, '').trim();
+        let content = data.choices[0].message.content.replace(/```json/g, '').replace(/```/g, '').trim();
         const polishedData = JSON.parse(content);
 
-        // Merge polished data back into editingItem
-        // We preserve skills and other fields that might not have been sent or modified
-        setEditingItem((prev: any) => ({
-            ...prev,
-            student_title: polishedData.student_title || prev.student_title,
-            summary_bio: polishedData.summary_bio || prev.summary_bio,
-            content_blocks: polishedData.content_blocks || prev.content_blocks
-        }));
+        // Merge logic
+        setEditingItem((prev: any) => {
+            const newItem = { ...prev };
+            if (scope === 'profile') {
+                newItem.student_title = polishedData.student_title || prev.student_title;
+                newItem.summary_bio = polishedData.summary_bio || prev.summary_bio;
+            } else if (scope === 'skills') {
+                newItem.skills = polishedData.skills || prev.skills;
+            } else if (scope === 'content' && polishedData.content_blocks) {
+                // Merge text back into blocks, preserving URLs from previous state
+                newItem.content_blocks = prev.content_blocks.map((oldBlock: ContentBlock) => {
+                    const polishedBlock = polishedData.content_blocks.find((pb: any) => pb.id === oldBlock.id);
+                    if (polishedBlock) {
+                        return {
+                            ...oldBlock,
+                            data: {
+                                ...oldBlock.data,
+                                ...polishedBlock.data, // Overwrite text fields
+                                urls: oldBlock.data.urls, // Restore images
+                                evidence_urls: oldBlock.data.evidence_urls // Restore images
+                            }
+                        };
+                    }
+                    return oldBlock;
+                });
+            }
+            return newItem;
+        });
 
-        alert("AI 润色完成！请预览效果，不满意可点击“放弃回滚”。");
+        alert("AI 润色完成！请预览效果。");
 
     } catch (e: any) {
         console.error(e);
         alert("AI 润色失败: " + e.message);
-        setPrePolishState(null); // Clear backup if failed
+        setPrePolishState(null);
+        setPolishScope(null);
     } finally {
         setIsPolishing(false);
     }
@@ -536,13 +466,50 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
       if (prePolishState) {
           setEditingItem(prePolishState);
           setPrePolishState(null);
+          setPolishScope(null);
           alert("已恢复到润色前的内容。");
       }
   };
 
   const handleConfirmPolish = () => {
       setPrePolishState(null);
-      alert("已保留润色内容。请记得点击下方的“保存”按钮写入数据库。");
+      setPolishScope(null);
+      alert("已保留润色内容。请点击“保存”写入数据库。");
+  };
+
+  const renderPolishControl = (scope: PolishScope) => {
+      if (prePolishState && polishScope === scope) {
+          return (
+            <div className="bg-orange-50 border border-orange-200 text-orange-800 p-3 rounded-lg flex items-center justify-between shadow-sm mb-4 animate-fade-in-down">
+                <div className="flex items-center gap-2 text-sm font-bold">
+                    <Icons.Sparkles className="w-4 h-4 animate-pulse text-orange-500" />
+                    <span>AI 润色预览中 ({scope})</span>
+                </div>
+                <div className="flex gap-2">
+                    <button onClick={handleRollbackPolish} className="px-3 py-1 bg-white border border-orange-300 rounded text-xs font-bold hover:bg-orange-100 flex items-center gap-1 text-orange-700">
+                        <Icons.RotateCcw size={12} /> 放弃回滚
+                    </button>
+                    <button onClick={handleConfirmPolish} className="px-3 py-1 bg-orange-600 text-white rounded text-xs font-bold hover:bg-orange-700 flex items-center gap-1">
+                        <Icons.Check size={12} /> 确认采用
+                    </button>
+                </div>
+            </div>
+          );
+      } else if (!prePolishState) {
+          return (
+            <div className="flex justify-end mb-4">
+                <button 
+                    onClick={() => handleAIPolish(scope)} 
+                    disabled={isPolishing}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg text-xs font-bold shadow-sm hover:shadow-md hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50"
+                >
+                    {isPolishing ? <Icons.Loader2 className="animate-spin w-3 h-3" /> : <Icons.Wand2 className="w-3 h-3" />}
+                    {isPolishing ? 'AI 思考中...' : 'AI 一键润色本页'}
+                </button>
+            </div>
+          );
+      }
+      return null;
   };
 
   const getHeaderTitle = () => {
@@ -650,28 +617,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
           <div className={`bg-white rounded-2xl shadow-2xl w-full ${activeTab === 'students' ? 'max-w-6xl h-[90vh]' : 'max-w-lg'} flex flex-col overflow-hidden`}>
              <div className="px-6 py-4 border-b flex justify-between items-center bg-slate-50"><h3 className="font-bold text-lg">{isNewRecord ? '添加' : '编辑'} {getHeaderTitle()}</h3><button onClick={() => setIsModalOpen(false)}><Icons.X className="text-slate-400 hover:text-slate-600" /></button></div>
              <div className="flex-1 overflow-y-auto p-6 relative">
-                {prePolishState && (
-                    <div className="sticky top-0 z-20 mb-4 bg-orange-50 border border-orange-200 text-orange-800 p-3 rounded-lg flex items-center justify-between shadow-sm animate-fade-in-down">
-                        <div className="flex items-center gap-2 text-sm font-bold">
-                            <Icons.Sparkles className="w-4 h-4 animate-pulse" />
-                            <span>AI 润色预览模式</span>
-                        </div>
-                        <div className="flex gap-2">
-                            <button onClick={handleRollbackPolish} className="px-3 py-1 bg-white border border-orange-300 rounded text-xs font-bold hover:bg-orange-100 flex items-center gap-1">
-                                <Icons.RotateCcw size={12} /> 放弃回滚
-                            </button>
-                            <button onClick={handleConfirmPolish} className="px-3 py-1 bg-orange-600 text-white rounded text-xs font-bold hover:bg-orange-700 flex items-center gap-1">
-                                <Icons.Check size={12} /> 确认采用
-                            </button>
-                        </div>
-                    </div>
-                )}
-
+                
                 {activeTab === 'students' ? (
                    <div className="space-y-4">
                       <div className="flex gap-4 border-b pb-4">{['profile', 'skills', 'content', 'ai'].map(t => (<button key={t} onClick={() => setStudentEditorTab(t as any)} className={`px-4 py-2 rounded-lg font-bold text-sm ${studentEditorTab === t ? 'bg-blue-100 text-blue-700' : 'text-slate-500'}`}>{t.toUpperCase()}</button>))}</div>
                       {studentEditorTab === 'profile' && (
                          <div className="space-y-4">
+                            {renderPolishControl('profile')}
                             <div className="grid grid-cols-2 gap-4"><input className="border p-2 rounded" placeholder="姓名" value={editingItem.student_name} onChange={e => setEditingItem({...editingItem, student_name: e.target.value})} /><input className="border p-2 rounded" placeholder="Slug (URL后缀)" value={editingItem.slug} onChange={e => setEditingItem({...editingItem, slug: e.target.value})} /><input className="border p-2 rounded" placeholder="访问密码" value={editingItem.access_password} onChange={e => setEditingItem({...editingItem, access_password: e.target.value})} /><input className="border p-2 rounded" placeholder="头衔/Slogan" value={editingItem.student_title || ''} onChange={e => setEditingItem({...editingItem, student_title: e.target.value})} /></div>
                             <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl"><div><label className="block text-xs font-bold text-slate-500 mb-2 uppercase">Hero 背景大图 (建议横屏 16:9)</label><div className="flex items-center gap-2"><input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'hero')} className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>{editingItem.hero_image_url && <div className="w-10 h-10 rounded overflow-hidden bg-slate-200"><img src={editingItem.hero_image_url} className="w-full h-full object-cover"/></div>}</div></div><div><label className="block text-xs font-bold text-slate-500 mb-2 uppercase">学生头像 (建议正方形 1:1)</label><div className="flex items-center gap-2"><input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'avatar')} className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>{editingItem.avatar_url && <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200"><img src={editingItem.avatar_url} className="w-full h-full object-cover"/></div>}</div></div></div>
                             <div><label className="block text-sm font-bold text-slate-700 mb-1">个人简介 (Summary Bio)</label><textarea className="w-full border p-2 rounded h-20 text-sm" value={editingItem.summary_bio || ''} onChange={e => setEditingItem({...editingItem, summary_bio: e.target.value})} placeholder="一句话介绍..." /></div>
@@ -679,6 +631,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                       )}
                       {studentEditorTab === 'skills' && (
                          <div>
+                            {renderPolishControl('skills')}
                             <div className="flex justify-between items-center mb-6">
                                 <h4 className="font-bold text-slate-800">技能矩阵配置</h4>
                                 <button onClick={addSkillCategory} className="text-xs bg-slate-900 text-white px-3 py-2 rounded-lg flex items-center gap-1 hover:bg-slate-700">
@@ -757,6 +710,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                       )}
                       {studentEditorTab === 'content' && (
                          <div className="space-y-2">
+                            {renderPolishControl('content')}
                             <div className="flex gap-2 sticky top-0 bg-white p-2 z-10 border-b">
                                 <button onClick={() => addContentBlock('timeline_node')} className="text-xs bg-blue-100 text-blue-700 p-2 rounded border border-blue-200 font-bold">+ 时间节点</button>
                                 <button onClick={() => addContentBlock('project_highlight')} className="text-xs bg-blue-100 text-blue-700 p-2 rounded border border-blue-200 font-bold">+ STAR项目</button>
@@ -818,25 +772,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                     {isGenerating ? <Icons.Loader2 className="animate-spin" /> : <Icons.Sparkles />}
                                     {isGenerating ? '正在分析生成...' : '开始生成结构化档案'}
                                 </button>
-                            </div>
-
-                            <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100">
-                                <h3 className="font-bold text-orange-900 text-lg mb-4 flex items-center gap-2"><Icons.PenTool className="text-orange-500" /> 润色现有内容</h3>
-                                <p className="text-sm text-orange-600/80 mb-4">对当前已编辑的内容进行文字润色，使其更具学术感和专业度，保持事实不变。</p>
-                                {prePolishState ? (
-                                    <div className="text-center p-4 bg-white rounded-xl border border-orange-200">
-                                        <p className="font-bold text-orange-600 mb-2">正在预览润色效果</p>
-                                        <div className="flex gap-2 justify-center">
-                                            <button onClick={handleRollbackPolish} className="px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 flex items-center gap-2 font-bold"><Icons.Undo size={16}/> 撤销回滚</button>
-                                            <button onClick={handleConfirmPolish} className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2 font-bold"><Icons.Check size={16}/> 确认采用</button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <button onClick={handleAIPolish} disabled={isGenerating || isPolishing} className="w-full bg-white border-2 border-orange-200 text-orange-700 py-3 rounded-xl font-bold hover:bg-orange-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                                        {isPolishing ? <Icons.Loader2 className="animate-spin" /> : <Icons.Feather />}
-                                        {isPolishing ? 'AI 正在润色中...' : '一键润色 (提升专业度)'}
-                                    </button>
-                                )}
                             </div>
                          </div>
                       )}

@@ -248,6 +248,34 @@ export const StudentPortfolioPage: React.FC = () => {
         ignoreElements: (element) => element.classList.contains('no-snapshot'),
         logging: false,
         windowWidth: isMobileMode ? 420 : document.body.scrollWidth, // Simulate mobile width context if needed
+        onclone: (clonedDoc) => {
+            const container = clonedDoc.getElementById('portfolio-content');
+            if (container) {
+                // Compression Map: Old Spacing -> Compact Spacing
+                const compressionMap: Record<string, string> = {
+                    'mb-24': 'mb-12',
+                    'mb-20': 'mb-10',
+                    'mb-16': 'mb-8',
+                    'mb-12': 'mb-6',
+                    'mt-16': 'mt-8',
+                    'mt-32': 'mt-16',
+                    'pb-16': 'pb-8', // Timeline spacing
+                    'gap-y-10': 'gap-y-5', // Grid gaps
+                    'gap-y-16': 'gap-y-8'
+                };
+
+                // Apply compression to all descendants
+                const allElements = container.querySelectorAll('*');
+                allElements.forEach(el => {
+                    for (const [oldClass, newClass] of Object.entries(compressionMap)) {
+                        if (el.classList.contains(oldClass)) {
+                            el.classList.remove(oldClass);
+                            el.classList.add(newClass);
+                        }
+                    }
+                });
+            }
+        }
       });
       
       const link = document.createElement('a');
@@ -643,7 +671,7 @@ export const StudentPortfolioPage: React.FC = () => {
 
   return (
     <div className={`min-h-screen ${styles.bg} ${styles.text} ${styles.font} selection:bg-blue-500/30 selection:text-white`}>
-      <div ref={contentRef} className={`${styles.bg} min-h-screen relative pb-32 transition-all duration-500 ease-in-out ${isMobileMode ? 'max-w-[390px] mx-auto border-x border-slate-800 shadow-2xl my-8 overflow-hidden rounded-3xl' : 'w-full'}`}>
+      <div ref={contentRef} id="portfolio-content" className={`${styles.bg} min-h-screen relative pb-32 transition-all duration-500 ease-in-out ${isMobileMode ? 'max-w-[390px] mx-auto border-x border-slate-800 shadow-2xl my-8 overflow-hidden rounded-3xl' : 'w-full'}`}>
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
            <div className={`absolute top-0 right-0 w-[800px] h-[800px] ${styles.blobColor1} rounded-full mix-blend-screen filter blur-[120px] opacity-10 translate-x-1/3 -translate-y-1/3`}></div>
            <div className={`absolute bottom-0 left-0 w-[600px] h-[600px] ${styles.blobColor2} rounded-full mix-blend-screen filter blur-[100px] opacity-10 -translate-x-1/3 translate-y-1/3`}></div>

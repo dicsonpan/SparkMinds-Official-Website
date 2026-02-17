@@ -381,49 +381,52 @@ export const StudentPortfolioPage: React.FC = () => {
       <div className={`mb-24 animate-fade-in-up`}>
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 border-b border-slate-800/50 pb-4">
              <div>
-                <span className="text-blue-500 font-bold text-xs uppercase tracking-widest mb-2 block">{t.featured}</span>
+                {/* Removed 'Featured Project' label as requested */}
                 <h3 className={`text-3xl md:text-4xl font-bold ${styles.text}`}>{title}</h3>
              </div>
              {date && <span className="text-slate-500 font-mono text-sm border border-slate-700 px-3 py-1 rounded-full">{date}</span>}
           </div>
 
           <div className="grid md:grid-cols-2 gap-6 mb-8">
-             {/* S & T */}
-             <div className="space-y-6">
-                <div className={`p-6 rounded-2xl ${styles.cardBg} border ${styles.border} relative overflow-hidden group`}>
-                   <div className="absolute top-0 right-0 p-4 opacity-10 font-black text-6xl select-none group-hover:opacity-20 transition-opacity">S</div>
-                   <h4 className="text-blue-400 font-bold mb-2 uppercase text-sm">{t.situation}</h4>
-                   <p className={`${styles.text} opacity-90`}>{star_situation}</p>
-                </div>
-                <div className={`p-6 rounded-2xl ${styles.cardBg} border ${styles.border} relative overflow-hidden group`}>
-                   <div className="absolute top-0 right-0 p-4 opacity-10 font-black text-6xl select-none group-hover:opacity-20 transition-opacity">T</div>
-                   <h4 className="text-purple-400 font-bold mb-2 uppercase text-sm">{t.task}</h4>
-                   <p className={`${styles.text} opacity-90`}>{star_task}</p>
-                </div>
+             {/* S: Situation */}
+             <div className={`p-6 rounded-2xl ${styles.cardBg} border ${styles.border} relative overflow-hidden group`}>
+                <div className="absolute top-0 right-0 p-4 opacity-10 font-black text-6xl select-none group-hover:opacity-20 transition-opacity">S</div>
+                <h4 className="text-blue-400 font-bold mb-2 uppercase text-sm">{t.situation}</h4>
+                <p className={`${styles.text} opacity-90`}>{star_situation}</p>
              </div>
 
-             {/* Action (Larger) */}
-             <div className={`p-6 rounded-2xl ${styles.cardBg} border ${styles.border} relative overflow-hidden group flex flex-col`}>
+             {/* T: Task */}
+             <div className={`p-6 rounded-2xl ${styles.cardBg} border ${styles.border} relative overflow-hidden group`}>
+                <div className="absolute top-0 right-0 p-4 opacity-10 font-black text-6xl select-none group-hover:opacity-20 transition-opacity">T</div>
+                <h4 className="text-purple-400 font-bold mb-2 uppercase text-sm">{t.task}</h4>
+                <p className={`${styles.text} opacity-90`}>{star_task}</p>
+             </div>
+
+             {/* A: Action */}
+             <div className={`p-6 rounded-2xl ${styles.cardBg} border ${styles.border} relative overflow-hidden group`}>
                  <div className="absolute top-0 right-0 p-4 opacity-10 font-black text-6xl select-none group-hover:opacity-20 transition-opacity">A</div>
                  <h4 className="text-orange-400 font-bold mb-2 uppercase text-sm">{t.action}</h4>
-                 <p className={`${styles.text} opacity-90 whitespace-pre-wrap leading-relaxed flex-1`}>{star_action}</p>
+                 <p className={`${styles.text} opacity-90 whitespace-pre-wrap leading-relaxed`}>{star_action}</p>
+             </div>
+
+             {/* R: Result */}
+             <div className={`p-6 rounded-2xl ${styles.cardBg} border ${styles.border} relative overflow-hidden group`}>
+                 <div className="absolute top-0 right-0 p-4 opacity-10 font-black text-6xl select-none group-hover:opacity-20 transition-opacity">R</div>
+                 <h4 className="text-green-400 font-bold mb-2 uppercase text-sm">{t.result}</h4>
+                 <p className={`${styles.text} opacity-90`}>{star_result}</p>
              </div>
           </div>
 
-          {/* Result & Evidence */}
-          <div className="grid md:grid-cols-3 gap-6">
-              <div className={`md:col-span-1 p-6 rounded-2xl bg-gradient-to-br from-blue-900/20 to-purple-900/20 border border-blue-500/30 relative overflow-hidden`}>
-                 <h4 className="text-green-400 font-bold mb-2 uppercase text-sm">{t.result}</h4>
-                 <p className="text-white font-medium">{star_result}</p>
-              </div>
-              <div className="md:col-span-2 grid grid-cols-4 gap-2">
-                 {(evidence_urls || []).slice(0, 4).map((url, i) => (
-                    <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-slate-700/50 group">
+          {/* Evidence */}
+          {evidence_urls && evidence_urls.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                 {(evidence_urls).map((url, i) => (
+                    <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-slate-700/50 group shadow-lg">
                        <img src={url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                     </div>
                  ))}
               </div>
-          </div>
+          )}
       </div>
     );
   };

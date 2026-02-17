@@ -507,9 +507,15 @@ export const StudentPortfolioPage: React.FC = () => {
                   </div>
                   <div className="flex-1 mb-2">
                       <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-4 ${styles.cardBg} ${styles.accent} border ${styles.border}`}>SparkMinds Portfolio</div>
-                      <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight leading-none mb-4 drop-shadow-lg">{currentPortfolio?.student_name}</h1>
-                      <p className={`text-xl md:text-2xl font-light opacity-90 ${styles.font} max-w-2xl`}>{currentPortfolio?.student_title || 'Future Innovator & Builder'}</p>
-                      {currentPortfolio?.summary_bio && <p className="mt-4 text-sm md:text-base opacity-70 max-w-xl leading-relaxed">{currentPortfolio.summary_bio}</p>}
+                      {/* Swapped Hierarchy: Name smaller, Title larger */}
+                      <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2 opacity-80">{currentPortfolio?.student_name}</h1>
+                      <p className={`text-4xl md:text-6xl font-extrabold leading-tight ${styles.font} max-w-4xl mb-6 drop-shadow-sm`}>{currentPortfolio?.student_title || 'Future Innovator & Builder'}</p>
+                      {/* Expanded Bio Width and Added whitespace-pre-wrap */}
+                      {currentPortfolio?.summary_bio && (
+                        <div className="mt-4 text-sm md:text-base opacity-80 max-w-4xl leading-relaxed whitespace-pre-wrap">
+                            {currentPortfolio.summary_bio}
+                        </div>
+                      )}
                   </div>
               </div>
            </div>

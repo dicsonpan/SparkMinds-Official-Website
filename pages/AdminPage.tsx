@@ -274,6 +274,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, targetType: string = 'standard', blockId?: string) => {
     if (!event.target.files?.length) return;
     const file = event.target.files[0];
+    
+    // Safety check for image type (though input accept handles UI)
+    if (!file.type.startsWith('image/')) {
+      alert("请只上传图片文件");
+      return;
+    }
+
     setUploading(true);
     try {
       const compressedFile = await imageCompression(file, COMPRESSION_OPTIONS);
@@ -298,6 +305,21 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
          }
       }
     } catch (error: any) { alert('上传失败'); } finally { setUploading(false); }
+  };
+
+  // --- Add Video Embed ---
+  const handleAddVideo = (blockId: string) => {
+    const videoCode = prompt("请输入视频 Iframe 代码 (支持 Bilibili / YouTube 等):");
+    if (videoCode) {
+      if (!videoCode.includes('<iframe') && !videoCode.startsWith('http')) {
+        alert("请输入有效的 iframe 代码或视频链接");
+        return;
+      }
+      const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => 
+        b.id === blockId ? { ...b, data: { ...b.data, urls: [...(b.data.urls || []), videoCode] } } : b
+      );
+      setEditingItem({ ...editingItem, content_blocks: newBlocks });
+    }
   };
 
   // --- AI Gen ---
@@ -600,14 +622,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 mb-2 uppercase">Hero 背景大图 (建议横屏 16:9)</label>
                                     <div className="flex items-center gap-2">
-                                        <input type="file" onChange={e => handleImageUpload(e, 'hero')} className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                                        <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'hero')} className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
                                         {editingItem.hero_image_url && <div className="w-10 h-10 rounded overflow-hidden bg-slate-200"><img src={editingItem.hero_image_url} className="w-full h-full object-cover"/></div>}
                                     </div>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 mb-2 uppercase">学生头像 (建议正方形 1:1)</label>
                                     <div className="flex items-center gap-2">
-                                        <input type="file" onChange={e => handleImageUpload(e, 'avatar')} className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                                        <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'avatar')} className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
                                         {editingItem.avatar_url && <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200"><img src={editingItem.avatar_url} className="w-full h-full object-cover"/></div>}
                                     </div>
                                 </div>
@@ -711,8 +733,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                             <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">佐证素材 (图片/视频)</label>
                                             <div className="flex flex-wrap gap-2">
                                                 {b.data.urls?.map((url: string, imgIdx: number) => (
-                                                    <div key={imgIdx} className="w-16 h-16 relative group">
-                                                        <img src={url} className="w-full h-full object-cover rounded" />
+                                                    <div key={imgIdx} className="w-16 h-16 relative group bg-black rounded overflow-hidden border border-slate-200">
+                                                        {url.trim().startsWith('<iframe') || url.startsWith('http') ? (
+                                                            <div className="w-full h-full flex items-center justify-center text-slate-500 bg-slate-100">
+                                                                {url.trim().startsWith('<iframe') ? <Icons.Code size={20}/> : <Icons.Link size={20}/>}
+                                                            </div>
+                                                        ) : (
+                                                            <img src={url} className="w-full h-full object-cover" />
+                                                        )}
+                                                        
                                                         <button 
                                                             onClick={() => {
                                                                 const newUrls = b.data.urls.filter((_: any, idx: number) => idx !== imgIdx);
@@ -724,10 +753,19 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                                         </button>
                                                     </div>
                                                 ))}
-                                                <label className="w-16 h-16 border-2 border-dashed border-slate-300 rounded flex items-center justify-center cursor-pointer hover:border-blue-400 text-slate-400 hover:text-blue-400">
-                                                    <Icons.Plus size={20} />
-                                                    <input type="file" className="hidden" onChange={e => handleImageUpload(e, 'standard', b.id)} />
+                                                <label className="w-16 h-16 border-2 border-dashed border-slate-300 rounded flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 text-slate-400 hover:text-blue-400 bg-white" title="上传照片">
+                                                    <Icons.Image size={20} />
+                                                    <span className="text-[10px] mt-1">照片</span>
+                                                    <input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(e, 'standard', b.id)} />
                                                 </label>
+                                                <button 
+                                                    onClick={() => handleAddVideo(b.id)}
+                                                    className="w-16 h-16 border-2 border-dashed border-slate-300 rounded flex flex-col items-center justify-center cursor-pointer hover:border-purple-400 text-slate-400 hover:text-purple-400 bg-white" 
+                                                    title="添加视频链接"
+                                                >
+                                                    <Icons.Film size={20} />
+                                                    <span className="text-[10px] mt-1">视频</span>
+                                                </button>
                                             </div>
                                         </div>
                                      </div>
@@ -775,7 +813,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                    <div className="space-y-4">
                       <div><label className="block text-sm font-bold text-slate-700">标题</label><input className="w-full border p-2 rounded" value={editingItem.title || ''} onChange={e => setEditingItem({...editingItem, title: e.target.value})} /></div>
                       {(editingItem.description !== undefined || editingItem.content !== undefined) && <div><label className="block text-sm font-bold text-slate-700">内容</label><textarea className="w-full border p-2 rounded h-24" value={editingItem.description || editingItem.content || ''} onChange={e => { if(editingItem.description!==undefined) setEditingItem({...editingItem, description: e.target.value}); else setEditingItem({...editingItem, content: e.target.value}) }} /></div>}
-                      {activeTab !== 'pages' && <div><label className="block text-sm font-bold text-slate-700">图片</label><input type="file" onChange={e => handleImageUpload(e)} /></div>}
+                      {activeTab !== 'pages' && <div><label className="block text-sm font-bold text-slate-700">图片</label><input type="file" accept="image/*" onChange={e => handleImageUpload(e)} /></div>}
                    </div>
                 )}
              </div>

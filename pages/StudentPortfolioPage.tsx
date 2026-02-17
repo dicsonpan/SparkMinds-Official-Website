@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { StudentPortfolio, ContentBlock, PortfolioTheme, Skill } from '../types';
 import { Logo } from '../components/Logo';
+import { ImageCarousel } from '../components/ImageCarousel';
 import * as Icons from 'lucide-react';
 import html2canvas from 'html2canvas';
 
@@ -106,6 +107,9 @@ export const StudentPortfolioPage: React.FC = () => {
   const [isSnapshotting, setIsSnapshotting] = useState(false);
   const [isMobileMode, setIsMobileMode] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
+  
+  // Media Lightbox State
+  const [lightboxData, setLightboxData] = useState<{urls: string[], index: number} | null>(null);
   
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -327,10 +331,15 @@ export const StudentPortfolioPage: React.FC = () => {
                {urls && urls.length > 0 && (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4">
                      {urls.map((url, i) => (
-                        <div key={i} className="relative aspect-video rounded-lg overflow-hidden border border-slate-700/50 group/media cursor-pointer">
-                           {url.trim().startsWith('<iframe') ? (
-                              <div className="w-full h-full bg-black flex items-center justify-center">
-                                 <Icons.PlayCircle className="text-white opacity-50" />
+                        <div 
+                            key={i} 
+                            onClick={() => setLightboxData({ urls: urls, index: i })}
+                            className="relative aspect-video rounded-lg overflow-hidden border border-slate-700/50 group/media cursor-pointer hover:border-blue-500/50 transition-colors"
+                        >
+                           {url.trim().startsWith('<iframe') || url.startsWith('http') ? (
+                              <div className="w-full h-full bg-black flex items-center justify-center relative">
+                                 <Icons.PlayCircle className="text-white opacity-70 group-hover/media:scale-110 transition-transform duration-300 w-10 h-10" />
+                                 <div className="absolute bottom-2 right-2 text-[10px] text-white/50 bg-black/50 px-1 rounded">VIDEO</div>
                               </div>
                            ) : (
                               <img src={url} className="w-full h-full object-cover group-hover/media:scale-110 transition-transform duration-500" />
@@ -565,6 +574,29 @@ export const StudentPortfolioPage: React.FC = () => {
             {isSnapshotting ? <Icons.Loader2 className="animate-spin" /> : <Icons.Download />}
          </button>
       </div>
+
+      {/* Lightbox Modal */}
+      {lightboxData && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8 bg-black/95 backdrop-blur-md animate-fade-in">
+           <button 
+              onClick={() => setLightboxData(null)}
+              className="absolute top-4 right-4 z-50 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-colors backdrop-blur-sm"
+           >
+              <Icons.X size={24} />
+           </button>
+           
+           <div className="w-full max-w-6xl h-full md:h-auto md:aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl relative border border-white/10">
+              <ImageCarousel 
+                 images={lightboxData.urls} 
+                 alt="Gallery" 
+                 className="w-full h-full"
+                 // If you want to start at the clicked index, you might need to update ImageCarousel to accept `initialIndex`
+                 // For now, it will start at 0, which is acceptable or we can modify ImageCarousel later.
+                 autoPlayInterval={0} // Disable autoplay rotation in lightbox to let user focus on video
+              />
+           </div>
+        </div>
+      )}
 
       {isSnapshotting && (
         <div className="fixed inset-0 bg-black/90 z-[100] flex flex-col items-center justify-center text-white no-snapshot backdrop-blur-md">

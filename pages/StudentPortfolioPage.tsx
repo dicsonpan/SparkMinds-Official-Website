@@ -258,7 +258,14 @@ export const StudentPortfolioPage: React.FC = () => {
                     'mt-32': 'mt-16',
                     'pb-16': 'pb-8', 
                     'gap-y-10': 'gap-y-5', 
-                    'gap-y-16': 'gap-y-8'
+                    'gap-y-16': 'gap-y-8',
+                    'p-8': 'p-5',
+                    'p-6': 'p-4',
+                    'gap-6': 'gap-3',
+                    'text-6xl': 'text-4xl',
+                    'text-4xl': 'text-3xl',
+                    'h-[60vh]': 'h-[auto]',
+                    'py-20': 'py-10'
                 };
 
                 const allElements = container.querySelectorAll('*');
@@ -317,14 +324,14 @@ export const StudentPortfolioPage: React.FC = () => {
     });
 
     const labels = data.map((d, i) => {
-      const x = center + (radius + 25) * Math.sin(i * angleStep);
-      const y = center - (radius + 25) * Math.cos(i * angleStep);
+      const x = center + (radius + 30) * Math.sin(i * angleStep);
+      const y = center - (radius + 30) * Math.cos(i * angleStep);
       return (
         <text 
           key={i} x={x} y={y} 
           textAnchor="middle" 
           dominantBaseline="middle" 
-          className={`text-[10px] font-bold fill-current opacity-80 ${styles.text}`}
+          className={`text-[10px] md:text-xs font-bold fill-current opacity-80 ${styles.text}`}
         >
           {d.label}
         </text>
@@ -342,8 +349,8 @@ export const StudentPortfolioPage: React.FC = () => {
     });
 
     return (
-      <div className="flex justify-center my-8">
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <div className="flex justify-center my-4 md:my-8 w-full overflow-hidden">
+        <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-auto max-w-[300px] md:max-w-none">
           {grids}
           {axisLines}
           <polygon points={points} className="fill-blue-500/20 stroke-blue-500" strokeWidth="2" />
@@ -355,14 +362,14 @@ export const StudentPortfolioPage: React.FC = () => {
 
   // 2. Circular Gauge
   const CircularGauge = ({ skill, styles }: { skill: SkillItem, styles: any }) => {
-    const size = 120;
+    const size = 100; // Smaller size for better fit on mobile
     const strokeWidth = 8;
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
     const offset = circumference - (Math.min(skill.value, 100) / 100) * circumference;
 
     return (
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center p-2">
             <div className="relative flex items-center justify-center">
                 <svg width={size} height={size} className="transform -rotate-90">
                     <circle cx={size/2} cy={size/2} r={radius} stroke="currentColor" strokeWidth={strokeWidth} fill="transparent" className="text-slate-700/20" />
@@ -376,22 +383,22 @@ export const StudentPortfolioPage: React.FC = () => {
                     />
                 </svg>
                 <div className="absolute flex flex-col items-center">
-                    <span className={`text-xl font-bold ${styles.text}`}>{skill.value}</span>
+                    <span className={`text-lg font-bold ${styles.text}`}>{skill.value}</span>
                     <span className="text-[10px] text-slate-500 uppercase">{skill.unit || '%'}</span>
                 </div>
             </div>
-            <span className={`mt-3 font-medium text-sm ${styles.text}`}>{skill.name}</span>
+            <span className={`mt-2 font-medium text-xs md:text-sm text-center ${styles.text} max-w-[100px] truncate`}>{skill.name}</span>
         </div>
     );
   };
 
   // 3. Stat Card
   const StatCard = ({ skill, styles }: { skill: SkillItem, styles: any }) => (
-      <div className={`${styles.cardBg} border ${styles.border} p-4 rounded-xl flex flex-col items-center justify-center text-center shadow-sm h-full`}>
-          <h4 className={`font-bold text-md mb-2 ${styles.text}`}>{skill.name}</h4>
+      <div className={`${styles.cardBg} border ${styles.border} p-3 md:p-4 rounded-xl flex flex-col items-center justify-center text-center shadow-sm h-full`}>
+          <h4 className={`font-bold text-sm md:text-md mb-2 ${styles.text} truncate w-full`}>{skill.name}</h4>
           <div className="mt-auto pt-2 border-t border-slate-700/10 w-full">
-             <span className={`text-2xl font-black text-blue-500`}>{skill.value}</span>
-             <span className="text-xs text-slate-400 ml-1">{skill.unit}</span>
+             <span className={`text-xl md:text-2xl font-black text-blue-500`}>{skill.value}</span>
+             <span className="text-[10px] text-slate-400 ml-1">{skill.unit}</span>
           </div>
       </div>
   );
@@ -400,18 +407,18 @@ export const StudentPortfolioPage: React.FC = () => {
      if (!skills || skills.length === 0) return null;
 
      return (
-       <div className={`mb-20 animate-fade-in-up`}>
-          <div className="flex items-center gap-4 mb-8">
+       <div className={`mb-12 md:mb-20 animate-fade-in-up`}>
+          <div className="flex items-center gap-4 mb-6 md:mb-8">
              <div className="h-px flex-1 bg-gradient-to-r from-transparent to-blue-500/50"></div>
-             <h3 className={`text-xl font-bold uppercase tracking-widest ${styles.text}`}>{t.skills}</h3>
+             <h3 className={`text-lg md:text-xl font-bold uppercase tracking-widest ${styles.text}`}>{t.skills}</h3>
              <div className="h-px flex-1 bg-gradient-to-l from-transparent to-blue-500/50"></div>
           </div>
           
-          <div className="space-y-16">
+          <div className="space-y-12 md:space-y-16">
              {skills.map((category, idx) => (
                 <div key={idx} className="w-full">
                     {/* Category Header */}
-                    <h4 className={`font-bold text-sm uppercase tracking-wider opacity-60 border-b border-dashed border-slate-700/50 pb-2 mb-8 ${styles.text} flex justify-between`}>
+                    <h4 className={`font-bold text-xs md:text-sm uppercase tracking-wider opacity-60 border-b border-dashed border-slate-700/50 pb-2 mb-6 md:mb-8 ${styles.text} flex justify-between`}>
                         <span>{category.name}</span>
                         <span className="text-[10px] opacity-50">{category.layout} VIEW</span>
                     </h4>
@@ -420,21 +427,21 @@ export const StudentPortfolioPage: React.FC = () => {
                     {category.layout === 'radar' && category.items.length >= 3 ? (
                         <div className="grid md:grid-cols-2 gap-8 items-center">
                             <RadarChart data={category.items.map(i => ({ label: i.name, value: i.value }))} styles={styles} />
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-3 md:gap-4 content-start">
                                 {category.items.map((skill, sIdx) => (
                                     <div key={sIdx} className={`flex justify-between items-center p-3 rounded-lg ${styles.cardBg} border ${styles.border}`}>
-                                        <div className={`font-bold ${styles.text}`}>{skill.name}</div>
-                                        <div className="font-mono text-blue-500 font-bold">{skill.value}{skill.unit}</div>
+                                        <div className={`font-bold text-sm ${styles.text}`}>{skill.name}</div>
+                                        <div className="font-mono text-blue-500 font-bold text-sm">{skill.value}{skill.unit}</div>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     ) : category.layout === 'circle' ? (
-                        <div className="flex flex-wrap justify-center gap-8 md:gap-12">
+                        <div className="flex flex-wrap justify-center gap-4 md:gap-12">
                             {category.items.map((skill, sIdx) => <CircularGauge key={sIdx} skill={skill} styles={styles} />)}
                         </div>
                     ) : category.layout === 'stat_grid' ? (
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
                             {category.items.map((skill, sIdx) => <StatCard key={sIdx} skill={skill} styles={styles} />)}
                         </div>
                     ) : (
@@ -474,19 +481,19 @@ export const StudentPortfolioPage: React.FC = () => {
     };
     
     return (
-      <div className="relative pl-8 md:pl-12 pb-16 last:pb-0 animate-fade-in-up group">
+      <div className="relative pl-8 md:pl-12 pb-12 md:pb-16 last:pb-0 animate-fade-in-up group">
          <div className="absolute left-0 top-2 bottom-0 w-px bg-slate-800 group-last:bottom-auto group-last:h-full"></div>
          <div className="absolute left-[-4px] top-2 w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)] z-10"></div>
          
          <div className="flex flex-col md:flex-row md:items-start gap-4 md:gap-8">
             <div className="md:w-32 flex-shrink-0">
-               <span className={`inline-block py-1 px-3 rounded-full text-sm font-bold font-mono tracking-wider ${styles.accent} bg-blue-500/10 border border-blue-500/20`}>
+               <span className={`inline-block py-1 px-3 rounded-full text-xs md:text-sm font-bold font-mono tracking-wider ${styles.accent} bg-blue-500/10 border border-blue-500/20`}>
                   {date}
                </span>
             </div>
 
-            <div className={`flex-1 ${styles.cardBg} border ${styles.border} rounded-2xl p-6 hover:border-blue-500/30 transition-colors`}>
-               {title && <h3 className={`text-xl font-bold mb-3 ${styles.text}`}>{title}</h3>}
+            <div className={`flex-1 ${styles.cardBg} border ${styles.border} rounded-2xl p-5 md:p-6 hover:border-blue-500/30 transition-colors`}>
+               {title && <h3 className={`text-lg md:text-xl font-bold mb-3 ${styles.text}`}>{title}</h3>}
                {content && <div className={`prose prose-sm ${styles.text === 'text-slate-200' ? 'prose-invert' : ''} max-w-none opacity-80 whitespace-pre-wrap mb-4`}>{content}</div>}
                
                {urls && urls.length > 0 && (
@@ -532,47 +539,47 @@ export const StudentPortfolioPage: React.FC = () => {
     const { title, date, star_situation, star_task, star_action, star_result, evidence_urls } = block.data;
     
     return (
-      <div className={`mb-24 animate-fade-in-up`}>
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 border-b border-slate-800/50 pb-4">
+      <div className={`mb-12 md:mb-24 animate-fade-in-up`}>
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 md:mb-8 gap-4 border-b border-slate-800/50 pb-4">
              <div>
-                <h3 className={`text-3xl md:text-4xl font-bold ${styles.text}`}>{title}</h3>
+                <h3 className={`text-2xl md:text-4xl font-bold ${styles.text}`}>{title}</h3>
              </div>
-             {date && <span className="text-slate-500 font-mono text-sm border border-slate-700 px-3 py-1 rounded-full">{date}</span>}
+             {date && <span className="text-slate-500 font-mono text-xs md:text-sm border border-slate-700 px-3 py-1 rounded-full self-start md:self-auto">{date}</span>}
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8">
              {/* S: Situation */}
-             <div className={`p-6 rounded-2xl ${styles.cardBg} border ${styles.border} relative overflow-hidden group`}>
-                <div className="absolute top-0 right-0 p-4 opacity-10 font-black text-6xl select-none group-hover:opacity-20 transition-opacity">S</div>
-                <h4 className="text-blue-400 font-bold mb-2 uppercase text-sm">{t.situation}</h4>
-                <p className={`${styles.text} opacity-90 whitespace-pre-wrap leading-relaxed`}>{star_situation}</p>
+             <div className={`p-4 md:p-6 rounded-2xl ${styles.cardBg} border ${styles.border} relative overflow-hidden group`}>
+                <div className="absolute top-0 right-0 p-2 md:p-4 opacity-10 font-black text-4xl md:text-6xl select-none group-hover:opacity-20 transition-opacity">S</div>
+                <h4 className="text-blue-400 font-bold mb-2 uppercase text-xs md:text-sm">{t.situation}</h4>
+                <p className={`text-sm md:text-base ${styles.text} opacity-90 whitespace-pre-wrap leading-relaxed`}>{star_situation}</p>
              </div>
 
              {/* T: Task */}
-             <div className={`p-6 rounded-2xl ${styles.cardBg} border ${styles.border} relative overflow-hidden group`}>
-                <div className="absolute top-0 right-0 p-4 opacity-10 font-black text-6xl select-none group-hover:opacity-20 transition-opacity">T</div>
-                <h4 className="text-purple-400 font-bold mb-2 uppercase text-sm">{t.task}</h4>
-                <p className={`${styles.text} opacity-90 whitespace-pre-wrap leading-relaxed`}>{star_task}</p>
+             <div className={`p-4 md:p-6 rounded-2xl ${styles.cardBg} border ${styles.border} relative overflow-hidden group`}>
+                <div className="absolute top-0 right-0 p-2 md:p-4 opacity-10 font-black text-4xl md:text-6xl select-none group-hover:opacity-20 transition-opacity">T</div>
+                <h4 className="text-purple-400 font-bold mb-2 uppercase text-xs md:text-sm">{t.task}</h4>
+                <p className={`text-sm md:text-base ${styles.text} opacity-90 whitespace-pre-wrap leading-relaxed`}>{star_task}</p>
              </div>
 
              {/* A: Action */}
-             <div className={`p-6 rounded-2xl ${styles.cardBg} border ${styles.border} relative overflow-hidden group`}>
-                 <div className="absolute top-0 right-0 p-4 opacity-10 font-black text-6xl select-none group-hover:opacity-20 transition-opacity">A</div>
-                 <h4 className="text-orange-400 font-bold mb-2 uppercase text-sm">{t.action}</h4>
-                 <p className={`${styles.text} opacity-90 whitespace-pre-wrap leading-relaxed`}>{star_action}</p>
+             <div className={`p-4 md:p-6 rounded-2xl ${styles.cardBg} border ${styles.border} relative overflow-hidden group`}>
+                 <div className="absolute top-0 right-0 p-2 md:p-4 opacity-10 font-black text-4xl md:text-6xl select-none group-hover:opacity-20 transition-opacity">A</div>
+                 <h4 className="text-orange-400 font-bold mb-2 uppercase text-xs md:text-sm">{t.action}</h4>
+                 <p className={`text-sm md:text-base ${styles.text} opacity-90 whitespace-pre-wrap leading-relaxed`}>{star_action}</p>
              </div>
 
              {/* R: Result */}
-             <div className={`p-6 rounded-2xl ${styles.cardBg} border ${styles.border} relative overflow-hidden group`}>
-                 <div className="absolute top-0 right-0 p-4 opacity-10 font-black text-6xl select-none group-hover:opacity-20 transition-opacity">R</div>
-                 <h4 className="text-green-400 font-bold mb-2 uppercase text-sm">{t.result}</h4>
-                 <p className={`${styles.text} opacity-90 whitespace-pre-wrap leading-relaxed`}>{star_result}</p>
+             <div className={`p-4 md:p-6 rounded-2xl ${styles.cardBg} border ${styles.border} relative overflow-hidden group`}>
+                 <div className="absolute top-0 right-0 p-2 md:p-4 opacity-10 font-black text-4xl md:text-6xl select-none group-hover:opacity-20 transition-opacity">R</div>
+                 <h4 className="text-green-400 font-bold mb-2 uppercase text-xs md:text-sm">{t.result}</h4>
+                 <p className={`text-sm md:text-base ${styles.text} opacity-90 whitespace-pre-wrap leading-relaxed`}>{star_result}</p>
              </div>
           </div>
 
           {/* Evidence */}
           {evidence_urls && evidence_urls.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                  {(evidence_urls).map((url, i) => (
                     <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-slate-700/50 group shadow-lg">
                        <img src={url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
@@ -591,24 +598,24 @@ export const StudentPortfolioPage: React.FC = () => {
          return <TimelineNode key={block.id} block={block} styles={styles} />;
       case 'text':
         return (
-          <div key={block.id} className={`mb-16 p-8 rounded-3xl ${styles.cardBg} border ${styles.border} backdrop-blur-sm animate-fade-in-up`}>
-             {block.data.title && <h3 className={`text-xl font-bold mb-4 flex items-center gap-2 ${styles.text}`}><Icons.Terminal className="w-5 h-5 opacity-50" />{block.data.title}</h3>}
-             <div className={`prose prose-lg ${styles.text === 'text-slate-200' ? 'prose-invert' : ''} max-w-none opacity-90 whitespace-pre-wrap`}>{block.data.content}</div>
+          <div key={block.id} className={`mb-12 md:mb-16 p-6 md:p-8 rounded-3xl ${styles.cardBg} border ${styles.border} backdrop-blur-sm animate-fade-in-up`}>
+             {block.data.title && <h3 className={`text-lg md:text-xl font-bold mb-4 flex items-center gap-2 ${styles.text}`}><Icons.Terminal className="w-5 h-5 opacity-50" />{block.data.title}</h3>}
+             <div className={`prose prose-sm md:prose-lg ${styles.text === 'text-slate-200' ? 'prose-invert' : ''} max-w-none opacity-90 whitespace-pre-wrap`}>{block.data.content}</div>
           </div>
         );
       case 'image_grid':
         return (
-          <div key={block.id} className="mb-16 animate-fade-in-up">
-             {block.data.title && <h3 className={`text-xl font-bold mb-6 px-2 ${styles.text}`}>{block.data.title}</h3>}
+          <div key={block.id} className="mb-12 md:mb-16 animate-fade-in-up">
+             {block.data.title && <h3 className={`text-lg md:text-xl font-bold mb-6 px-2 ${styles.text}`}>{block.data.title}</h3>}
              <BentoGrid images={block.data.urls || []} />
-             {block.data.content && <p className={`text-center text-sm mt-4 opacity-60 italic ${styles.text}`}>{block.data.content}</p>}
+             {block.data.content && <p className={`text-center text-xs md:text-sm mt-4 opacity-60 italic ${styles.text}`}>{block.data.content}</p>}
           </div>
         );
       case 'section_heading':
          return (
-           <div key={block.id} className="flex items-center gap-4 mb-12 mt-16 animate-fade-in-up">
+           <div key={block.id} className="flex items-center gap-4 mb-8 md:mb-12 mt-12 md:mt-16 animate-fade-in-up">
              <div className="h-px flex-1 bg-gradient-to-r from-transparent to-blue-500/50"></div>
-             <h3 className={`text-2xl font-bold uppercase tracking-widest ${styles.text}`}>{block.data.title}</h3>
+             <h3 className={`text-xl md:text-2xl font-bold uppercase tracking-widest ${styles.text}`}>{block.data.title}</h3>
              <div className="h-px flex-1 bg-gradient-to-l from-transparent to-blue-500/50"></div>
            </div>
          );
@@ -616,12 +623,12 @@ export const StudentPortfolioPage: React.FC = () => {
          const videoUrl = block.data.urls?.[0];
          if (!videoUrl) return null;
          return (
-            <div key={block.id} className="mb-16 animate-fade-in-up">
-               {block.data.title && <h3 className={`text-xl font-bold mb-6 px-2 ${styles.text}`}>{block.data.title}</h3>}
+            <div key={block.id} className="mb-12 md:mb-16 animate-fade-in-up">
+               {block.data.title && <h3 className={`text-lg md:text-xl font-bold mb-6 px-2 ${styles.text}`}>{block.data.title}</h3>}
                <div className={`aspect-video rounded-3xl overflow-hidden shadow-2xl ${styles.border} border-4`}>
                   {videoUrl.startsWith('<iframe') ? <div className="w-full h-full [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0" dangerouslySetInnerHTML={{__html: videoUrl}} /> : <video controls className="w-full h-full bg-black" src={videoUrl} />}
                </div>
-               {block.data.content && <p className={`text-sm mt-4 opacity-60 ${styles.text}`}>{block.data.content}</p>}
+               {block.data.content && <p className={`text-xs md:text-sm mt-4 opacity-60 ${styles.text}`}>{block.data.content}</p>}
             </div>
          );
       case 'project_highlight':
@@ -656,24 +663,24 @@ export const StudentPortfolioPage: React.FC = () => {
            <div className={`absolute bottom-0 left-0 w-[600px] h-[600px] ${styles.blobColor2} rounded-full mix-blend-screen filter blur-[100px] opacity-10 -translate-x-1/3 translate-y-1/3`}></div>
         </div>
 
-        <header className="relative w-full h-[60vh] md:h-[70vh] flex items-end">
+        <header className="relative w-full h-[50vh] md:h-[70vh] flex items-end">
            {currentPortfolio?.hero_image_url ? (
              <div className="absolute inset-0 z-0">
                <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url(${currentPortfolio.hero_image_url})` }} />
                <div className={`absolute inset-0 bg-gradient-to-t ${themeName === 'tech_dark' ? 'from-slate-950 via-slate-950/50' : 'from-slate-50 via-slate-50/50'} to-transparent z-10`}></div>
              </div>
            ) : null}
-           <div className="relative z-20 px-6 md:px-12 max-w-6xl mx-auto w-full pb-12">
-              <div className="flex flex-col md:flex-row md:items-end gap-8">
-                  <div className={`w-32 h-32 md:w-40 md:h-40 rounded-full ${styles.cardBg} border-4 ${styles.border} flex items-center justify-center text-5xl font-bold shadow-2xl overflow-hidden relative backdrop-blur-md shrink-0`}>
+           <div className="relative z-20 px-6 md:px-12 max-w-6xl mx-auto w-full pb-8 md:pb-12">
+              <div className="flex flex-col md:flex-row md:items-end gap-6 md:gap-8">
+                  <div className={`w-24 h-24 md:w-40 md:h-40 rounded-full ${styles.cardBg} border-4 ${styles.border} flex items-center justify-center text-4xl md:text-5xl font-bold shadow-2xl overflow-hidden relative backdrop-blur-md shrink-0`}>
                       {currentPortfolio?.avatar_url ? <img src={currentPortfolio.avatar_url} className="w-full h-full object-cover" /> : currentPortfolio?.student_name[0]}
                   </div>
                   <div className="flex-1 mb-2">
-                      <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-4 ${styles.cardBg} ${styles.accent} border ${styles.border}`}>SparkMinds Portfolio</div>
+                      <div className={`inline-block px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-widest mb-3 md:mb-4 ${styles.cardBg} ${styles.accent} border ${styles.border}`}>SparkMinds Portfolio</div>
                       <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2 opacity-80">{currentPortfolio?.student_name}</h1>
-                      <p className={`text-4xl md:text-6xl font-extrabold leading-tight ${styles.font} max-w-4xl mb-6 drop-shadow-sm`}>{currentPortfolio?.student_title || 'Future Innovator & Builder'}</p>
+                      <p className={`text-2xl md:text-6xl font-extrabold leading-tight ${styles.font} max-w-4xl mb-4 md:mb-6 drop-shadow-sm`}>{currentPortfolio?.student_title || 'Future Innovator & Builder'}</p>
                       {currentPortfolio?.summary_bio && (
-                        <div className="mt-4 text-sm md:text-base opacity-80 max-w-4xl leading-relaxed whitespace-pre-wrap">
+                        <div className="mt-2 md:mt-4 text-xs md:text-base opacity-80 max-w-4xl leading-relaxed whitespace-pre-wrap">
                             {currentPortfolio.summary_bio}
                         </div>
                       )}
@@ -682,20 +689,20 @@ export const StudentPortfolioPage: React.FC = () => {
            </div>
         </header>
 
-        <main className="px-6 md:px-12 max-w-5xl mx-auto relative z-10 pt-12">
+        <main className="px-4 md:px-12 max-w-5xl mx-auto relative z-10 pt-8 md:pt-12">
            {currentPortfolio?.skills && currentPortfolio.skills.length > 0 && <SkillsMatrix skills={currentPortfolio.skills as any} styles={styles} />}
            {currentPortfolio?.content_blocks && currentPortfolio.content_blocks.length > 0 ? (
              <div className="flex flex-col gap-0">
                 {currentPortfolio.content_blocks.map(block => renderBlock(block, styles))}
              </div>
            ) : (
-             <div className="text-center py-32 opacity-30"><p className="text-xl">Waiting for data signal...</p></div>
+             <div className="text-center py-20 md:py-32 opacity-30"><p className="text-lg md:text-xl">Waiting for data signal...</p></div>
            )}
-           <div className={`mt-32 pt-12 border-t ${styles.border} text-center opacity-60`}>
-              <div className="flex justify-center mb-6"><div className={`w-16 h-16 ${styles.cardBg} rounded-2xl flex items-center justify-center`}><Icons.QrCode size={32} /></div></div>
-              <p className="font-bold text-lg mb-1">{t.footerTitle}</p>
-              <p className="text-sm">{t.footerSubtitle}</p>
-              <p className="text-xs mt-4 font-mono">sparkminds.cn</p>
+           <div className={`mt-20 md:mt-32 pt-8 md:pt-12 border-t ${styles.border} text-center opacity-60`}>
+              <div className="flex justify-center mb-6"><div className={`w-12 h-12 md:w-16 md:h-16 ${styles.cardBg} rounded-2xl flex items-center justify-center`}><Icons.QrCode size={24} className="md:w-8 md:h-8" /></div></div>
+              <p className="font-bold text-base md:text-lg mb-1">{t.footerTitle}</p>
+              <p className="text-xs md:text-sm">{t.footerSubtitle}</p>
+              <p className="text-[10px] md:text-xs mt-4 font-mono">sparkminds.cn</p>
            </div>
         </main>
       </div>

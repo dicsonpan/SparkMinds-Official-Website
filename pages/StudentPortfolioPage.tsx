@@ -250,6 +250,7 @@ export const StudentPortfolioPage: React.FC = () => {
           const container = clonedDoc.getElementById('portfolio-content');
           if (container) {
               // Compression Map: Old Spacing -> Compact Spacing
+              // NOTE: Only targeting MARGINS and GAPS to avoid distorting images inside containers
               const compressionMap: Record<string, string> = {
                   'mb-24': 'mb-12',
                   'mb-20': 'mb-10',
@@ -257,16 +258,11 @@ export const StudentPortfolioPage: React.FC = () => {
                   'mb-12': 'mb-6',
                   'mt-16': 'mt-8',
                   'mt-32': 'mt-16',
-                  'pb-16': 'pb-8', 
                   'gap-y-10': 'gap-y-5', 
                   'gap-y-16': 'gap-y-8',
-                  'p-8': 'p-5',
-                  'p-6': 'p-4',
-                  'gap-6': 'gap-3',
                   'text-6xl': 'text-4xl',
                   'text-4xl': 'text-3xl',
-                  'h-[60vh]': 'h-[auto]',
-                  'py-20': 'py-10'
+                  // Removed padding (p-, py-, pb-) and height rules to prevent image distortion
               };
 
               const allElements = container.querySelectorAll('*');

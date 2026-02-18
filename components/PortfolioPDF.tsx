@@ -428,8 +428,8 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
                <View key={block.id} style={[styles.section, styles.timelineRow]} wrap={false}>
                   <View style={styles.timelineContent}>
                      <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4}}>
-                        <Text style={styles.timelineTitle}>{block.data.title}</Text>
                         <Text style={styles.timelineDate}>{block.data.date}</Text>
+                        <Text style={styles.timelineTitle}>{block.data.title}</Text>
                      </View>
                      <Text style={styles.timelineDesc}>{block.data.content}</Text>
                      {block.data.urls && block.data.urls.length > 0 && (

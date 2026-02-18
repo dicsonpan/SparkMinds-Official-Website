@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
-import { StudentPortfolio, ContentBlock } from '../types';
+import { StudentPortfolio, ContentBlock, SkillItem } from '../types';
 import * as Icons from 'lucide-react';
 import { Logo } from '../components/Logo';
 
@@ -18,7 +18,9 @@ const THEMES: Record<string, any> = {
     button: 'bg-blue-600 hover:bg-blue-500 text-white',
     gradient: 'from-blue-900/20 to-[#020617]',
     barTrack: 'bg-slate-800',
-    barFill: 'bg-blue-500'
+    barFill: 'bg-blue-500',
+    radarPolygon: 'fill-blue-500/20 stroke-blue-500',
+    radarGrid: 'stroke-slate-700'
   },
   academic_light: {
     bg: 'bg-slate-50',
@@ -31,7 +33,9 @@ const THEMES: Record<string, any> = {
     button: 'bg-slate-800 hover:bg-slate-700 text-white',
     gradient: 'from-slate-100 to-slate-50',
     barTrack: 'bg-slate-100',
-    barFill: 'bg-slate-800'
+    barFill: 'bg-slate-800',
+    radarPolygon: 'fill-slate-800/20 stroke-slate-800',
+    radarGrid: 'stroke-slate-200'
   },
   creative_color: {
     bg: 'bg-[#FFF8F0]',
@@ -44,7 +48,9 @@ const THEMES: Record<string, any> = {
     button: 'bg-purple-600 hover:bg-purple-500 text-white',
     gradient: 'from-purple-100/50 to-orange-100/30',
     barTrack: 'bg-orange-100',
-    barFill: 'bg-purple-500'
+    barFill: 'bg-purple-500',
+    radarPolygon: 'fill-purple-500/20 stroke-purple-500',
+    radarGrid: 'stroke-purple-200'
   }
 };
 
@@ -129,27 +135,107 @@ export const StudentPortfolioPage: React.FC = () => {
     );
   }
 
+  // --- Skill Render Helpers ---
+  
+  // 1. Bar Chart
+  const renderBarSkill = (skill: SkillItem, idx: number) => (
+    <div key={idx}>
+        <div className="flex justify-between text-sm mb-1.5 font-medium">
+            <span>{skill.name}</span>
+            <span className={styles.accent}>{skill.value}{skill.unit || '%'}</span>
+        </div>
+        <div className={`h-2.5 w-full rounded-full ${styles.barTrack} overflow-hidden`}>
+            <div 
+            className={`h-full rounded-full ${styles.barFill} shadow-[0_0_10px_rgba(59,130,246,0.5)] transition-all duration-1000 ease-out`} 
+            style={{ width: `${Math.min(100, Math.max(0, skill.value))}%` }}
+            ></div>
+        </div>
+    </div>
+  );
+
+  // 2. Circle Chart
+  const renderCircleSkill = (skill: SkillItem, idx: number) => {
+      const r = 36;
+      const c = 2 * Math.PI * r;
+      const offset = c - (Math.min(100, Math.max(0, skill.value)) / 100) * c;
+      return (
+          <div key={idx} className="flex flex-col items-center justify-center p-2">
+              <div className="relative w-24 h-24 mb-2">
+                  <svg className="w-full h-full transform -rotate-90">
+                      <circle cx="48" cy="48" r={r} stroke="currentColor" strokeWidth="8" fill="transparent" className={`${styles.muted} opacity-20`} />
+                      <circle cx="48" cy="48" r={r} stroke="currentColor" strokeWidth="8" fill="transparent" 
+                          strokeDasharray={c} strokeDashoffset={offset} strokeLinecap="round"
+                          className={`${styles.accent} transition-all duration-1000 ease-out`} />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center font-bold text-sm">
+                      {skill.value}{skill.unit || '%'}
+                  </div>
+              </div>
+              <span className="text-xs font-bold text-center">{skill.name}</span>
+          </div>
+      );
+  };
+
+  // 3. Stat Grid (Digital Card)
+  const renderStatSkill = (skill: SkillItem, idx: number) => (
+      <div key={idx} className={`p-4 rounded-xl border ${styles.border} ${styles.bg} bg-opacity-50 flex flex-col items-center justify-center text-center`}>
+          <div className={`text-3xl font-black ${styles.accent} mb-1`}>
+              {skill.value}<span className="text-xs ml-0.5 opacity-60 font-normal">{skill.unit}</span>
+          </div>
+          <div className={`text-xs font-bold uppercase tracking-wider ${styles.muted}`}>{skill.name}</div>
+      </div>
+  );
+
+  // 4. Radar Chart (SVG)
+  const renderRadarChart = (items: SkillItem[]) => {
+      if (!items.length) return null;
+      const size = 240;
+      const center = size / 2;
+      const radius = 80;
+      const angleStep = (Math.PI * 2) / items.length;
+
+      const getPoint = (value: number, index: number, rScale = radius) => {
+          const angle = index * angleStep - Math.PI / 2; 
+          const r = (value / 100) * rScale;
+          return `${center + r * Math.cos(angle)},${center + r * Math.sin(angle)}`;
+      };
+
+      const points = items.map((item, i) => getPoint(item.value, i)).join(' ');
+      
+      return (
+          <div className="flex flex-col items-center justify-center py-2">
+              <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+                  {/* Grid Levels */}
+                  {[25, 50, 75, 100].map(level => (
+                      <polygon key={level} 
+                          points={items.map((_, i) => getPoint(level, i)).join(' ')}
+                          fill="none" stroke="currentColor" strokeWidth="1" className={`${styles.radarGrid} opacity-20`}
+                      />
+                  ))}
+                  {/* Axes */}
+                  {items.map((_, i) => {
+                      const p = getPoint(100, i);
+                      return <line key={i} x1={center} y1={center} x2={p.split(',')[0]} y2={p.split(',')[1]} stroke="currentColor" strokeWidth="1" className={`${styles.radarGrid} opacity-20`} />
+                  })}
+                  {/* Data Shape */}
+                  <polygon points={points} className={`${styles.radarPolygon} stroke-2`} />
+                  {/* Labels */}
+                  {items.map((item, i) => {
+                      const [x, y] = getPoint(100, i, radius + 20).split(',').map(Number);
+                      return (
+                          <text key={i} x={x} y={y} textAnchor="middle" dominantBaseline="middle" className={`text-[10px] font-bold fill-current ${styles.text}`}>
+                              {item.name}
+                          </text>
+                      );
+                  })}
+              </svg>
+          </div>
+      );
+  };
+
+
   // --- Block Renderers ---
   const renderBlock = (block: ContentBlock) => {
-    // Helper for rendering various skill layouts
-    const renderSkillItem = (skill: any, layout: string = 'bar') => {
-        // Default to bar if layout unknown
-        return (
-            <div>
-                <div className="flex justify-between text-sm mb-1.5 font-medium">
-                    <span>{skill.name}</span>
-                    <span className={styles.accent}>{skill.value}{skill.unit || '%'}</span>
-                </div>
-                <div className={`h-2.5 w-full rounded-full ${styles.barTrack} overflow-hidden`}>
-                    <div 
-                    className={`h-full rounded-full ${styles.barFill} shadow-[0_0_10px_rgba(59,130,246,0.5)] transition-all duration-1000 ease-out`} 
-                    style={{ width: `${Math.min(100, Math.max(0, skill.value))}%` }}
-                    ></div>
-                </div>
-            </div>
-        );
-    };
-
     switch (block.type) {
       case 'profile_header':
          return (
@@ -183,20 +269,33 @@ export const StudentPortfolioPage: React.FC = () => {
         return (
             <section key={block.id} className="max-w-6xl mx-auto px-4 mb-20">
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {block.data.skills_categories?.map((cat, idx) => (
-                      <div key={idx} className={`p-8 rounded-3xl ${styles.cardBg} border ${styles.border} shadow-lg backdrop-blur-sm hover:border-blue-500/30 transition-colors`}>
-                          <h3 className={`font-bold text-lg mb-6 flex items-center gap-2 ${styles.accent}`}>
-                             <Icons.Zap size={20} className="fill-current" /> {cat.name}
-                          </h3>
-                          <div className="space-y-6">
-                              {cat.items.map((skill, sIdx) => (
-                                  <div key={sIdx}>
-                                      {renderSkillItem(skill, cat.layout)}
-                                  </div>
-                              ))}
-                          </div>
-                      </div>
-                  ))}
+                  {block.data.skills_categories?.map((cat, idx) => {
+                      const isRadar = cat.layout === 'radar';
+                      return (
+                        <div key={idx} className={`p-8 rounded-3xl ${styles.cardBg} border ${styles.border} shadow-lg backdrop-blur-sm hover:border-blue-500/30 transition-colors ${isRadar ? 'md:col-span-2 lg:col-span-1' : ''}`}>
+                            <h3 className={`font-bold text-lg mb-6 flex items-center gap-2 ${styles.accent}`}>
+                                <Icons.Zap size={20} className="fill-current" /> {cat.name}
+                            </h3>
+                            
+                            {cat.layout === 'radar' ? (
+                                renderRadarChart(cat.items)
+                            ) : cat.layout === 'circle' ? (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 place-items-center">
+                                    {cat.items.map((skill, sIdx) => renderCircleSkill(skill, sIdx))}
+                                </div>
+                            ) : cat.layout === 'stat_grid' ? (
+                                <div className="grid grid-cols-2 gap-4">
+                                    {cat.items.map((skill, sIdx) => renderStatSkill(skill, sIdx))}
+                                </div>
+                            ) : (
+                                // Default Bar
+                                <div className="space-y-6">
+                                    {cat.items.map((skill, sIdx) => renderBarSkill(skill, sIdx))}
+                                </div>
+                            )}
+                        </div>
+                      );
+                  })}
                </div>
             </section>
         );
@@ -206,24 +305,36 @@ export const StudentPortfolioPage: React.FC = () => {
              <section key={block.id} className="max-w-6xl mx-auto px-4 mb-20">
                  <div className={`rounded-3xl overflow-hidden ${styles.cardBg} border ${styles.border} shadow-2xl`}>
                      <div className="grid md:grid-cols-5">
-                         <div className="p-8 md:p-12 md:col-span-3">
-                             <div className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold mb-6 tracking-widest bg-blue-900/30 text-blue-300 border border-blue-800/50`}>
+                         <div className="p-8 md:p-12 md:col-span-3 flex flex-col">
+                             <div className={`inline-block w-fit px-3 py-1 rounded-full text-[10px] font-bold mb-6 tracking-widest bg-blue-900/30 text-blue-300 border border-blue-800/50`}>
                                  PROJECT HIGHLIGHT
                              </div>
-                             <h3 className={`text-2xl md:text-3xl font-bold mb-8 text-white`}>{block.data.title}</h3>
+                             <h3 className={`text-2xl md:text-3xl font-bold mb-10 text-white`}>{block.data.title}</h3>
                              
-                             <div className="space-y-8">
-                                 {[
-                                     { label: 'SITUATION', text: block.data.star_situation },
-                                     { label: 'TASK', text: block.data.star_task },
-                                     { label: 'ACTION', text: block.data.star_action },
-                                     { label: 'RESULT', text: block.data.star_result },
-                                 ].map((item, i) => item.text && (
-                                     <div key={i} className="relative pl-4 border-l-2 border-slate-700">
-                                         <h4 className={`text-[10px] font-bold ${styles.muted} uppercase tracking-[0.2em] mb-2`}>{item.label}</h4>
-                                         <p className="text-sm md:text-base leading-relaxed text-slate-300">{item.text}</p>
+                             <div className="space-y-8 flex-1">
+                                 {/* First Row: Situation & Task */}
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b border-slate-800 pb-8">
+                                     <div className="relative pl-4 border-l-2 border-slate-700">
+                                         <h4 className={`text-[10px] font-bold ${styles.muted} uppercase tracking-[0.2em] mb-2`}>SITUATION</h4>
+                                         <p className="text-sm md:text-base leading-relaxed text-slate-300">{block.data.star_situation}</p>
                                      </div>
-                                 ))}
+                                     <div className="relative pl-4 border-l-2 border-slate-700">
+                                         <h4 className={`text-[10px] font-bold ${styles.muted} uppercase tracking-[0.2em] mb-2`}>TASK</h4>
+                                         <p className="text-sm md:text-base leading-relaxed text-slate-300">{block.data.star_task}</p>
+                                     </div>
+                                 </div>
+
+                                 {/* Second Row: Action & Result */}
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                     <div className="relative pl-4 border-l-2 border-slate-700">
+                                         <h4 className={`text-[10px] font-bold ${styles.muted} uppercase tracking-[0.2em] mb-2`}>ACTION</h4>
+                                         <p className="text-sm md:text-base leading-relaxed text-slate-300">{block.data.star_action}</p>
+                                     </div>
+                                     <div className="relative pl-4 border-l-2 border-slate-700">
+                                         <h4 className={`text-[10px] font-bold ${styles.muted} uppercase tracking-[0.2em] mb-2`}>RESULT</h4>
+                                         <p className="text-sm md:text-base leading-relaxed text-slate-300">{block.data.star_result}</p>
+                                     </div>
+                                 </div>
                              </div>
                          </div>
                          <div className={`md:col-span-2 bg-black/40 min-h-[300px] relative border-l ${styles.border}`}>

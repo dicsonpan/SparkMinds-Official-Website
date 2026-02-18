@@ -2,19 +2,22 @@ import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image, Font } from '@react-pdf/renderer';
 import { StudentPortfolio, ContentBlock, SkillItem } from '../types';
 
-// Register a font that supports Chinese characters.
-// Using Source Han Sans (思源黑体) from jsdelivr CDN.
-// Note: PDF generation requires the font file to be downloaded by the browser. 
-// If this URL fails or is slow, Chinese characters may not display correctly.
-Font.register({
-  family: 'SourceHanSans',
-  src: 'https://cdn.jsdelivr.net/npm/source-han-sans-ttf@1.0.4/SourceHanSansCN-Regular.ttf'
-});
+// NOTE: Chinese font loading from public CDNs is unreliable and often causes CORS or 404 errors.
+// For production, you MUST download a font like "SourceHanSansCN-Regular.ttf", place it in your 'public' folder,
+// and reference it relatively like `/fonts/SourceHanSansCN-Regular.ttf`.
+// Falling back to standard Helvetica to ensure PDF generation works, though Chinese characters may not render correctly without the custom font.
+
+// Uncomment and adjust path if you have a local font file:
+// Font.register({
+//   family: 'SourceHanSans',
+//   src: '/fonts/SourceHanSansCN-Regular.ttf'
+// });
 
 const styles = StyleSheet.create({
   page: {
     padding: 40,
-    fontFamily: 'SourceHanSans',
+    // fontFamily: 'SourceHanSans', // Switch back to this if you have the font
+    fontFamily: 'Helvetica',
     backgroundColor: '#ffffff',
     color: '#1e293b'
   },
@@ -172,18 +175,13 @@ interface PortfolioPDFProps {
 }
 
 export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
-  const getAvatarUrl = (url?: string) => {
-    // Basic CORS proxy or direct URL handling would be needed here for some images
-    // React-pdf image component handles many URLs automatically
-    return url; 
-  };
-
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
+            {/* Note: Chinese characters might not render with Helvetica */}
             <Text style={styles.studentName}>{portfolio.student_name}</Text>
             <Text style={styles.studentTitle}>SparkMinds Portfolio</Text>
           </View>
@@ -192,9 +190,17 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
           )}
         </View>
 
+        {/* Warning about Chinese characters */}
+        <View style={{marginBottom: 10, padding: 10, backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fdba74'}}>
+            <Text style={{fontSize: 10, color: '#c2410c'}}>
+                Note: Chinese characters may not display correctly because a custom Chinese font file was not found. 
+                Please configure a local font file in 'components/PortfolioPDF.tsx' for full support.
+            </Text>
+        </View>
+
         {/* Content Blocks */}
         {portfolio.content_blocks.map((block, index) => {
-          // Profile Header (Already in PDF Header mostly, but we add bio)
+          // Profile Header
           if (block.type === 'profile_header') {
             return (
               <View key={block.id} style={styles.section}>
@@ -249,19 +255,19 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
                 <Text style={styles.sectionTitle}>{block.data.title || 'Project Highlight'}</Text>
                 <View style={styles.projectCard}>
                   <View style={styles.projectSection}>
-                    <Text style={styles.projectLabel}>SITUATION (背景)</Text>
+                    <Text style={styles.projectLabel}>SITUATION</Text>
                     <Text style={styles.text}>{block.data.star_situation}</Text>
                   </View>
                   <View style={styles.projectSection}>
-                    <Text style={styles.projectLabel}>TASK (任务)</Text>
+                    <Text style={styles.projectLabel}>TASK</Text>
                     <Text style={styles.text}>{block.data.star_task}</Text>
                   </View>
                   <View style={styles.projectSection}>
-                    <Text style={styles.projectLabel}>ACTION (行动)</Text>
+                    <Text style={styles.projectLabel}>ACTION</Text>
                     <Text style={styles.text}>{block.data.star_action}</Text>
                   </View>
                   <View style={styles.projectSection}>
-                    <Text style={styles.projectLabel}>RESULT (结果)</Text>
+                    <Text style={styles.projectLabel}>RESULT</Text>
                     <Text style={styles.text}>{block.data.star_result}</Text>
                   </View>
                 </View>
@@ -295,7 +301,7 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
             );
           }
 
-          // Image Grid (Limited support for simplicity)
+          // Image Grid
           if (block.type === 'image_grid' && block.data.urls && block.data.urls.length > 0) {
              return (
                <View key={block.id} style={styles.section}>

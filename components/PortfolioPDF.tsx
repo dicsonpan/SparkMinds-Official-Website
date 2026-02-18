@@ -1,6 +1,6 @@
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image, Font } from '@react-pdf/renderer';
-import { StudentPortfolio, ContentBlock, SkillItem } from '../types';
+import { StudentPortfolio, ContentBlock, SkillCategory, SkillItem } from '../types';
 
 // Register the Microsoft YaHei font located in the public folder to support Chinese characters
 Font.register({
@@ -15,30 +15,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     color: '#334155', // Slate 700
     fontSize: 10,
-    lineHeight: 1.5
+    lineHeight: 1.6
   },
   // === Header ===
   header: {
     flexDirection: 'row',
     marginBottom: 30,
-    borderBottomWidth: 2,
+    borderBottomWidth: 1,
     borderBottomColor: '#2563eb', // Blue 600
     paddingBottom: 20,
-    alignItems: 'center'
+    alignItems: 'flex-start' // Changed from center to flex-start to allow text to grow down
   },
   headerAvatar: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: '#f1f5f9',
     marginRight: 20,
     objectFit: 'cover'
   },
   headerContent: {
-    flex: 1
+    flex: 1,
+    flexDirection: 'column'
   },
   studentName: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#0f172a', // Slate 900
     marginBottom: 4
@@ -47,88 +48,92 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#2563eb', // Blue 600
     fontWeight: 'bold',
-    marginBottom: 4,
+    marginBottom: 8,
     textTransform: 'uppercase'
   },
   studentBio: {
-    fontSize: 9,
+    fontSize: 10,
     color: '#64748b',
-    lineHeight: 1.4
+    lineHeight: 1.5,
+    textAlign: 'justify'
   },
 
   // === Section Defaults ===
   section: {
-    marginBottom: 20,
+    marginBottom: 15,
     width: '100%'
   },
   
   // === Section Heading ===
   sectionHeadingContainer: {
-    marginTop: 10,
-    marginBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-    paddingBottom: 5
+    marginTop: 15,
+    marginBottom: 10,
+    paddingBottom: 5,
+    borderBottomWidth: 2,
+    borderBottomColor: '#f1f5f9'
   },
   sectionHeadingTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: 'heavy',
     color: '#0f172a',
-    textTransform: 'uppercase',
-    letterSpacing: 1
+    textTransform: 'uppercase'
   },
 
   // === Info List (Grid) ===
   infoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10
+    gap: 8,
+    marginTop: 5
   },
   infoItem: {
-    width: '30%', // 3 columns
+    width: '32%', // 3 columns with gap
     backgroundColor: '#f8fafc',
-    padding: 8,
-    borderRadius: 4,
+    padding: 10,
+    borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#f1f5f9'
+    borderColor: '#e2e8f0'
   },
   infoLabel: {
     fontSize: 8,
-    color: '#94a3b8',
+    color: '#64748b',
     fontWeight: 'bold',
-    marginBottom: 2,
+    marginBottom: 4,
     textTransform: 'uppercase'
   },
   infoValue: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: '#334155',
-    flexWrap: 'wrap'
+    color: '#0f172a'
   },
 
   // === Skills (Progress Bars) ===
   skillCategory: {
-    marginBottom: 10
+    marginBottom: 10,
+    width: '100%'
   },
   skillCategoryTitle: {
     fontSize: 11,
     fontWeight: 'bold',
     marginBottom: 6,
-    color: '#475569'
+    color: '#475569',
+    backgroundColor: '#f1f5f9',
+    padding: '4 8',
+    borderRadius: 4
   },
   skillRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 15
+    gap: 12
   },
   skillItem: {
-    width: '45%', // 2 columns
-    marginBottom: 5
+    width: '48%', // 2 columns
+    marginBottom: 6
   },
   skillHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 2
+    marginBottom: 3
   },
   skillName: {
     fontSize: 9,
@@ -137,12 +142,13 @@ const styles = StyleSheet.create({
   },
   skillScore: {
     fontSize: 9,
-    color: '#2563eb'
+    color: '#2563eb',
+    fontWeight: 'bold'
   },
   skillTrack: {
-    height: 4,
+    height: 6,
     backgroundColor: '#e2e8f0',
-    borderRadius: 2,
+    borderRadius: 3,
     overflow: 'hidden'
   },
   skillFill: {
@@ -153,62 +159,63 @@ const styles = StyleSheet.create({
   // === Timeline ===
   timelineRow: {
     flexDirection: 'row',
-    marginBottom: 15
+    marginBottom: 15,
+    borderLeftWidth: 2,
+    borderLeftColor: '#e2e8f0',
+    paddingLeft: 15,
+    marginLeft: 5
   },
-  timelineLeft: {
-    width: '20%',
-    paddingRight: 10,
-    borderRightWidth: 1,
-    borderRightColor: '#e2e8f0'
-  },
-  timelineRight: {
-    width: '80%',
-    paddingLeft: 10
+  timelineContent: {
+    flex: 1
   },
   timelineDate: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'bold',
     color: '#2563eb',
-    textAlign: 'right'
+    marginBottom: 2,
+    backgroundColor: '#eff6ff',
+    padding: '2 6',
+    borderRadius: 4,
+    alignSelf: 'flex-start'
   },
   timelineTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: 'bold',
     color: '#0f172a',
-    marginBottom: 4,
-    flexWrap: 'wrap'
+    marginBottom: 4
   },
   timelineDesc: {
-    fontSize: 9,
+    fontSize: 10,
     color: '#475569',
     lineHeight: 1.5,
-    flexWrap: 'wrap'
+    textAlign: 'justify'
   },
   timelineImages: {
-    marginTop: 6,
+    marginTop: 8,
     flexDirection: 'row',
     gap: 6
   },
   timelineImg: {
-    width: 60,
-    height: 40,
-    borderRadius: 2,
-    objectFit: 'cover'
+    width: 80,
+    height: 50,
+    borderRadius: 4,
+    objectFit: 'cover',
+    backgroundColor: '#f1f5f9'
   },
 
   // === STAR Project ===
   starContainer: {
     marginTop: 5,
+    borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 4,
+    borderColor: '#cbd5e1',
     overflow: 'hidden'
   },
   starHeader: {
-    padding: 8,
-    backgroundColor: '#f1f5f9',
+    padding: '8 12',
+    backgroundColor: '#f8fafc',
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0'
+    borderBottomColor: '#cbd5e1'
   },
   starTitle: {
     fontSize: 12,
@@ -225,25 +232,25 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     borderRightColor: '#f1f5f9',
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-    flexDirection: 'column'
+    borderBottomColor: '#f1f5f9'
   },
   starLabel: {
     fontSize: 8,
     fontWeight: 'bold',
     color: '#2563eb',
-    marginBottom: 4
+    marginBottom: 4,
+    opacity: 0.8
   },
   starText: {
     fontSize: 9,
     color: '#334155',
-    flexWrap: 'wrap'
+    lineHeight: 1.4
   },
   starEvidence: {
     padding: 10,
     backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0'
+    borderTopColor: '#f1f5f9'
   },
 
   // === Image Grid ===
@@ -254,7 +261,7 @@ const styles = StyleSheet.create({
   },
   imageGridItem: {
     width: '31%', // 3 columns
-    height: 100,
+    height: 120,
     borderRadius: 4,
     objectFit: 'cover',
     backgroundColor: '#f1f5f9'
@@ -265,15 +272,15 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 1.6,
     color: '#334155',
-    flexWrap: 'wrap'
+    textAlign: 'justify'
   },
 
   // === Table ===
   table: {
     width: '100%',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 4,
+    borderColor: '#cbd5e1',
+    borderRadius: 6,
     overflow: 'hidden',
     marginTop: 5
   },
@@ -281,31 +288,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#f1f5f9',
     borderBottomWidth: 1,
-    borderBottomColor: '#cbd5e1'
+    borderBottomColor: '#cbd5e1',
+    alignItems: 'center'
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0'
+    borderBottomColor: '#e2e8f0',
+    minHeight: 24,
+    alignItems: 'center'
   },
   tableHeaderCell: {
-    padding: 6,
+    padding: 8,
     fontSize: 9,
     fontWeight: 'bold',
     color: '#0f172a',
     borderRightWidth: 1,
     borderRightColor: '#cbd5e1',
-    flexDirection: 'column', // Important for wrapping
-    flexGrow: 1
+    textAlign: 'left'
   },
   tableCell: {
-    padding: 6,
+    padding: 8,
     fontSize: 9,
     color: '#334155',
     borderRightWidth: 1,
     borderRightColor: '#e2e8f0',
-    flexDirection: 'column', // Important for wrapping
-    flexGrow: 1
+    textAlign: 'left'
   },
 
   // === Footer ===
@@ -333,7 +341,6 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
       <Page size="A4" style={styles.page}>
         
         {/* === 1. Profile Header (Main) === */}
-        {/* We assume the first block might be a profile header, or we use top-level data */}
         <View style={styles.header}>
           {portfolio.avatar_url && (
              <Image src={portfolio.avatar_url} style={styles.headerAvatar} />
@@ -348,9 +355,6 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
         {/* Content Blocks Loop */}
         {portfolio.content_blocks.map((block, index) => {
           
-          // Note: We skip 'profile_header' here if it's redundant with the top header, 
-          // or we can render it as a section if it has specific data different from main.
-          // For this implementation, let's treat 'profile_header' blocks inside content as secondary intros or skip if identical.
           if (block.type === 'profile_header') return null; 
 
           // === 5. Section Heading ===
@@ -383,11 +387,11 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
           if (block.type === 'skills_matrix') {
             return (
               <View key={block.id} style={styles.section} wrap={false}>
-                {block.data.skills_categories?.map((cat, idx) => (
+                {block.data.skills_categories?.map((cat: SkillCategory, idx: number) => (
                   <View key={idx} style={styles.skillCategory}>
                     <Text style={styles.skillCategoryTitle}>{cat.name}</Text>
                     <View style={styles.skillRow}>
-                      {cat.items.map((skill, sIdx) => (
+                      {cat.items.map((skill: SkillItem, sIdx: number) => (
                         <View key={sIdx} style={styles.skillItem}>
                           <View style={styles.skillHeader}>
                             <Text style={styles.skillName}>{skill.name}</Text>
@@ -409,11 +413,11 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
           if (block.type === 'timeline_node') {
              return (
                <View key={block.id} style={[styles.section, styles.timelineRow]} wrap={false}>
-                  <View style={styles.timelineLeft}>
-                     <Text style={styles.timelineDate}>{block.data.date}</Text>
-                  </View>
-                  <View style={styles.timelineRight}>
-                     <Text style={styles.timelineTitle}>{block.data.title}</Text>
+                  <View style={styles.timelineContent}>
+                     <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4}}>
+                        <Text style={styles.timelineTitle}>{block.data.title}</Text>
+                        <Text style={styles.timelineDate}>{block.data.date}</Text>
+                     </View>
                      <Text style={styles.timelineDesc}>{block.data.content}</Text>
                      {block.data.urls && block.data.urls.length > 0 && (
                         <View style={styles.timelineImages}>
@@ -455,10 +459,10 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
                   </View>
                   {block.data.evidence_urls && block.data.evidence_urls.length > 0 && (
                     <View style={styles.starEvidence}>
-                        <Text style={{fontSize: 8, fontWeight: 'bold', marginBottom: 4, color: '#64748b'}}>EVIDENCE</Text>
-                        <View style={{flexDirection: 'row', gap: 5}}>
+                        <Text style={{fontSize: 8, fontWeight: 'bold', marginBottom: 6, color: '#64748b'}}>EVIDENCE</Text>
+                        <View style={{flexDirection: 'row', gap: 8}}>
                            {block.data.evidence_urls.slice(0, 4).map((url, i) => (
-                              <Image key={i} src={url} style={{width: 50, height: 30, borderRadius: 2, objectFit: 'cover'}} />
+                              <Image key={i} src={url} style={{width: 60, height: 40, borderRadius: 4, objectFit: 'cover'}} />
                            ))}
                         </View>
                     </View>

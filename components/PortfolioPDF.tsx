@@ -1,5 +1,5 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet, Image, Font } from '@react-pdf/renderer';
+import { Page, Text, View, Document, StyleSheet, Image, Font, Svg, Polygon, Line, Circle } from '@react-pdf/renderer';
 import { StudentPortfolio, ContentBlock, SkillCategory, SkillItem } from '../types';
 
 // Register the Microsoft YaHei font located in the public folder to support Chinese characters
@@ -131,6 +131,7 @@ const styles = StyleSheet.create({
     padding: '4 8',
     borderRadius: 4
   },
+  // -- Bar Layout --
   skillRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -164,6 +165,46 @@ const styles = StyleSheet.create({
   skillFill: {
     height: '100%',
     backgroundColor: '#2563eb'
+  },
+  // -- Stat Grid Layout --
+  statGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  statItem: {
+    width: '32%',
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 6,
+    backgroundColor: '#f8fafc',
+    alignItems: 'center',
+    marginBottom: 6
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2563eb',
+    marginBottom: 2
+  },
+  statLabel: {
+    fontSize: 8,
+    color: '#64748b',
+    fontWeight: 'bold',
+    textTransform: 'uppercase'
+  },
+  // -- Circle Layout --
+  circleGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'flex-start'
+  },
+  circleItem: {
+    width: '30%',
+    alignItems: 'center',
+    marginBottom: 10
   },
 
   // === Timeline ===
@@ -348,6 +389,132 @@ interface PortfolioPDFProps {
   portfolio: StudentPortfolio;
 }
 
+// === Chart Helpers ===
+
+// Helper: Radar Chart
+const RadarChart = ({ items }: { items: SkillItem[] }) => {
+    const size = 180;
+    const center = size / 2;
+    const radius = 60;
+    const angleStep = (Math.PI * 2) / items.length;
+
+    const getPoint = (value: number, index: number, rScale = radius) => {
+        const angle = index * angleStep - Math.PI / 2;
+        const r = (value / 100) * rScale;
+        return `${center + r * Math.cos(angle)},${center + r * Math.sin(angle)}`;
+    };
+
+    const dataPoints = items.map((item, i) => getPoint(item.value, i)).join(' ');
+
+    return (
+        <View style={{ alignItems: 'center', marginBottom: 10 }}>
+            <Svg width={size} height={size}>
+                {/* Grid Background */}
+                {[0.25, 0.5, 0.75, 1].map((scale, i) => (
+                    <Polygon
+                        key={i}
+                        points={items.map((_, idx) => getPoint(100 * scale, idx)).join(' ')}
+                        stroke="#cbd5e1"
+                        strokeWidth={1}
+                        fill="none"
+                    />
+                ))}
+                {/* Axes */}
+                {items.map((_, i) => (
+                    <Line
+                        key={i}
+                        x1={center}
+                        y1={center}
+                        x2={getPoint(100, i).split(',')[0]}
+                        y2={getPoint(100, i).split(',')[1]}
+                        stroke="#cbd5e1"
+                        strokeWidth={1}
+                    />
+                ))}
+                {/* Data Shape */}
+                <Polygon
+                    points={dataPoints}
+                    fill="rgba(37, 99, 235, 0.1)"
+                    stroke="#2563eb"
+                    strokeWidth={2}
+                />
+                {/* Labels at vertices */}
+                {items.map((item, i) => {
+                    // Position label slightly outside the last grid ring
+                    const [x, y] = getPoint(100, i, radius + 15).split(',').map(Number);
+                    // Simple offset adjustment to center text approximately
+                    const adjX = x > center ? 0 : x < center ? -20 : -10;
+                    const adjY = y > center ? 5 : -5;
+                    return (
+                        <Text
+                            key={i}
+                            x={x + adjX}
+                            y={y + adjY}
+                            style={{ fontSize: 8, fill: '#334155', fontFamily: 'Microsoft YaHei' }}
+                        >
+                            {item.name}
+                        </Text>
+                    );
+                })}
+            </Svg>
+            {/* Legend for exact values */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginTop: -20 }}>
+                {items.map((item, i) => (
+                    <Text key={i} style={{ fontSize: 8, color: '#64748b' }}>
+                        {item.name}: <Text style={{ color: '#2563eb', fontWeight: 'bold' }}>{item.value}%</Text>
+                    </Text>
+                ))}
+            </View>
+        </View>
+    );
+};
+
+// Helper: Circle Chart
+const CircleChart = ({ item }: { item: SkillItem }) => {
+    const size = 50;
+    const r = 20;
+    const c = 2 * Math.PI * r;
+    const offset = c - (Math.min(100, Math.max(0, item.value)) / 100) * c;
+
+    return (
+        <View style={styles.circleItem}>
+            <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                <Svg width={size} height={size}>
+                    <Circle cx={size/2} cy={size/2} r={r} stroke="#e2e8f0" strokeWidth={4} fill="none" />
+                    <Circle 
+                        cx={size/2} 
+                        cy={size/2} 
+                        r={r} 
+                        stroke="#2563eb" 
+                        strokeWidth={4} 
+                        fill="none" 
+                        strokeDasharray={`${c} ${c}`}
+                        {...({ strokeDashoffset: offset } as any)}
+                        transform={`rotate(-90 ${size/2} ${size/2})`}
+                    />
+                </Svg>
+                <Text style={{ position: 'absolute', fontSize: 10, fontWeight: 'bold', color: '#2563eb', top: 19, left: 0, right: 0, textAlign: 'center' }}>
+                    {item.value}%
+                </Text>
+            </View>
+            <Text style={{ fontSize: 8, fontWeight: 'bold', marginTop: 4, textAlign: 'center', color: '#334155' }}>
+                {item.name}
+            </Text>
+        </View>
+    );
+};
+
+// Helper: Stat Grid
+const StatBox = ({ item }: { item: SkillItem }) => (
+    <View style={styles.statItem}>
+        <Text style={styles.statValue}>
+            {item.value}<Text style={{ fontSize: 10, color: '#64748b', fontWeight: 'normal' }}>{item.unit}</Text>
+        </Text>
+        <Text style={styles.statLabel}>{item.name}</Text>
+    </View>
+);
+
+
 export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
   return (
     <Document>
@@ -396,26 +563,45 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
             );
           }
 
-          // === 2. Skills Matrix ===
+          // === 2. Skills Matrix (UPDATED) ===
           if (block.type === 'skills_matrix') {
             return (
               <View key={block.id} style={styles.section} wrap={false}>
                 {block.data.skills_categories?.map((cat: SkillCategory, idx: number) => (
                   <View key={idx} style={styles.skillCategory}>
                     <Text style={styles.skillCategoryTitle}>{cat.name}</Text>
-                    <View style={styles.skillRow}>
-                      {cat.items.map((skill: SkillItem, sIdx: number) => (
-                        <View key={sIdx} style={styles.skillItem}>
-                          <View style={styles.skillHeader}>
-                            <Text style={styles.skillName}>{skill.name}</Text>
-                            <Text style={styles.skillScore}>{skill.value}{skill.unit || '%'}</Text>
-                          </View>
-                          <View style={styles.skillTrack}>
-                            <View style={[styles.skillFill, { width: `${Math.min(100, Math.max(0, skill.value))}%` }]} />
-                          </View>
+                    
+                    {/* Render based on layout type */}
+                    {cat.layout === 'radar' ? (
+                        <RadarChart items={cat.items} />
+                    ) : cat.layout === 'circle' ? (
+                        <View style={styles.circleGrid}>
+                            {cat.items.map((skill, sIdx) => (
+                                <CircleChart key={sIdx} item={skill} />
+                            ))}
                         </View>
-                      ))}
-                    </View>
+                    ) : cat.layout === 'stat_grid' ? (
+                        <View style={styles.statGrid}>
+                            {cat.items.map((skill, sIdx) => (
+                                <StatBox key={sIdx} item={skill} />
+                            ))}
+                        </View>
+                    ) : (
+                        // Default 'bar' layout
+                        <View style={styles.skillRow}>
+                            {cat.items.map((skill: SkillItem, sIdx: number) => (
+                                <View key={sIdx} style={styles.skillItem}>
+                                    <View style={styles.skillHeader}>
+                                        <Text style={styles.skillName}>{skill.name}</Text>
+                                        <Text style={styles.skillScore}>{skill.value}{skill.unit || '%'}</Text>
+                                    </View>
+                                    <View style={styles.skillTrack}>
+                                        <View style={[styles.skillFill, { width: `${Math.min(100, Math.max(0, skill.value))}%` }]} />
+                                    </View>
+                                </View>
+                            ))}
+                        </View>
+                    )}
                   </View>
                 ))}
               </View>

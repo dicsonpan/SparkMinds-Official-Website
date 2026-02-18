@@ -24,7 +24,7 @@ const AI_PROVIDERS = [
 ];
 
 type AdminTab = 'curriculum' | 'showcase' | 'social' | 'philosophy' | 'pages' | 'bookings' | 'students' | 'settings';
-type PolishScope = 'profile' | 'skills' | 'content';
+type PolishScope = 'content'; // Simplified scope
 
 interface AdminPageProps {
   defaultTab?: AdminTab;
@@ -59,12 +59,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
   });
   const [aiPrompt, setAiPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [studentEditorTab, setStudentEditorTab] = useState<'profile' | 'skills' | 'content' | 'ai'>('profile');
+  const [isAiPanelOpen, setIsAiPanelOpen] = useState(false); // Collapsible AI panel
   
   // AI Polish State
   const [prePolishState, setPrePolishState] = useState<any | null>(null);
   const [isPolishing, setIsPolishing] = useState(false);
-  const [polishScope, setPolishScope] = useState<PolishScope | null>(null);
 
   // Check auth & Load AI Config
   useEffect(() => {
@@ -167,6 +166,19 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
             table_columns: ['项目', '内容'],
             table_rows: [['示例1', '数据1'], ['示例2', '数据2']]
         };
+    } else if (type === 'profile_header') {
+        initialData = {
+            student_title: 'Future Innovator',
+            summary_bio: '在此输入个人简介...',
+            avatar_url: '',
+            hero_image_url: ''
+        };
+    } else if (type === 'skills_matrix') {
+        initialData = {
+            skills_categories: [
+                { name: '核心能力', layout: 'radar', items: [{ name: '编程', value: 80, unit: '%' }] }
+            ]
+        };
     }
 
     const newBlock: ContentBlock = {
@@ -193,189 +205,98 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
     setEditingItem({ ...editingItem, content_blocks: blocks });
   };
 
-  // Helper for Info List
-  const addInfoItem = (blockId: string) => {
+  // Helper for Info List / Table / Skills modification inside a block
+  const updateBlockDataNested = (blockId: string, path: (string | number)[], value: any) => {
       const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => {
           if (b.id === blockId) {
-              return { 
-                  ...b, 
-                  data: { 
-                      ...b.data, 
-                      info_items: [...(b.data.info_items || []), { icon: 'Star', label: '新项目', value: '' }]
-                  } 
-              };
+              const newData = { ...b.data };
+              let current: any = newData;
+              for (let i = 0; i < path.length - 1; i++) {
+                  current = current[path[i]];
+              }
+              current[path[path.length - 1]] = value;
+              return { ...b, data: newData };
           }
           return b;
       });
       setEditingItem({ ...editingItem, content_blocks: newBlocks });
-  };
-
-  const removeInfoItem = (blockId: string, itemIndex: number) => {
-      const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => {
-          if (b.id === blockId) {
-              const newItems = [...(b.data.info_items || [])];
-              newItems.splice(itemIndex, 1);
-              return { ...b, data: { ...b.data, info_items: newItems } };
-          }
-          return b;
-      });
-      setEditingItem({ ...editingItem, content_blocks: newBlocks });
-  };
-
-  const updateInfoItem = (blockId: string, itemIndex: number, field: string, value: string) => {
-      const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => {
-          if (b.id === blockId) {
-              const newItems = [...(b.data.info_items || [])];
-              newItems[itemIndex] = { ...newItems[itemIndex], [field]: value };
-              return { ...b, data: { ...b.data, info_items: newItems } };
-          }
-          return b;
-      });
-      setEditingItem({ ...editingItem, content_blocks: newBlocks });
-  };
-
-  // Helper for Tables
-  const addTableColumn = (blockId: string) => {
-      const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => {
-          if (b.id === blockId) {
-              const newCols = [...(b.data.table_columns || []), '新列'];
-              const newRows = (b.data.table_rows || []).map(row => [...row, '']);
-              return { ...b, data: { ...b.data, table_columns: newCols, table_rows: newRows } };
-          }
-          return b;
-      });
-      setEditingItem({ ...editingItem, content_blocks: newBlocks });
-  };
-
-  const removeTableColumn = (blockId: string, colIndex: number) => {
-      const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => {
-          if (b.id === blockId) {
-              const newCols = [...(b.data.table_columns || [])];
-              newCols.splice(colIndex, 1);
-              const newRows = (b.data.table_rows || []).map(row => {
-                  const r = [...row];
-                  r.splice(colIndex, 1);
-                  return r;
-              });
-              return { ...b, data: { ...b.data, table_columns: newCols, table_rows: newRows } };
-          }
-          return b;
-      });
-      setEditingItem({ ...editingItem, content_blocks: newBlocks });
-  };
-
-  const updateTableColumn = (blockId: string, colIndex: number, value: string) => {
-      const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => {
-          if (b.id === blockId) {
-              const newCols = [...(b.data.table_columns || [])];
-              newCols[colIndex] = value;
-              return { ...b, data: { ...b.data, table_columns: newCols } };
-          }
-          return b;
-      });
-      setEditingItem({ ...editingItem, content_blocks: newBlocks });
-  };
-
-  const addTableRow = (blockId: string) => {
-      const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => {
-          if (b.id === blockId) {
-              const colCount = (b.data.table_columns || []).length;
-              const newRow = new Array(colCount).fill('');
-              return { ...b, data: { ...b.data, table_rows: [...(b.data.table_rows || []), newRow] } };
-          }
-          return b;
-      });
-      setEditingItem({ ...editingItem, content_blocks: newBlocks });
-  };
-
-  const removeTableRow = (blockId: string, rowIndex: number) => {
-      const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => {
-          if (b.id === blockId) {
-              const newRows = [...(b.data.table_rows || [])];
-              newRows.splice(rowIndex, 1);
-              return { ...b, data: { ...b.data, table_rows: newRows } };
-          }
-          return b;
-      });
-      setEditingItem({ ...editingItem, content_blocks: newBlocks });
-  };
-
-  const updateTableCell = (blockId: string, rowIndex: number, colIndex: number, value: string) => {
-      const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => {
-          if (b.id === blockId) {
-              const newRows = [...(b.data.table_rows || [])];
-              const newRow = [...newRows[rowIndex]];
-              newRow[colIndex] = value;
-              newRows[rowIndex] = newRow;
-              return { ...b, data: { ...b.data, table_rows: newRows } };
-          }
-          return b;
-      });
-      setEditingItem({ ...editingItem, content_blocks: newBlocks });
-  };
-
-  // --- SKILLS LOGIC ---
-  const addSkillCategory = () => {
-    const newCategory: SkillCategory = { name: '新分类', layout: 'bar', items: [] };
-    setEditingItem({ ...editingItem, skills: [...(editingItem.skills || []), newCategory] });
-  };
-
-  const updateCategory = (index: number, field: keyof SkillCategory, value: any) => {
-    const newSkills = [...(editingItem.skills || [])];
-    newSkills[index] = { ...newSkills[index], [field]: value };
-    setEditingItem({ ...editingItem, skills: newSkills });
-  };
-
-  const removeCategory = (index: number) => {
-    if (!confirm('确定删除整个分类及其技能吗？')) return;
-    const newSkills = [...(editingItem.skills || [])];
-    newSkills.splice(index, 1);
-    setEditingItem({ ...editingItem, skills: newSkills });
-  };
-
-  const addSkillToCategory = (catIndex: number) => {
-    const newSkills = [...(editingItem.skills || [])];
-    const category = newSkills[catIndex];
-    category.items.push({ name: '新技能', value: 80, unit: '分' });
-    setEditingItem({ ...editingItem, skills: newSkills });
-  };
-
-  const updateSkillItem = (catIndex: number, itemIndex: number, field: keyof SkillItem, value: any) => {
-    const newSkills = [...(editingItem.skills || [])];
-    const item = newSkills[catIndex].items[itemIndex];
-    (item as any)[field] = value;
-    setEditingItem({ ...editingItem, skills: newSkills });
-  };
-
-  const removeSkillItem = (catIndex: number, itemIndex: number) => {
-    const newSkills = [...(editingItem.skills || [])];
-    newSkills[catIndex].items.splice(itemIndex, 1);
-    setEditingItem({ ...editingItem, skills: newSkills });
   };
 
   // --- CRUD ---
   const handleCreateNew = () => {
     setIsNewRecord(true);
     setPrePolishState(null);
-    setPolishScope(null);
     let template: any = {};
     if (activeTab === 'curriculum') template = { id: 'New', level: '', age: '', title: '', description: '', skills: [], icon_name: 'Box', image_urls: [], sort_order: 99 };
     else if (activeTab === 'showcase') template = { title: '', category: '商业级产品', description: '', image_urls: [], sort_order: 99 };
     else if (activeTab === 'social') template = { title: '商业化案例', subtitle: '', quote: '', footer_note: '', image_urls: [], sort_order: 99 };
     else if (activeTab === 'philosophy') template = { title: '', content: '', icon_name: 'Star', sort_order: 99 };
-    else if (activeTab === 'students') template = { slug: '', student_name: '', student_title: '', summary_bio: '', access_password: '', content_blocks: [], skills: [], theme_config: { theme: 'tech_dark' }, avatar_url: '' };
+    else if (activeTab === 'students') {
+        template = { 
+            slug: '', 
+            student_name: '', 
+            access_password: '', 
+            content_blocks: [
+                {
+                    id: 'default-profile',
+                    type: 'profile_header',
+                    data: {
+                        student_title: '',
+                        summary_bio: '',
+                        avatar_url: '',
+                        hero_image_url: ''
+                    }
+                }
+            ],
+            theme_config: { theme: 'tech_dark' }
+        };
+    }
     
     setEditingItem(template);
-    setStudentEditorTab('profile'); 
     setIsModalOpen(true);
   };
 
   const openEditModal = (item: any) => {
     setIsNewRecord(false);
     setPrePolishState(null);
-    setPolishScope(null);
-    setEditingItem(JSON.parse(JSON.stringify(item))); 
-    setStudentEditorTab('profile');
+    
+    const preparedItem = JSON.parse(JSON.stringify(item));
+    
+    // MIGRATION LOGIC: If opening an old portfolio that has top-level skills/profile but no blocks
+    if (activeTab === 'students') {
+        if (!preparedItem.content_blocks) preparedItem.content_blocks = [];
+        
+        // 1. Check for Profile
+        const hasProfileBlock = preparedItem.content_blocks.some((b: any) => b.type === 'profile_header');
+        if (!hasProfileBlock && (preparedItem.student_title || preparedItem.summary_bio || preparedItem.avatar_url)) {
+            preparedItem.content_blocks.unshift({
+                id: 'migrated-profile',
+                type: 'profile_header',
+                data: {
+                    student_title: preparedItem.student_title,
+                    summary_bio: preparedItem.summary_bio,
+                    avatar_url: preparedItem.avatar_url,
+                    hero_image_url: preparedItem.hero_image_url
+                }
+            });
+        }
+
+        // 2. Check for Skills
+        const hasSkillsBlock = preparedItem.content_blocks.some((b: any) => b.type === 'skills_matrix');
+        if (!hasSkillsBlock && preparedItem.skills && preparedItem.skills.length > 0) {
+            // Find insertion point (after profile)
+            const insertIndex = preparedItem.content_blocks.length > 0 && preparedItem.content_blocks[0].type === 'profile_header' ? 1 : 0;
+            preparedItem.content_blocks.splice(insertIndex, 0, {
+                id: 'migrated-skills',
+                type: 'skills_matrix',
+                data: {
+                    skills_categories: preparedItem.skills
+                }
+            });
+        }
+    }
+
+    setEditingItem(preparedItem); 
     setIsModalOpen(true);
   };
 
@@ -403,7 +324,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
       setIsModalOpen(false);
       setEditingItem(null);
       setPrePolishState(null);
-      setPolishScope(null);
     } catch (error: any) { alert('保存失败: ' + error.message); } finally { setLoading(false); }
   };
 
@@ -434,15 +354,21 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
       const { data } = supabase.storage.from('images').getPublicUrl(fileName);
       const publicUrl = data.publicUrl;
 
-      if (activeTab === 'students') {
-         if (targetType === 'hero') setEditingItem({ ...editingItem, hero_image_url: publicUrl });
-         else if (targetType === 'avatar') setEditingItem({ ...editingItem, avatar_url: publicUrl });
-         else if (blockId) {
-            const field = targetType === 'evidence' ? 'evidence_urls' : 'urls';
-            const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => b.id === blockId ? { ...b, data: { ...b.data, [field]: [...(b.data[field] || []), publicUrl] } } : b);
-            setEditingItem({ ...editingItem, content_blocks: newBlocks });
+      if (activeTab === 'students' && blockId) {
+         // Specialized block image uploads
+         const block = editingItem.content_blocks.find((b: any) => b.id === blockId);
+         if (block) {
+             if (targetType === 'avatar') {
+                 updateContentBlock(blockId, 'avatar_url', publicUrl);
+             } else if (targetType === 'hero') {
+                 updateContentBlock(blockId, 'hero_image_url', publicUrl);
+             } else {
+                 // Array types
+                 const field = targetType === 'evidence' ? 'evidence_urls' : 'urls';
+                 updateContentBlock(blockId, field, [...(block.data[field] || []), publicUrl]);
+             }
          }
-      } else {
+      } else if (activeTab !== 'students') {
          if (['curriculum', 'showcase', 'social'].includes(activeTab)) {
             setEditingItem({ ...editingItem, image_urls: [...(editingItem.image_urls || []), publicUrl] });
          } else {
@@ -461,7 +387,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
     }
   };
 
-  // --- AI Gen (From Scratch) ---
+  // --- AI Gen ---
   const handleAIGenerate = async () => {
     if (!aiConfig.apiKey || !aiPrompt.trim()) return alert("请配置 API Key 并输入资料");
     setIsGenerating(true);
@@ -469,15 +395,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
       const systemPrompt = `You are a Student Portfolio Architect. Convert raw notes into structured JSON.
         LANGUAGE: Simplified Chinese.
         OUTPUT SCHEMA: {
-          "student_title": "Short slogan",
-          "summary_bio": "100-200 words bio",
-          "skills": [{"name": "Category", "layout": "bar", "items": [{"name": "Skill", "value": 80, "unit": "%"}]}],
           "content_blocks": [
+            {"type": "profile_header", "data": {"student_title": "...", "summary_bio": "..."}},
+            {"type": "skills_matrix", "data": {"skills_categories": [{"name": "Category", "layout": "bar", "items": [{"name": "Skill", "value": 80, "unit": "%"}]}]}},
             {"type": "info_list", "data": {"title": "基本信息", "info_items": [{"icon": "User", "label": "Age", "value": "10"}]}},
             {"type": "section_heading", "data": {"title": "Section Title"}},
             {"type": "project_highlight", "data": {"title": "Project", "star_situation": "...", "star_task": "...", "star_action": "...", "star_result": "..."}},
-            {"type": "timeline_node", "data": {"date": "...", "title": "...", "content": "..."}},
-            {"type": "table", "data": {"title": "Table Title", "table_columns": ["Col1", "Col2"], "table_rows": [["R1C1", "R1C2"]]}}
+            {"type": "timeline_node", "data": {"date": "...", "title": "...", "content": "..."}}
           ]
         }`;
       const response = await fetch(`${aiConfig.baseUrl}/chat/completions`, {
@@ -497,81 +421,37 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
 
       setEditingItem((prev: any) => ({
         ...prev,
-        student_title: parsed.student_title || prev.student_title,
-        summary_bio: parsed.summary_bio || prev.summary_bio,
-        skills: parsed.skills || prev.skills || [],
         content_blocks: [...(prev.content_blocks || []), ...processedBlocks]
       }));
       setAiPrompt('');
+      setIsAiPanelOpen(false);
       alert("AI 生成成功！");
-      setStudentEditorTab('content'); 
     } catch (e: any) { alert("AI 生成失败: " + e.message); } finally { setIsGenerating(false); }
   };
 
-  // --- AI Polish (Scope Based) ---
-  const handleAIPolish = async (scope: PolishScope) => {
+  const handleAIPolish = async () => {
     if (!aiConfig.apiKey) return alert("请先在系统设置中配置 API Key");
     if (isPolishing) return;
 
-    // 1. Backup
     setPrePolishState(JSON.parse(JSON.stringify(editingItem)));
-    setPolishScope(scope);
     setIsPolishing(true);
 
     try {
-        let payload = {};
-        let specificPrompt = "";
+        const payload = {
+            content_blocks: (editingItem.content_blocks || []).map((b: any) => ({
+                id: b.id, 
+                type: b.type, 
+                data: b.data // Send full data for context
+            }))
+        };
+        const specificPrompt = `
+            Review the 'content_blocks'. Polish all text fields to be academic, professional, and impressive (Ivy League standard).
+            Standardize layouts. Fix typos.
+            Return the exact same structure with updated 'data' fields.
+            Do NOT change IDs or Types.
+        `;
 
-        if (scope === 'profile') {
-            payload = { student_title: editingItem.student_title, summary_bio: editingItem.summary_bio };
-            specificPrompt = "Focus on 'student_title' (make it catchy/professional) and 'summary_bio' (compelling narrative). Output only these fields in JSON.";
-        } else if (scope === 'skills') {
-            payload = { skills: editingItem.skills };
-            specificPrompt = "Focus on 'skills'. Standardize skill names, ensure categories are logical. Output only the 'skills' array in JSON.";
-        } else if (scope === 'content') {
-            // Strip URLs to save tokens, but send all text fields including dates for context
-            payload = {
-                content_blocks: (editingItem.content_blocks || []).map((b: any) => ({
-                    id: b.id, 
-                    type: b.type, 
-                    data: { 
-                        title: b.data.title,
-                        content: b.data.content,
-                        date: b.data.date,
-                        star_situation: b.data.star_situation,
-                        star_task: b.data.star_task,
-                        star_action: b.data.star_action,
-                        star_result: b.data.star_result,
-                        info_items: b.data.info_items,
-                        table_columns: b.data.table_columns,
-                        table_rows: b.data.table_rows
-                    }
-                }))
-            };
-            specificPrompt = `
-                Focus on the 'content_blocks' array. 
-                For each block, you MUST REWRITE the text fields inside 'data' to be academic, professional, and impressive.
-                
-                Specific targets per block type:
-                - For 'project_highlight' (STAR): Rewrite 'title', 'star_situation', 'star_task', 'star_action', 'star_result'. Use strong action verbs and quantitative metrics.
-                - For 'timeline_node': Rewrite 'title' and 'content'. Make the title concise (e.g., "Technology Initiation" -> "科创启蒙") and the content descriptive.
-                - For 'section_heading': Upgrade the 'title' if it's too casual.
-                - For 'info_list': Standardize the labels (e.g., "Age" -> "年龄", "School" -> "就读学校") if mixed.
-                - For 'table': Polish headers and cell content if necessary.
-                
-                CRITICAL RULES:
-                1. You MUST return the exact same 'id' for each block. This is used to merge the changes.
-                2. Do NOT change the 'type' of the blocks.
-                3. Keep the language in Simplified Chinese (简体中文).
-                4. Output the full JSON object containing the 'content_blocks' array.
-            `;
-        }
-
-        const systemPrompt = `You are a professional Ivy League admissions editor.
-            TASK: Polish the text content to be more academic and professional.
-            LANGUAGE: Simplified Chinese (简体中文).
-            INSTRUCTION: ${specificPrompt}
-            RETURN: Raw JSON only.`;
+        const systemPrompt = `You are a professional Ivy League admissions editor. LANGUAGE: Simplified Chinese. ${specificPrompt} RETURN: Raw JSON.`;
 
         const response = await fetch(`${aiConfig.baseUrl}/chat/completions`, {
             method: 'POST',
@@ -585,110 +465,25 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
 
         const data = await response.json();
         if (data.error) throw new Error(data.error.message);
-        
         let content = data.choices[0].message.content.replace(/```json/g, '').replace(/```/g, '').trim();
         const polishedData = JSON.parse(content);
 
         // Merge logic
         setEditingItem((prev: any) => {
             const newItem = { ...prev };
-            if (scope === 'profile') {
-                newItem.student_title = polishedData.student_title || prev.student_title;
-                newItem.summary_bio = polishedData.summary_bio || prev.summary_bio;
-            } else if (scope === 'skills') {
-                newItem.skills = polishedData.skills || prev.skills;
-            } else if (scope === 'content' && polishedData.content_blocks) {
-                // Merge text back into blocks, preserving URLs from previous state
-                newItem.content_blocks = (prev.content_blocks || []).map((oldBlock: ContentBlock) => {
-                    const polishedBlock = polishedData.content_blocks.find((pb: any) => pb.id === oldBlock.id);
-                    if (polishedBlock && polishedBlock.data) {
-                        return {
-                            ...oldBlock,
-                            data: {
-                                ...oldBlock.data,
-                                // Explicitly overwrite text fields if they exist in polished data
-                                title: polishedBlock.data.title !== undefined ? polishedBlock.data.title : oldBlock.data.title,
-                                content: polishedBlock.data.content !== undefined ? polishedBlock.data.content : oldBlock.data.content,
-                                star_situation: polishedBlock.data.star_situation !== undefined ? polishedBlock.data.star_situation : oldBlock.data.star_situation,
-                                star_task: polishedBlock.data.star_task !== undefined ? polishedBlock.data.star_task : oldBlock.data.star_task,
-                                star_action: polishedBlock.data.star_action !== undefined ? polishedBlock.data.star_action : oldBlock.data.star_action,
-                                star_result: polishedBlock.data.star_result !== undefined ? polishedBlock.data.star_result : oldBlock.data.star_result,
-                                info_items: polishedBlock.data.info_items !== undefined ? polishedBlock.data.info_items : oldBlock.data.info_items,
-                                table_columns: polishedBlock.data.table_columns !== undefined ? polishedBlock.data.table_columns : oldBlock.data.table_columns,
-                                table_rows: polishedBlock.data.table_rows !== undefined ? polishedBlock.data.table_rows : oldBlock.data.table_rows,
-                                // Preserve media and layout fields
-                                urls: oldBlock.data.urls, 
-                                evidence_urls: oldBlock.data.evidence_urls,
-                                layout: oldBlock.data.layout
-                            }
-                        };
-                    }
-                    return oldBlock;
-                });
-            }
+            newItem.content_blocks = (prev.content_blocks || []).map((oldBlock: ContentBlock) => {
+                const polishedBlock = polishedData.content_blocks.find((pb: any) => pb.id === oldBlock.id);
+                return polishedBlock ? { ...oldBlock, data: { ...oldBlock.data, ...polishedBlock.data } } : oldBlock;
+            });
             return newItem;
         });
-
-        alert("AI 润色完成！请预览效果。");
-
+        alert("AI 润色完成！");
     } catch (e: any) {
-        console.error(e);
         alert("AI 润色失败: " + e.message);
         setPrePolishState(null);
-        setPolishScope(null);
     } finally {
         setIsPolishing(false);
     }
-  };
-
-  const handleRollbackPolish = () => {
-      if (prePolishState) {
-          setEditingItem(prePolishState);
-          setPrePolishState(null);
-          setPolishScope(null);
-          alert("已恢复到润色前的内容。");
-      }
-  };
-
-  const handleConfirmPolish = () => {
-      setPrePolishState(null);
-      setPolishScope(null);
-      alert("已保留润色内容。请点击“保存”写入数据库。");
-  };
-
-  const renderPolishControl = (scope: PolishScope) => {
-      if (prePolishState && polishScope === scope) {
-          return (
-            <div className="bg-orange-50 border border-orange-200 text-orange-800 p-3 rounded-lg flex items-center justify-between shadow-sm mb-4 animate-fade-in-down">
-                <div className="flex items-center gap-2 text-sm font-bold">
-                    <Icons.Sparkles className="w-4 h-4 animate-pulse text-orange-500" />
-                    <span>AI 润色预览中 ({scope})</span>
-                </div>
-                <div className="flex gap-2">
-                    <button onClick={handleRollbackPolish} className="px-3 py-1 bg-white border border-orange-300 rounded text-xs font-bold hover:bg-orange-100 flex items-center gap-1 text-orange-700">
-                        <Icons.RotateCcw size={12} /> 放弃回滚
-                    </button>
-                    <button onClick={handleConfirmPolish} className="px-3 py-1 bg-orange-600 text-white rounded text-xs font-bold hover:bg-orange-700 flex items-center gap-1">
-                        <Icons.Check size={12} /> 确认采用
-                    </button>
-                </div>
-            </div>
-          );
-      } else if (!prePolishState) {
-          return (
-            <div className="flex justify-end mb-4">
-                <button 
-                    onClick={() => handleAIPolish(scope)} 
-                    disabled={isPolishing}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg text-xs font-bold shadow-sm hover:shadow-md hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50"
-                >
-                    {isPolishing ? <Icons.Loader2 className="animate-spin w-3 h-3" /> : <Icons.Wand2 className="w-3 h-3" />}
-                    {isPolishing ? 'AI 思考中...' : 'AI 一键润色本页'}
-                </button>
-            </div>
-          );
-      }
-      return null;
   };
 
   const getHeaderTitle = () => {
@@ -746,11 +541,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                              </div>
                              <div className="flex items-center gap-4 mb-4">
                                 <div className="w-16 h-16 rounded-full bg-slate-100 overflow-hidden border-2 border-slate-50 shadow-sm flex-shrink-0">
-                                   {s.avatar_url ? <img src={s.avatar_url} className="w-full h-full object-cover" /> : s.hero_image_url ? <img src={s.hero_image_url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-300 font-bold text-2xl">{s.student_name[0]}</div>}
+                                   {s.avatar_url ? <img src={s.avatar_url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-300 font-bold text-2xl">{s.student_name[0]}</div>}
                                 </div>
                                 <div>
                                    <h3 className="font-bold text-lg text-slate-900">{s.student_name}</h3>
-                                   <p className="text-xs text-slate-500 truncate max-w-[150px]">{s.student_title || '未设置头衔'}</p>
+                                   <p className="text-xs text-slate-500 truncate max-w-[150px]">{s.slug}</p>
                                 </div>
                              </div>
                           </div>
@@ -760,6 +555,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                 )}
                 {activeTab === 'settings' && (
                    <div className="max-w-2xl bg-white p-8">
+                      {/* ... settings content ... */}
                       <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><Icons.Sparkles className="text-blue-500" /> AI 助手配置</h3>
                       <div className="space-y-6">
                          <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
@@ -783,6 +579,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                       </div>
                    </div>
                 )}
+                {/* ... other tabs ... */}
                 {['curriculum', 'showcase', 'social', 'philosophy', 'pages'].includes(activeTab) && (
                    <div className="p-6 space-y-4">
                       {(() => {
@@ -807,240 +604,243 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
       {isModalOpen && editingItem && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className={`bg-white rounded-2xl shadow-2xl w-full ${activeTab === 'students' ? 'max-w-6xl h-[90vh]' : 'max-w-lg'} flex flex-col overflow-hidden`}>
-             <div className="px-6 py-4 border-b flex justify-between items-center bg-slate-50"><h3 className="font-bold text-lg">{isNewRecord ? '添加' : '编辑'} {getHeaderTitle()}</h3><button onClick={() => setIsModalOpen(false)}><Icons.X className="text-slate-400 hover:text-slate-600" /></button></div>
+             <div className="px-6 py-4 border-b flex justify-between items-center bg-slate-50">
+                 <h3 className="font-bold text-lg">{isNewRecord ? '添加' : '编辑'} {getHeaderTitle()}</h3>
+                 <div className="flex gap-4">
+                    {activeTab === 'students' && (
+                        <button 
+                            onClick={() => setIsAiPanelOpen(!isAiPanelOpen)} 
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${isAiPanelOpen ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                        >
+                            <Icons.Sparkles size={16} /> AI 助手
+                        </button>
+                    )}
+                    <button onClick={() => setIsModalOpen(false)}><Icons.X className="text-slate-400 hover:text-slate-600" /></button>
+                 </div>
+             </div>
+             
+             {/* AI Panel */}
+             {isAiPanelOpen && activeTab === 'students' && (
+                 <div className="bg-indigo-50 border-b border-indigo-100 p-4 animate-slide-down">
+                     <div className="flex gap-4">
+                         <div className="flex-1">
+                             <textarea 
+                                className="w-full h-24 p-3 border border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm" 
+                                placeholder="输入原始资料（简历、笔记），AI 将自动生成结构化档案..." 
+                                value={aiPrompt} 
+                                onChange={e => setAiPrompt(e.target.value)} 
+                             />
+                         </div>
+                         <div className="flex flex-col gap-2 w-48">
+                             <button onClick={handleAIGenerate} disabled={isGenerating} className="flex-1 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 flex items-center justify-center gap-2">
+                                 {isGenerating ? <Icons.Loader2 className="animate-spin" /> : <Icons.Wand2 />} 生成档案
+                             </button>
+                             <button onClick={handleAIPolish} disabled={isPolishing} className="flex-1 bg-white border border-indigo-200 text-indigo-700 rounded-lg font-bold text-sm hover:bg-indigo-50 flex items-center justify-center gap-2">
+                                 {isPolishing ? <Icons.Loader2 className="animate-spin" /> : <Icons.Feather />} 一键润色
+                             </button>
+                         </div>
+                     </div>
+                 </div>
+             )}
+
              <div className="flex-1 overflow-y-auto p-6 relative">
                 
                 {activeTab === 'students' ? (
-                   <div className="space-y-4">
-                      <div className="flex gap-4 border-b pb-4">{['profile', 'skills', 'content', 'ai'].map(t => (<button key={t} onClick={() => setStudentEditorTab(t as any)} className={`px-4 py-2 rounded-lg font-bold text-sm ${studentEditorTab === t ? 'bg-blue-100 text-blue-700' : 'text-slate-500'}`}>{t.toUpperCase()}</button>))}</div>
-                      {studentEditorTab === 'profile' && (
-                         <div className="space-y-4">
-                            {renderPolishControl('profile')}
-                            <div className="grid grid-cols-2 gap-4"><input className="border p-2 rounded" placeholder="姓名" value={editingItem.student_name} onChange={e => setEditingItem({...editingItem, student_name: e.target.value})} /><input className="border p-2 rounded" placeholder="Slug (URL后缀)" value={editingItem.slug} onChange={e => setEditingItem({...editingItem, slug: e.target.value})} /><input className="border p-2 rounded" placeholder="访问密码" value={editingItem.access_password} onChange={e => setEditingItem({...editingItem, access_password: e.target.value})} /><input className="border p-2 rounded" placeholder="头衔/Slogan" value={editingItem.student_title || ''} onChange={e => setEditingItem({...editingItem, student_title: e.target.value})} /></div>
-                            <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl"><div><label className="block text-xs font-bold text-slate-500 mb-2 uppercase">学生头像 (建议正方形 1:1)</label><div className="flex items-center gap-2"><input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'avatar')} className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>{editingItem.avatar_url && <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200"><img src={editingItem.avatar_url} className="w-full h-full object-cover"/></div>}</div></div></div>
-                            <div><label className="block text-sm font-bold text-slate-700 mb-1">个人简介 (Summary Bio)</label><textarea className="w-full border p-2 rounded h-20 text-sm" value={editingItem.summary_bio || ''} onChange={e => setEditingItem({...editingItem, summary_bio: e.target.value})} placeholder="一句话介绍..." /></div>
-                         </div>
-                      )}
-                      {studentEditorTab === 'skills' && (
-                         <div>
-                            {renderPolishControl('skills')}
-                            <div className="flex justify-between items-center mb-6">
-                                <h4 className="font-bold text-slate-800">技能矩阵配置</h4>
-                                <button onClick={addSkillCategory} className="text-xs bg-slate-900 text-white px-3 py-2 rounded-lg flex items-center gap-1 hover:bg-slate-700">
-                                    <Icons.Plus size={14} /> 添加新分类
-                                </button>
-                            </div>
-                            
-                            <div className="space-y-6">
-                                {(editingItem.skills || []).map((category: SkillCategory, catIdx: number) => (
-                                    <div key={catIdx} className="border border-slate-200 rounded-xl bg-slate-50 overflow-hidden">
-                                        <div className="p-3 border-b border-slate-200 flex justify-between items-center bg-white">
-                                            <div className="flex items-center gap-3 flex-1">
-                                                <input 
-                                                    className="font-bold text-sm border-b border-transparent hover:border-slate-300 focus:border-blue-500 outline-none px-1"
-                                                    value={category.name}
-                                                    onChange={e => updateCategory(catIdx, 'name', e.target.value)}
-                                                    placeholder="分类名称 (如: 编程能力)"
-                                                />
-                                                <select 
-                                                    className="text-xs border rounded p-1 bg-slate-50 text-slate-600"
-                                                    value={category.layout}
-                                                    onChange={e => updateCategory(catIdx, 'layout', e.target.value)}
-                                                >
-                                                    <option value="bar">条形图 (Bar)</option>
-                                                    <option value="radar">雷达图 (Radar)</option>
-                                                    <option value="circle">环形图 (Circle)</option>
-                                                    <option value="stat_grid">数值卡片 (Grid)</option>
-                                                </select>
-                                            </div>
-                                            <button onClick={() => removeCategory(catIdx)} className="text-red-400 hover:text-red-600 p-1">
-                                                <Icons.Trash2 size={16} />
-                                            </button>
-                                        </div>
-                                        
-                                        <div className="p-3 space-y-2">
-                                            {category.items.map((skill, itemIdx) => (
-                                                <div key={itemIdx} className="flex gap-2 items-center">
-                                                    <input 
-                                                        className="border p-1.5 rounded text-sm flex-1"
-                                                        placeholder="技能名称"
-                                                        value={skill.name}
-                                                        onChange={e => updateSkillItem(catIdx, itemIdx, 'name', e.target.value)}
-                                                    />
-                                                    <input 
-                                                        className="border p-1.5 rounded text-sm w-20"
-                                                        type="number"
-                                                        step="0.1"
-                                                        placeholder="数值"
-                                                        value={skill.value}
-                                                        onChange={e => updateSkillItem(catIdx, itemIdx, 'value', parseFloat(e.target.value))}
-                                                    />
-                                                    <input 
-                                                        className="border p-1.5 rounded text-sm w-16"
-                                                        placeholder="单位"
-                                                        value={skill.unit || ''}
-                                                        onChange={e => updateSkillItem(catIdx, itemIdx, 'unit', e.target.value)}
-                                                    />
-                                                    <button onClick={() => removeSkillItem(catIdx, itemIdx)} className="text-slate-400 hover:text-red-500">
-                                                        <Icons.X size={14} />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                            <button onClick={() => addSkillToCategory(catIdx)} className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-2 flex items-center gap-1 px-1">
-                                                <Icons.Plus size={12} /> 添加技能项
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                                {(editingItem.skills || []).length === 0 && (
-                                    <div className="text-center py-8 text-slate-400 text-sm border-2 border-dashed rounded-xl">
-                                        点击上方按钮添加技能分类
-                                    </div>
-                                )}
-                            </div>
-                         </div>
-                      )}
-                      {studentEditorTab === 'content' && (
-                         <div className="space-y-2">
-                            {renderPolishControl('content')}
-                            <div className="flex gap-2 sticky top-0 bg-white p-2 z-10 border-b">
-                                <button onClick={() => addContentBlock('timeline_node')} className="text-xs bg-blue-100 text-blue-700 p-2 rounded border border-blue-200 font-bold">+ 时间节点</button>
-                                <button onClick={() => addContentBlock('project_highlight')} className="text-xs bg-blue-100 text-blue-700 p-2 rounded border border-blue-200 font-bold">+ STAR项目</button>
-                                <button onClick={() => addContentBlock('section_heading')} className="text-xs bg-blue-100 text-blue-700 p-2 rounded border border-blue-200 font-bold">+ 章节标题</button>
-                                <button onClick={() => addContentBlock('image_grid')} className="text-xs bg-slate-100 p-2 rounded border">+ 图集</button>
-                                <button onClick={() => addContentBlock('info_list')} className="text-xs bg-orange-100 text-orange-700 p-2 rounded border border-orange-200 font-bold">+ 个人信息</button>
-                                <button onClick={() => addContentBlock('table')} className="text-xs bg-green-100 text-green-700 p-2 rounded border border-green-200 font-bold">+ 表格</button>
-                            </div>
+                   <div className="space-y-8">
+                      {/* 1. Basic Settings (Top Bar) */}
+                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-4 gap-4">
+                          <div className="col-span-1"><label className="block text-xs font-bold text-slate-500 mb-1">学生姓名</label><input className="w-full border p-2 rounded text-sm font-bold" value={editingItem.student_name} onChange={e => setEditingItem({...editingItem, student_name: e.target.value})} /></div>
+                          <div className="col-span-1"><label className="block text-xs font-bold text-slate-500 mb-1">URL Slug</label><input className="w-full border p-2 rounded text-sm font-mono text-slate-600" value={editingItem.slug} onChange={e => setEditingItem({...editingItem, slug: e.target.value})} /></div>
+                          <div className="col-span-1"><label className="block text-xs font-bold text-slate-500 mb-1">访问密码</label><input className="w-full border p-2 rounded text-sm font-mono" value={editingItem.access_password} onChange={e => setEditingItem({...editingItem, access_password: e.target.value})} /></div>
+                          <div className="col-span-1"><label className="block text-xs font-bold text-slate-500 mb-1">主题风格</label><select className="w-full border p-2 rounded text-sm" value={editingItem.theme_config?.theme || 'tech_dark'} onChange={e => setEditingItem({...editingItem, theme_config: { ...editingItem.theme_config, theme: e.target.value }})}><option value="tech_dark">科技深色</option><option value="academic_light">学术浅色</option><option value="creative_color">创意彩色</option></select></div>
+                      </div>
+
+                      {/* 2. Content Blocks Stream */}
+                      <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                              <h4 className="font-bold text-slate-700 flex items-center gap-2"><Icons.Layers size={18}/> 页面内容流</h4>
+                              <div className="flex gap-2">
+                                  {/* Quick Add Buttons */}
+                                  <button onClick={() => addContentBlock('profile_header')} className="text-xs bg-purple-100 text-purple-700 px-3 py-1.5 rounded-lg border border-purple-200 font-bold hover:bg-purple-200">+ 个人头图</button>
+                                  <button onClick={() => addContentBlock('skills_matrix')} className="text-xs bg-pink-100 text-pink-700 px-3 py-1.5 rounded-lg border border-pink-200 font-bold hover:bg-pink-200">+ 技能矩阵</button>
+                                  <button onClick={() => addContentBlock('timeline_node')} className="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-200 font-bold hover:bg-blue-200">+ 时间节点</button>
+                                  <button onClick={() => addContentBlock('project_highlight')} className="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-200 font-bold hover:bg-blue-200">+ STAR项目</button>
+                                  <button onClick={() => addContentBlock('section_heading')} className="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-200 font-bold hover:bg-blue-200">+ 章节标题</button>
+                                  <button onClick={() => addContentBlock('image_grid')} className="text-xs bg-slate-100 px-3 py-1.5 rounded-lg border hover:bg-slate-200">+ 图集</button>
+                                  <button onClick={() => addContentBlock('info_list')} className="text-xs bg-orange-100 text-orange-700 px-3 py-1.5 rounded-lg border border-orange-200 font-bold hover:bg-orange-200">+ 个人信息</button>
+                                  <button onClick={() => addContentBlock('table')} className="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-lg border border-green-200 font-bold hover:bg-green-200">+ 表格</button>
+                              </div>
+                          </div>
+
+                          <div className="space-y-4 pb-20">
                             {editingItem.content_blocks?.map((b: any, i: number) => (
-                               <div key={b.id} className="border p-4 rounded bg-slate-50 relative group">
-                                  <div className="absolute right-2 top-2 flex gap-1 opacity-50 group-hover:opacity-100"><button onClick={() => moveContentBlock(i, 'up')}><Icons.ArrowUp size={14}/></button><button onClick={() => moveContentBlock(i, 'down')}><Icons.ArrowDown size={14}/></button><button onClick={() => removeContentBlock(b.id)} className="text-red-500"><Icons.Trash2 size={14}/></button></div>
-                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">{b.type}</span>
-                                  {b.type === 'project_highlight' ? (
-                                     <div className="space-y-2"><input className="w-full border p-2 rounded font-bold" placeholder="项目名称" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} /><textarea className="w-full border p-2 rounded text-sm h-16" placeholder="Situation (背景)" value={b.data.star_situation || ''} onChange={e => updateContentBlock(b.id, 'star_situation', e.target.value)} /><textarea className="w-full border p-2 rounded text-sm h-16" placeholder="Task (任务)" value={b.data.star_task || ''} onChange={e => updateContentBlock(b.id, 'star_task', e.target.value)} /><textarea className="w-full border p-2 rounded text-sm h-24" placeholder="Action (行动)" value={b.data.star_action || ''} onChange={e => updateContentBlock(b.id, 'star_action', e.target.value)} /><textarea className="w-full border p-2 rounded text-sm h-16" placeholder="Result (结果)" value={b.data.star_result || ''} onChange={e => updateContentBlock(b.id, 'star_result', e.target.value)} /></div>
-                                  ) : b.type === 'timeline_node' ? (
-                                     <div className="space-y-2">
-                                        <div className="flex gap-2"><input className="w-1/3 border p-2 rounded text-sm font-mono text-slate-600 bg-slate-50" value={b.data.date || ''} onChange={e => updateContentBlock(b.id, 'date', e.target.value)} placeholder="时间点 (2023年5月)" /><input className="w-2/3 border p-2 rounded font-bold" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="事件标题" /></div>
-                                        <textarea className="w-full border p-2 rounded h-20 text-sm" value={b.data.content || ''} onChange={e => updateContentBlock(b.id, 'content', e.target.value)} placeholder="成果详细描述..." />
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">佐证素材</label>
-                                            <div className="flex flex-wrap gap-2">
-                                                {b.data.urls?.map((url: string, imgIdx: number) => (
-                                                    <div key={imgIdx} className="w-16 h-16 relative group bg-black rounded overflow-hidden border border-slate-200">
-                                                        {url.trim().startsWith('<iframe') || url.startsWith('http') && !url.includes('supabase') ? (
-                                                            <div className="w-full h-full flex items-center justify-center text-slate-500 bg-slate-100"><Icons.Film size={20}/></div>
-                                                        ) : (
-                                                            <img src={url} className="w-full h-full object-cover" />
-                                                        )}
-                                                        <button onClick={() => { const newUrls = b.data.urls.filter((_: any, idx: number) => idx !== imgIdx); updateContentBlock(b.id, 'urls', newUrls); }} className="absolute top-0 right-0 bg-red-500 text-white p-0.5 rounded-full opacity-0 group-hover:opacity-100"><Icons.X size={12}/></button>
-                                                    </div>
-                                                ))}
-                                                <label className="w-16 h-16 border-2 border-dashed border-slate-300 rounded flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 text-slate-400 hover:text-blue-400 bg-white" title="上传照片">
-                                                    <Icons.Image size={20} /><span className="text-[10px] mt-1">照片</span>
-                                                    <input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(e, 'standard', b.id)} />
-                                                </label>
-                                                <button onClick={() => handleAddVideo(b.id)} className="w-16 h-16 border-2 border-dashed border-slate-300 rounded flex flex-col items-center justify-center cursor-pointer hover:border-purple-400 text-slate-400 hover:text-purple-400 bg-white" title="添加视频链接">
-                                                    <Icons.Film size={20} /><span className="text-[10px] mt-1">视频</span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                     </div>
-                                  ) : b.type === 'section_heading' ? (
-                                     <div className="space-y-2 text-center py-4">
-                                        <label className="block text-xs font-bold text-blue-500 uppercase tracking-widest mb-2">章节大标题</label>
-                                        <input className="w-full border-b-2 border-blue-100 p-2 text-center text-xl font-bold focus:border-blue-500 outline-none bg-transparent" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="输入标题 (例如: 个人荣誉)" />
-                                     </div>
-                                  ) : b.type === 'info_list' ? (
-                                     <div className="space-y-4">
-                                        <input className="w-full border p-2 rounded font-bold" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="标题 (可选，如: 基本信息)" />
-                                        <div className="space-y-2">
-                                            {b.data.info_items?.map((item: any, itemIdx: number) => (
-                                                <div key={itemIdx} className="flex gap-2 items-center">
-                                                    <div className="flex flex-col w-20">
-                                                        <input className="border p-1.5 rounded text-xs" placeholder="图标" value={item.icon || ''} onChange={e => updateInfoItem(b.id, itemIdx, 'icon', e.target.value)} />
-                                                    </div>
-                                                    <input className="border p-1.5 rounded text-sm w-24" placeholder="标签 (Age)" value={item.label || ''} onChange={e => updateInfoItem(b.id, itemIdx, 'label', e.target.value)} />
-                                                    <input className="border p-1.5 rounded text-sm flex-1" placeholder="内容" value={item.value || ''} onChange={e => updateInfoItem(b.id, itemIdx, 'value', e.target.value)} />
-                                                    <button onClick={() => removeInfoItem(b.id, itemIdx)} className="text-red-400 hover:text-red-600"><Icons.X size={16}/></button>
-                                                </div>
-                                            ))}
-                                            <button onClick={() => addInfoItem(b.id)} className="text-xs bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-slate-200 mt-2">
-                                                <Icons.Plus size={12} /> 添加信息项
-                                            </button>
-                                        </div>
-                                     </div>
-                                  ) : b.type === 'table' ? (
-                                     <div className="space-y-4">
-                                        <input className="w-full border p-2 rounded font-bold" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="表格标题 (可选)" />
-                                        <div className="overflow-x-auto border rounded-lg bg-white">
-                                            <table className="w-full text-sm">
-                                                <thead>
-                                                    <tr className="bg-slate-100 border-b">
-                                                        {b.data.table_columns?.map((col: string, colIdx: number) => (
-                                                            <th key={colIdx} className="p-2 border-r min-w-[100px] relative group">
-                                                                <input 
-                                                                    className="w-full bg-transparent font-bold outline-none" 
-                                                                    value={col} 
-                                                                    onChange={(e) => updateTableColumn(b.id, colIdx, e.target.value)} 
-                                                                />
-                                                                <button 
-                                                                    onClick={() => removeTableColumn(b.id, colIdx)} 
-                                                                    className="absolute top-0 right-0 p-1 text-red-400 opacity-0 group-hover:opacity-100 hover:text-red-600 bg-slate-100"
-                                                                >
-                                                                    <Icons.X size={12} />
-                                                                </button>
-                                                            </th>
-                                                        ))}
-                                                        <th className="p-2 w-10 text-center">
-                                                            <button onClick={() => addTableColumn(b.id)} className="text-blue-500 hover:text-blue-700"><Icons.PlusSquare size={16}/></button>
-                                                        </th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {b.data.table_rows?.map((row: string[], rowIdx: number) => (
-                                                        <tr key={rowIdx} className="border-b last:border-b-0">
-                                                            {row.map((cell: string, cellIdx: number) => (
-                                                                <td key={cellIdx} className="p-2 border-r">
-                                                                    <input 
-                                                                        className="w-full outline-none" 
-                                                                        value={cell} 
-                                                                        onChange={(e) => updateTableCell(b.id, rowIdx, cellIdx, e.target.value)} 
-                                                                    />
-                                                                </td>
-                                                            ))}
-                                                            <td className="p-2 text-center">
-                                                                <button onClick={() => removeTableRow(b.id, rowIdx)} className="text-red-400 hover:text-red-600"><Icons.Trash2 size={14}/></button>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        <button onClick={() => addTableRow(b.id)} className="text-xs bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-slate-200">
-                                            <Icons.Plus size={12} /> 添加行
-                                        </button>
-                                     </div>
-                                  ) : (
-                                     <div className="space-y-2">{b.type !== 'text' && <input className="w-full border p-2 rounded" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="标题" />}<textarea className="w-full border p-2 rounded h-24" value={b.data.content || ''} onChange={e => updateContentBlock(b.id, 'content', e.target.value)} placeholder="内容..." /></div>
-                                  )}
+                               <div key={b.id} className={`border rounded-xl relative group transition-all ${b.type === 'profile_header' ? 'bg-purple-50 border-purple-200 ring-2 ring-purple-100' : b.type === 'skills_matrix' ? 'bg-pink-50 border-pink-200' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                  {/* Block Controls */}
+                                  <div className="absolute right-4 top-4 flex gap-1 opacity-20 group-hover:opacity-100 transition-opacity z-10">
+                                      <button onClick={() => moveContentBlock(i, 'up')} className="p-1 hover:bg-slate-200 rounded"><Icons.ArrowUp size={14}/></button>
+                                      <button onClick={() => moveContentBlock(i, 'down')} className="p-1 hover:bg-slate-200 rounded"><Icons.ArrowDown size={14}/></button>
+                                      <button onClick={() => removeContentBlock(b.id)} className="p-1 text-red-500 hover:bg-red-100 rounded ml-2"><Icons.Trash2 size={14}/></button>
+                                  </div>
+                                  
+                                  {/* Label */}
+                                  <div className="absolute left-4 top-4 text-[10px] font-black uppercase tracking-widest opacity-30 select-none pointer-events-none">
+                                      {b.type.replace('_', ' ')}
+                                  </div>
+
+                                  <div className="p-6 pt-10">
+                                      {/* === PROFILE HEADER EDITOR === */}
+                                      {b.type === 'profile_header' && (
+                                          <div className="space-y-4">
+                                              <div className="flex gap-6">
+                                                  <div className="w-24 shrink-0">
+                                                      <label className="block text-xs font-bold text-purple-700 mb-2 text-center">头像</label>
+                                                      <div className="relative w-24 h-24 rounded-full bg-slate-200 overflow-hidden group/avatar cursor-pointer border-2 border-white shadow-md">
+                                                          {b.data.avatar_url ? <img src={b.data.avatar_url} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-slate-400"><Icons.User size={32}/></div>}
+                                                          <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={e => handleImageUpload(e, 'avatar', b.id)} />
+                                                          <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 text-white text-xs font-bold">更换</div>
+                                                      </div>
+                                                  </div>
+                                                  <div className="flex-1 space-y-3">
+                                                      <input className="w-full text-xl font-bold bg-transparent border-b border-purple-200 focus:border-purple-500 outline-none px-1 py-1" placeholder="头衔 / Slogan (e.g. Future Innovator)" value={b.data.student_title || ''} onChange={e => updateContentBlock(b.id, 'student_title', e.target.value)} />
+                                                      <textarea className="w-full h-20 text-sm bg-white/50 border border-purple-100 rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none resize-none" placeholder="个人简介 (Summary Bio)..." value={b.data.summary_bio || ''} onChange={e => updateContentBlock(b.id, 'summary_bio', e.target.value)} />
+                                                  </div>
+                                              </div>
+                                              <div className="pt-2 border-t border-purple-100">
+                                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-500 cursor-pointer hover:text-purple-600 transition-colors w-fit">
+                                                      <Icons.Image size={14} /> 
+                                                      {b.data.hero_image_url ? '点击更换背景大图' : '上传背景大图 (Hero Image)'}
+                                                      <input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(e, 'hero', b.id)} />
+                                                  </label>
+                                                  {b.data.hero_image_url && <div className="mt-2 h-20 w-full rounded-lg bg-slate-100 overflow-hidden relative"><img src={b.data.hero_image_url} className="w-full h-full object-cover opacity-50" /></div>}
+                                              </div>
+                                          </div>
+                                      )}
+
+                                      {/* === SKILLS MATRIX EDITOR === */}
+                                      {b.type === 'skills_matrix' && (
+                                          <div className="space-y-4">
+                                              {(b.data.skills_categories || []).map((cat: SkillCategory, catIdx: number) => (
+                                                  <div key={catIdx} className="bg-white border border-pink-100 rounded-lg p-3">
+                                                      <div className="flex justify-between items-center mb-3">
+                                                          <div className="flex gap-2 items-center flex-1">
+                                                              <input className="font-bold text-sm border-b border-transparent focus:border-pink-500 outline-none" value={cat.name} onChange={e => updateBlockDataNested(b.id, ['skills_categories', catIdx, 'name'], e.target.value)} placeholder="分类名称" />
+                                                              <select className="text-xs bg-slate-50 border rounded px-1" value={cat.layout} onChange={e => updateBlockDataNested(b.id, ['skills_categories', catIdx, 'layout'], e.target.value)}>
+                                                                  <option value="bar">条形图</option><option value="radar">雷达图</option><option value="circle">环形图</option><option value="stat_grid">数字卡片</option>
+                                                              </select>
+                                                          </div>
+                                                          <button onClick={() => {
+                                                              const newCats = [...b.data.skills_categories]; newCats.splice(catIdx, 1);
+                                                              updateContentBlock(b.id, 'skills_categories', newCats);
+                                                          }} className="text-slate-300 hover:text-red-500"><Icons.X size={14}/></button>
+                                                      </div>
+                                                      <div className="grid grid-cols-2 gap-2">
+                                                          {cat.items.map((skill, skIdx) => (
+                                                              <div key={skIdx} className="flex gap-1 items-center bg-slate-50 p-1 rounded">
+                                                                  <input className="text-xs bg-transparent w-full outline-none" value={skill.name} onChange={e => {
+                                                                      const newCats = [...b.data.skills_categories]; newCats[catIdx].items[skIdx].name = e.target.value;
+                                                                      updateContentBlock(b.id, 'skills_categories', newCats);
+                                                                  }} />
+                                                                  <input className="text-xs bg-transparent w-8 text-right font-mono" type="number" value={skill.value} onChange={e => {
+                                                                      const newCats = [...b.data.skills_categories]; newCats[catIdx].items[skIdx].value = parseFloat(e.target.value);
+                                                                      updateContentBlock(b.id, 'skills_categories', newCats);
+                                                                  }} />
+                                                                  <span className="text-[10px] text-slate-400">{skill.unit || '%'}</span>
+                                                              </div>
+                                                          ))}
+                                                          <button onClick={() => {
+                                                              const newCats = [...b.data.skills_categories]; newCats[catIdx].items.push({ name: '新技能', value: 80, unit: '%' });
+                                                              updateContentBlock(b.id, 'skills_categories', newCats);
+                                                          }} className="text-xs text-pink-500 font-bold bg-pink-50 p-1 rounded hover:bg-pink-100">+ 加项</button>
+                                                      </div>
+                                                  </div>
+                                              ))}
+                                              <button onClick={() => updateContentBlock(b.id, 'skills_categories', [...(b.data.skills_categories || []), { name: '新分类', layout: 'bar', items: [] }])} className="w-full py-2 text-xs font-bold text-pink-600 border border-dashed border-pink-300 rounded hover:bg-pink-50">添加技能分类</button>
+                                          </div>
+                                      )}
+
+                                      {/* === SECTION HEADING === */}
+                                      {b.type === 'section_heading' && (
+                                          <div className="text-center">
+                                              <input className="w-full text-center text-xl font-bold bg-transparent border-b-2 border-blue-100 focus:border-blue-500 outline-none py-2 placeholder-slate-300" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="输入章节标题" />
+                                          </div>
+                                      )}
+
+                                      {/* === TIMELINE NODE === */}
+                                      {b.type === 'timeline_node' && (
+                                          <div className="space-y-3">
+                                              <div className="flex gap-3">
+                                                  <input className="w-32 text-sm font-mono border rounded p-2 bg-slate-50" value={b.data.date || ''} onChange={e => updateContentBlock(b.id, 'date', e.target.value)} placeholder="时间 (e.g. 2023)" />
+                                                  <input className="flex-1 font-bold border rounded p-2" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="事件标题" />
+                                              </div>
+                                              <textarea className="w-full h-20 text-sm border rounded p-2 resize-none" value={b.data.content || ''} onChange={e => updateContentBlock(b.id, 'content', e.target.value)} placeholder="详细描述..." />
+                                              <div className="flex flex-wrap gap-2">
+                                                  {b.data.urls?.map((url: string, i: number) => (
+                                                      <div key={i} className="w-12 h-12 bg-black rounded relative overflow-hidden group/img">
+                                                          <img src={url} className="w-full h-full object-cover" />
+                                                          <button onClick={() => { const u = [...b.data.urls]; u.splice(i, 1); updateContentBlock(b.id, 'urls', u); }} className="absolute inset-0 bg-red-500/50 hidden group-hover/img:flex items-center justify-center text-white"><Icons.X size={12}/></button>
+                                                      </div>
+                                                  ))}
+                                                  <label className="w-12 h-12 border-2 border-dashed rounded flex items-center justify-center cursor-pointer hover:border-blue-500 text-slate-400 hover:text-blue-500"><Icons.Image size={16} /><input type="file" className="hidden" accept="image/*" onChange={e => handleImageUpload(e, 'standard', b.id)} /></label>
+                                              </div>
+                                          </div>
+                                      )}
+
+                                      {/* === STAR PROJECT === */}
+                                      {b.type === 'project_highlight' && (
+                                          <div className="space-y-3">
+                                              <input className="w-full font-bold text-lg border-b p-1 mb-2" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="项目名称" />
+                                              <div className="grid grid-cols-2 gap-3">
+                                                  <textarea className="text-xs border p-2 rounded h-20" placeholder="Situation (背景)" value={b.data.star_situation || ''} onChange={e => updateContentBlock(b.id, 'star_situation', e.target.value)} />
+                                                  <textarea className="text-xs border p-2 rounded h-20" placeholder="Task (任务)" value={b.data.star_task || ''} onChange={e => updateContentBlock(b.id, 'star_task', e.target.value)} />
+                                                  <textarea className="text-xs border p-2 rounded h-20" placeholder="Action (行动)" value={b.data.star_action || ''} onChange={e => updateContentBlock(b.id, 'star_action', e.target.value)} />
+                                                  <textarea className="text-xs border p-2 rounded h-20" placeholder="Result (结果)" value={b.data.star_result || ''} onChange={e => updateContentBlock(b.id, 'star_result', e.target.value)} />
+                                              </div>
+                                              <div className="pt-2 border-t flex gap-2 overflow-x-auto">
+                                                  <label className="shrink-0 px-3 py-1 bg-slate-100 rounded text-xs font-bold cursor-pointer hover:bg-slate-200">+ 佐证图</label>
+                                                  <input type="file" className="hidden" accept="image/*" onChange={e => handleImageUpload(e, 'evidence', b.id)} />
+                                                  {b.data.evidence_urls?.map((url: string, i: number) => <img key={i} src={url} className="h-8 w-8 rounded object-cover" />)}
+                                              </div>
+                                          </div>
+                                      )}
+
+                                      {/* === INFO LIST & TABLE (Simplified View) === */}
+                                      {(b.type === 'info_list' || b.type === 'table') && (
+                                          <div>
+                                              <input className="font-bold border-b mb-2 w-full" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder={b.type === 'table' ? '表格标题' : '信息栏标题'} />
+                                              <div className="text-xs text-slate-400 italic">在此处无法预览完整表格/列表交互，请在上方使用 "表格" / "个人信息" 专属按钮添加后，使用详细编辑器或点击预览查看效果。简单编辑：点击各项文字修改。</div>
+                                              {/* Simple JSON-like editor fallback for complex structures if needed, or specific mapped inputs */}
+                                              {b.type === 'info_list' && (
+                                                  <div className="mt-2 grid grid-cols-2 gap-2">
+                                                      {b.data.info_items?.map((item: any, idx: number) => (
+                                                          <div key={idx} className="flex gap-1 border p-1 rounded"><input className="w-1/3 font-bold text-xs" value={item.label} onChange={e => updateBlockDataNested(b.id, ['info_items', idx, 'label'], e.target.value)} /><input className="w-2/3 text-xs" value={item.value} onChange={e => updateBlockDataNested(b.id, ['info_items', idx, 'value'], e.target.value)} /></div>
+                                                      ))}
+                                                      <button onClick={() => updateContentBlock(b.id, 'info_items', [...(b.data.info_items || []), { icon: 'Star', label: 'Label', value: 'Value' }])} className="text-xs bg-orange-50 text-orange-500 p-1 rounded font-bold">+ Add</button>
+                                                  </div>
+                                              )}
+                                          </div>
+                                      )}
+
+                                      {/* === TEXT / IMAGE GRID === */}
+                                      {(b.type === 'text' || b.type === 'image_grid') && (
+                                          <div className="space-y-2">
+                                              <input className="font-bold border-b w-full" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="标题" />
+                                              {b.type === 'text' && <textarea className="w-full h-24 text-sm border p-2 rounded" value={b.data.content} onChange={e => updateContentBlock(b.id, 'content', e.target.value)} placeholder="文本内容..." />}
+                                              {b.type === 'image_grid' && (
+                                                  <div className="flex gap-2 flex-wrap">
+                                                      {b.data.urls?.map((url: string) => <img src={url} className="w-10 h-10 object-cover rounded" />)}
+                                                      <label className="w-10 h-10 border border-dashed flex items-center justify-center cursor-pointer hover:bg-slate-100"><Icons.Plus size={16}/><input type="file" className="hidden" onChange={e => handleImageUpload(e, 'standard', b.id)} /></label>
+                                                  </div>
+                                              )}
+                                          </div>
+                                      )}
+                                  </div>
                                </div>
                             ))}
-                         </div>
-                      )}
-                      {studentEditorTab === 'ai' && (
-                         <div className="space-y-6">
-                            <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
-                                <h3 className="font-bold text-blue-900 text-lg mb-4 flex items-center gap-2"><Icons.Wand2 className="text-blue-500" /> 从零生成</h3>
-                                <p className="text-sm text-blue-600/80 mb-4">将原始资料（如简历、笔记）粘贴在下方，AI 自动整理成结构化档案。</p>
-                                <textarea className="w-full h-40 p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-700 bg-white" placeholder="在此粘贴原始资料..." value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} />
-                                <button onClick={handleAIGenerate} disabled={isGenerating || isPolishing} className="mt-4 w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                                    {isGenerating ? <Icons.Loader2 className="animate-spin" /> : <Icons.Sparkles />}
-                                    {isGenerating ? '正在分析生成...' : '开始生成结构化档案'}
-                                </button>
-                            </div>
-                         </div>
-                      )}
+                          </div>
+                      </div>
                    </div>
                 ) : (
+                   /* Fallback for other tabs (Curriculum etc) */
                    <div className="space-y-4"><div><label className="block text-sm font-bold text-slate-700">标题</label><input className="w-full border p-2 rounded" value={editingItem.title || ''} onChange={e => setEditingItem({...editingItem, title: e.target.value})} /></div>{(editingItem.description !== undefined || editingItem.content !== undefined) && <div><label className="block text-sm font-bold text-slate-700">内容</label><textarea className="w-full border p-2 rounded h-24" value={editingItem.description || editingItem.content || ''} onChange={e => { if(editingItem.description!==undefined) setEditingItem({...editingItem, description: e.target.value}); else setEditingItem({...editingItem, content: e.target.value}) }} /></div>}{activeTab !== 'pages' && <div><label className="block text-sm font-bold text-slate-700">图片</label><input type="file" accept="image/*" onChange={e => handleImageUpload(e)} /></div>}</div>
                 )}
              </div>

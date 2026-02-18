@@ -123,26 +123,53 @@ export const StudentPortfolioPage: React.FC = () => {
       const { data, error } = await supabase.from('student_portfolios').select('*').eq('slug', slug).single();
       if (error) throw error;
       
-      // Legacy Data Migration Logic (Frontend Side)
-      if (data.skills && data.skills.length > 0 && 'category' in data.skills[0]) {
-         const groups: Record<string, SkillItem[]> = {};
-         data.skills.forEach((s: any) => {
-            const cat = s.category || 'General';
-            if (!groups[cat]) groups[cat] = [];
-            groups[cat].push({ name: s.name, value: s.value, unit: s.unit });
-         });
-         
-         const globalLayout = (data as any).skills_config?.layout || 'bar';
-         
-         data.skills = Object.entries(groups).map(([name, items]) => ({
-            name,
-            layout: globalLayout,
-            items
-         }));
+      // MIGRATION ON READ: If older portfolio format (skills top-level but no blocks), we conceptually map them for rendering
+      // Note: We don't save back to DB here, just fix rendering for old records
+      if (data.content_blocks) {
+          const hasProfile = data.content_blocks.some((b: any) => b.type === 'profile_header');
+          if (!hasProfile && (data.student_title || data.summary_bio)) {
+              data.content_blocks.unshift({
+                  id: 'virtual-profile',
+                  type: 'profile_header',
+                  data: {
+                      student_title: data.student_title,
+                      summary_bio: data.summary_bio,
+                      avatar_url: data.avatar_url,
+                      hero_image_url: data.hero_image_url
+                  }
+              });
+          }
+          
+          const hasSkills = data.content_blocks.some((b: any) => b.type === 'skills_matrix');
+          if (!hasSkills && data.skills && data.skills.length > 0) {
+              // Legacy Data Formatting
+              let formattedSkills = data.skills;
+              if (data.skills[0] && 'category' in data.skills[0]) {
+                 const groups: Record<string, SkillItem[]> = {};
+                 data.skills.forEach((s: any) => {
+                    const cat = s.category || 'General';
+                    if (!groups[cat]) groups[cat] = [];
+                    groups[cat].push({ name: s.name, value: s.value, unit: s.unit });
+                 });
+                 const globalLayout = (data as any).skills_config?.layout || 'bar';
+                 formattedSkills = Object.entries(groups).map(([name, items]) => ({
+                    name,
+                    layout: globalLayout,
+                    items
+                 }));
+              }
+
+              // Insert after profile if exists
+              const insertIndex = data.content_blocks.length > 0 && data.content_blocks[0].type === 'profile_header' ? 1 : 0;
+              data.content_blocks.splice(insertIndex, 0, {
+                  id: 'virtual-skills',
+                  type: 'skills_matrix',
+                  data: { skills_categories: formattedSkills }
+              });
+          }
       }
 
       setOriginalPortfolio(data);
-      // Auto-unlock if no password
       if (!data.access_password) setIsAuthenticated(true);
     } catch (err: any) {
       console.error(err);
@@ -182,9 +209,7 @@ export const StudentPortfolioPage: React.FC = () => {
       if (!aiConfig.apiKey || !originalPortfolio) throw new Error("Missing config");
 
       const payload = {
-        student_title: originalPortfolio.student_title,
-        summary_bio: originalPortfolio.summary_bio,
-        skills: originalPortfolio.skills,
+        // Send simplified structure for translation
         content_blocks: originalPortfolio.content_blocks
       };
 
@@ -218,7 +243,7 @@ export const StudentPortfolioPage: React.FC = () => {
 
       setTranslatedPortfolio({
         ...originalPortfolio,
-        ...translatedData
+        content_blocks: translatedData.content_blocks
       });
       setLanguage('en');
 
@@ -249,8 +274,6 @@ export const StudentPortfolioPage: React.FC = () => {
       onclone: (clonedDoc) => {
           const container = clonedDoc.getElementById('portfolio-content');
           if (container) {
-              // Compression Map: Old Spacing -> Compact Spacing
-              // NOTE: Only targeting MARGINS and GAPS to avoid distorting images inside containers
               const compressionMap: Record<string, string> = {
                   'mb-24': 'mb-12',
                   'mb-20': 'mb-10',
@@ -262,7 +285,6 @@ export const StudentPortfolioPage: React.FC = () => {
                   'gap-y-16': 'gap-y-8',
                   'text-6xl': 'text-4xl',
                   'text-4xl': 'text-3xl',
-                  // Removed padding (p-, py-, pb-) and height rules to prevent image distortion
               };
 
               const allElements = container.querySelectorAll('*');
@@ -302,7 +324,6 @@ export const StudentPortfolioPage: React.FC = () => {
       const pdfWidth = canvas.width * pxToMm;
       const pdfHeight = canvas.height * pxToMm;
 
-      // Create a single-page PDF that fits the content
       const pdf = new jsPDF({
         orientation: pdfWidth > pdfHeight ? 'l' : 'p',
         unit: 'mm',
@@ -328,7 +349,7 @@ export const StudentPortfolioPage: React.FC = () => {
     return <div className="grid grid-cols-2 md:grid-cols-3 gap-4">{images.map((url, idx) => <div key={idx} className="rounded-2xl overflow-hidden aspect-square relative group shadow-lg"><img src={url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"/></div>)}</div>;
   };
 
-  // 1. Radar Chart (SVG Implementation)
+  // 1. Radar Chart
   const RadarChart = ({ data, styles }: { data: { label: string, value: number }[], styles: any }) => {
     const size = 300;
     const center = size / 2;
@@ -388,7 +409,7 @@ export const StudentPortfolioPage: React.FC = () => {
 
   // 2. Circular Gauge
   const CircularGauge = ({ skill, styles }: { skill: SkillItem, styles: any }) => {
-    const size = 100; // Smaller size for better fit on mobile
+    const size = 100;
     const strokeWidth = 8;
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
@@ -429,8 +450,8 @@ export const StudentPortfolioPage: React.FC = () => {
       </div>
   );
 
-  const SkillsMatrix = ({ skills, styles }: { skills: SkillCategory[], styles: any }) => {
-     if (!skills || skills.length === 0) return null;
+  const SkillsMatrix = ({ categories, styles }: { categories: SkillCategory[], styles: any }) => {
+     if (!categories || categories.length === 0) return null;
 
      return (
        <div className={`mb-12 md:mb-20 animate-fade-in-up`}>
@@ -441,15 +462,13 @@ export const StudentPortfolioPage: React.FC = () => {
           </div>
           
           <div className="space-y-12 md:space-y-16">
-             {skills.map((category, idx) => (
+             {categories.map((category, idx) => (
                 <div key={idx} className="w-full">
-                    {/* Category Header */}
                     <h4 className={`font-bold text-xs md:text-sm uppercase tracking-wider opacity-60 border-b border-dashed border-slate-700/50 pb-2 mb-6 md:mb-8 ${styles.text} flex justify-between`}>
                         <span>{category.name}</span>
                         <span className="text-[10px] opacity-50">{category.layout} VIEW</span>
                     </h4>
 
-                    {/* Visualization Switch */}
                     {category.layout === 'radar' && category.items.length >= 3 ? (
                         <div className="grid md:grid-cols-2 gap-8 items-center">
                             <RadarChart data={category.items.map(i => ({ label: i.name, value: i.value }))} styles={styles} />
@@ -471,7 +490,6 @@ export const StudentPortfolioPage: React.FC = () => {
                             {category.items.map((skill, sIdx) => <StatCard key={sIdx} skill={skill} styles={styles} />)}
                         </div>
                     ) : (
-                        // Default: Bar
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-6">
                             {category.items.map((skill, sIdx) => (
                                 <div key={sIdx} className="group">
@@ -619,6 +637,28 @@ export const StudentPortfolioPage: React.FC = () => {
 
   const renderBlock = (block: ContentBlock, styles: any) => {
     switch (block.type) {
+      case 'profile_header':
+         return (
+            <header key={block.id} className="relative w-full pt-16 pb-12 px-4 md:px-12 max-w-6xl mx-auto mb-12">
+                <div className="flex flex-col md:flex-row md:items-end gap-6 md:gap-8">
+                    <div className={`w-24 h-24 md:w-40 md:h-40 rounded-full ${styles.cardBg} border-4 ${styles.border} flex items-center justify-center text-4xl md:text-5xl font-bold shadow-2xl overflow-hidden relative backdrop-blur-md shrink-0`}>
+                        {block.data.avatar_url ? <img src={block.data.avatar_url} className="w-full h-full object-cover" /> : originalPortfolio?.student_name[0]}
+                    </div>
+                    <div className="flex-1 mb-2">
+                        <div className={`inline-block px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-widest mb-3 md:mb-4 ${styles.cardBg} ${styles.accent} border ${styles.border}`}>SparkMinds Portfolio</div>
+                        <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2 opacity-80">{originalPortfolio?.student_name}</h1>
+                        <p className={`text-2xl md:text-6xl font-extrabold leading-tight ${styles.font} max-w-4xl mb-4 md:mb-6 drop-shadow-sm`}>{block.data.student_title || 'Future Innovator & Builder'}</p>
+                        {block.data.summary_bio && (
+                        <div className="mt-2 md:mt-4 text-xs md:text-base opacity-80 max-w-4xl leading-relaxed whitespace-pre-wrap">
+                            {block.data.summary_bio}
+                        </div>
+                        )}
+                    </div>
+                </div>
+            </header>
+         );
+      case 'skills_matrix':
+         return <SkillsMatrix key={block.id} categories={block.data.skills_categories || []} styles={styles} />;
       case 'timeline_node':
       case 'header': 
          return <TimelineNode key={block.id} block={block} styles={styles} />;
@@ -739,27 +779,7 @@ export const StudentPortfolioPage: React.FC = () => {
            <div className={`absolute bottom-0 left-0 w-[600px] h-[600px] ${styles.blobColor2} rounded-full mix-blend-screen filter blur-[100px] opacity-10 -translate-x-1/3 translate-y-1/3`}></div>
         </div>
 
-        {/* Header without Hero Image */}
-        <header className="relative w-full pt-24 pb-12 md:pt-32 md:pb-16 px-6 md:px-12 max-w-6xl mx-auto">
-            <div className="flex flex-col md:flex-row md:items-end gap-6 md:gap-8">
-                <div className={`w-24 h-24 md:w-40 md:h-40 rounded-full ${styles.cardBg} border-4 ${styles.border} flex items-center justify-center text-4xl md:text-5xl font-bold shadow-2xl overflow-hidden relative backdrop-blur-md shrink-0`}>
-                    {currentPortfolio?.avatar_url ? <img src={currentPortfolio.avatar_url} className="w-full h-full object-cover" /> : currentPortfolio?.student_name[0]}
-                </div>
-                <div className="flex-1 mb-2">
-                    <div className={`inline-block px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-widest mb-3 md:mb-4 ${styles.cardBg} ${styles.accent} border ${styles.border}`}>SparkMinds Portfolio</div>
-                    <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2 opacity-80">{currentPortfolio?.student_name}</h1>
-                    <p className={`text-2xl md:text-6xl font-extrabold leading-tight ${styles.font} max-w-4xl mb-4 md:mb-6 drop-shadow-sm`}>{currentPortfolio?.student_title || 'Future Innovator & Builder'}</p>
-                    {currentPortfolio?.summary_bio && (
-                    <div className="mt-2 md:mt-4 text-xs md:text-base opacity-80 max-w-4xl leading-relaxed whitespace-pre-wrap">
-                        {currentPortfolio.summary_bio}
-                    </div>
-                    )}
-                </div>
-            </div>
-        </header>
-
         <main className="px-4 md:px-12 max-w-5xl mx-auto relative z-10 pt-8 md:pt-12">
-           {currentPortfolio?.skills && currentPortfolio.skills.length > 0 && <SkillsMatrix skills={currentPortfolio.skills as any} styles={styles} />}
            {currentPortfolio?.content_blocks && currentPortfolio.content_blocks.length > 0 ? (
              <div className="flex flex-col gap-0">
                 {currentPortfolio.content_blocks.map(block => renderBlock(block, styles))}

@@ -10,8 +10,7 @@ import {
   CourseLevel,
   Showcase,
   PhilosophyPoint,
-  SocialProject,
-  PageSection
+  SocialProject
 } from '../types';
 
 export const AdminPage: React.FC = () => {
@@ -19,6 +18,7 @@ export const AdminPage: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'bookings' | 'portfolios' | 'curriculum' | 'showcases' | 'philosophy' | 'social_projects'>('bookings');
   const [loading, setLoading] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile sidebar state
   
   // Data States
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -64,7 +64,6 @@ export const AdminPage: React.FC = () => {
       } else if (activeTab === 'curriculum') {
         const { data } = await supabase.from('curriculum').select('*').order('sort_order', { ascending: true });
         if (data) {
-           // Map DB fields to TS Interface
            setCurriculum(data.map((item: any) => ({
              ...item,
              iconName: item.icon_name,
@@ -80,7 +79,7 @@ export const AdminPage: React.FC = () => {
             })));
         }
       }
-      // Add other fetches as needed
+      // Add other fetches if needed
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -89,10 +88,8 @@ export const AdminPage: React.FC = () => {
   };
 
   // --- Handlers ---
-
   const handleDelete = async (id: number | string, table: string) => {
     if (!window.confirm('确定要删除吗？此操作不可恢复。')) return;
-    
     try {
       const { error } = await supabase.from(table).delete().eq('id', id);
       if (error) throw error;
@@ -107,30 +104,18 @@ export const AdminPage: React.FC = () => {
       let table = '';
       let payload = { ...editingItem };
 
-      // Clean up payload based on type
       if (activeTab === 'curriculum') {
         table = 'curriculum';
-        // Map back to DB fields
-        payload = {
-            ...payload,
-            icon_name: payload.iconName,
-            image_urls: payload.imageUrls
-        };
-        delete payload.iconName;
-        delete payload.imageUrls;
+        payload = { ...payload, icon_name: payload.iconName,Tbimage_urls: payload.imageUrls };
+        delete payload.iconName; delete payload.imageUrls;
       } else if (activeTab === 'showcases') {
         table = 'showcases';
-        payload = {
-            ...payload,
-            image_urls: payload.imageUrls
-        };
+        payload = { ...payload, image_urls: payload.imageUrls };
         delete payload.imageUrls;
       } else if (activeTab === 'portfolios') {
         table = 'student_portfolios';
-        // Ensure content_blocks is generic json
       }
 
-      // Remove UI-only fields or IDs if creating
       if (modalMode === 'create') {
         delete payload.id;
         delete payload.created_at;
@@ -146,7 +131,6 @@ export const AdminPage: React.FC = () => {
       }
 
       if (error) throw error;
-      
       setIsModalOpen(false);
       fetchData();
     } catch (err) {
@@ -158,11 +142,9 @@ export const AdminPage: React.FC = () => {
   const openModal = (item: any = null) => {
     if (item) {
       setModalMode('edit');
-      // Deep copy to avoid mutating state directly
       setEditingItem(JSON.parse(JSON.stringify(item)));
     } else {
       setModalMode('create');
-      // Set defaults based on tab
       if (activeTab === 'portfolios') {
           setEditingItem({
               student_name: '新学生',
@@ -178,41 +160,30 @@ export const AdminPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-
-  // --- Portfolio Logic Helpers ---
+  // --- Portfolio Logic ---
   const addContentBlock = (type: string) => {
       const newBlock: ContentBlock = {
           id: `block-${Date.now()}`,
           type: type as any,
           data: {}
       };
-      // Init specific data structures
       if (type === 'table') {
           newBlock.data = { table_columns: ['列1', '列2'], table_rows: [['数据1', '数据2']] };
       } else if (type === 'info_list') {
           newBlock.data = { info_items: [{ label: '标签', value: '内容', icon: 'Star' }] };
       }
-      
-      setEditingItem({
-          ...editingItem,
-          content_blocks: [...(editingItem.content_blocks || []), newBlock]
-      });
+      setEditingItem({ ...editingItem, content_blocks: [...(editingItem.content_blocks || []), newBlock] });
   };
 
   const removeContentBlock = (blockId: string) => {
-      setEditingItem({
-          ...editingItem,
-          content_blocks: editingItem.content_blocks.filter((b: any) => b.id !== blockId)
-      });
+      setEditingItem({ ...editingItem, content_blocks: editingItem.content_blocks.filter((b: any) => b.id !== blockId) });
   };
 
   const updateContentBlock = (blockId: string, field: string, value: any) => {
       setEditingItem({
           ...editingItem,
           content_blocks: editingItem.content_blocks.map((b: any) => {
-              if (b.id === blockId) {
-                  return { ...b, data: { ...b.data, [field]: value } };
-              }
+              if (b.id === blockId) return { ...b, data: { ...b.data, [field]: value } };
               return b;
           })
       });
@@ -222,12 +193,9 @@ export const AdminPage: React.FC = () => {
     setEditingItem((prev: any) => {
         const newBlocks = prev.content_blocks.map((b: any) => {
             if (b.id === blockId) {
-                // Deep clone data
                 const newData = JSON.parse(JSON.stringify(b.data));
                 let current = newData;
-                for (let i = 0; i < path.length - 1; i++) {
-                    current = current[path[i]];
-                }
+                for (let i = 0; i < path.length - 1; i++) current = current[path[i]];
                 current[path[path.length - 1]] = value;
                 return { ...b, data: newData };
             }
@@ -239,95 +207,101 @@ export const AdminPage: React.FC = () => {
 
   const moveBlock = (index: number, direction: 'up' | 'down') => {
       const blocks = [...editingItem.content_blocks];
-      if (direction === 'up' && index > 0) {
-          [blocks[index], blocks[index - 1]] = [blocks[index - 1], blocks[index]];
-      } else if (direction === 'down' && index < blocks.length - 1) {
-          [blocks[index], blocks[index + 1]] = [blocks[index + 1], blocks[index]];
-      }
+      if (direction === 'up' && index > 0) [blocks[index], blocks[index - 1]] = [blocks[index - 1], blocks[index]];
+      else if (direction === 'down' && index < blocks.length - 1) [blocks[index], blocks[index + 1]] = [blocks[index + 1], blocks[index]];
       setEditingItem({ ...editingItem, content_blocks: blocks });
   };
 
-
   // --- Renderers ---
-
   const renderSidebar = () => (
-    <div className="w-64 bg-slate-900 text-slate-300 flex flex-col h-screen fixed left-0 top-0 overflow-y-auto">
-      <div className="p-6 border-b border-slate-800">
-        <Logo className="h-8 w-auto invert brightness-0" />
+    <>
+      {/* Mobile Overlay */}
+      {isSidebarOpen && (
+        <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsSidebarOpen(false)}></div>
+      )}
+      
+      {/* Sidebar Content */}
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-slate-300 flex flex-col transition-transform duration-200 ease-in-out md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+          <Logo className="h-8 w-auto invert brightness-0" />
+          <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-slate-400"><Icons.X size={20}/></button>
+        </div>
+        <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
+          <button onClick={() => { setActiveTab('bookings'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === 'bookings' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'}`}>
+            <Icons.CalendarCheck size={18} /> 预约管理
+          </button>
+          <button onClick={() => { setActiveTab('portfolios'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === 'portfolios' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'}`}>
+            <Icons.Users size={18} /> 学生档案
+          </button>
+          <div className="pt-4 pb-2 px-3 text-xs font-bold uppercase tracking-wider text-slate-500">内容管理</div>
+          <button onClick={() => { setActiveTab('curriculum'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === 'curriculum' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'}`}>
+            <Icons.BookOpen size={18} /> 课程体系
+          </button>
+          <button onClick={() => { setActiveTab('showcases'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === 'showcases' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'}`}>
+            <Icons.Trophy size={18} /> 学员作品
+          </button>
+        </nav>
+        <div className="p-4 border-t border-slate-800">
+          <button onClick={() => supabase.auth.signOut()} className="w-full flex items-center gap-2 px-3 py-2 text-red-400 hover:bg-slate-800 rounded-lg">
+            <Icons.LogOut size={18} /> 退出登录
+          </button>
+        </div>
       </div>
-      <nav className="flex-1 py-6 px-3 space-y-1">
-        <button onClick={() => setActiveTab('bookings')} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === 'bookings' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'}`}>
-          <Icons.CalendarCheck size={18} /> 预约管理
-        </button>
-        <button onClick={() => setActiveTab('portfolios')} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === 'portfolios' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'}`}>
-          <Icons.Users size={18} /> 学生档案
-        </button>
-        <div className="pt-4 pb-2 px-3 text-xs font-bold uppercase tracking-wider text-slate-500">内容管理</div>
-        <button onClick={() => setActiveTab('curriculum')} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === 'curriculum' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'}`}>
-          <Icons.BookOpen size={18} /> 课程体系
-        </button>
-        <button onClick={() => setActiveTab('showcases')} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === 'showcases' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'}`}>
-          <Icons.Trophy size={18} /> 学员作品
-        </button>
-      </nav>
-      <div className="p-4 border-t border-slate-800">
-        <button onClick={() => supabase.auth.signOut()} className="w-full flex items-center gap-2 px-3 py-2 text-red-400 hover:bg-slate-800 rounded-lg">
-          <Icons.LogOut size={18} /> 退出登录
-        </button>
-      </div>
-    </div>
+    </>
   );
 
   const renderBookingsTable = () => (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-      <table className="w-full text-left">
-        <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase">
-          <tr>
-            <th className="px-6 py-4">家长姓名</th>
-            <th className="px-6 py-4">电话</th>
-            <th className="px-6 py-4">孩子年龄</th>
-            <th className="px-6 py-4">状态</th>
-            <th className="px-6 py-4">提交时间</th>
-            <th className="px-6 py-4">操作</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {bookings.map((booking) => (
-            <tr key={booking.id} className="hover:bg-slate-50">
-              <td className="px-6 py-4 font-medium">{booking.parent_name}</td>
-              <td className="px-6 py-4">{booking.phone}</td>
-              <td className="px-6 py-4">{booking.child_age}</td>
-              <td className="px-6 py-4">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${booking.status === 'contacted' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                  {booking.status === 'contacted' ? '已联系' : '待处理'}
-                </span>
-              </td>
-              <td className="px-6 py-4 text-slate-500 text-sm">{new Date(booking.created_at).toLocaleDateString()}</td>
-              <td className="px-6 py-4">
-                 {booking.status !== 'contacted' && (
-                   <button 
-                     onClick={async () => {
-                       await supabase.from('bookings').update({ status: 'contacted' }).eq('id', booking.id);
-                       fetchData();
-                     }}
-                     className="text-blue-600 hover:text-blue-800 text-sm font-medium mr-4"
-                   >
-                     标记为已联系
-                   </button>
-                 )}
-                 <button onClick={() => handleDelete(booking.id, 'bookings')} className="text-red-500 hover:text-red-700">
-                   <Icons.Trash2 size={16} />
-                 </button>
-              </td>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left">
+          <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase">
+            <tr>
+              <th className="px-6 py-4 whitespace-nowrap">家长姓名</th>
+              <th className="px-6 py-4 whitespace-nowrap">电话</th>
+              <th className="px-6 py-4 whitespace-nowrap">孩子年龄</th>
+              <th className="px-6 py-4 whitespace-nowrap">状态</th>
+              <th className="px-6 py-4 whitespace-nowrap">提交时间</th>
+              <th className="px-6 py-4 whitespace-nowrap">操作</th>
             </tr>
-          ))}
-          {bookings.length === 0 && (
-             <tr>
-               <td colSpan={6} className="px-6 py-8 text-center text-slate-400">暂无预约数据</td>
-             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {bookings.map((booking) => (
+              <tr key={booking.id} className="hover:bg-slate-50">
+                <td className="px-6 py-4 font-medium">{booking.parent_name}</td>
+                <td className="px-6 py-4">{booking.phone}</td>
+                <td className="px-6 py-4">{booking.child_age}</td>
+                <td className="px-6 py-4">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${booking.status === 'contacted' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                    {booking.status === 'contacted' ? '已联系' : '待处理'}
+                  </span>
+                </td>
+                <td className="px-6 py-4 text-slate-500 text-sm">{new Date(booking.created_at).toLocaleDateString()}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                   {booking.status !== 'contacted' && (
+                     <button 
+                       onClick={async () => {
+                         await supabase.from('bookings').update({ status: 'contacted' }).eq('id', booking.id);
+                         fetchData();
+                       }}
+                       className="text-blue-600 hover:text-blue-800 text-sm font-medium mr-4"
+                     >
+                       标记为已联系
+                     </button>
+                   )}
+                   <button onClick={() => handleDelete(booking.id, 'bookings')} className="text-red-500 hover:text-red-700">
+                     <Icons.Trash2 size={16} />
+                   </button>
+                </td>
+              </tr>
+            ))}
+            {bookings.length === 0 && (
+               <tr>
+                 <td colSpan={6} className="px-6 py-8 text-center text-slate-400">暂无预约数据</td>
+               </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 
@@ -370,13 +344,12 @@ export const AdminPage: React.FC = () => {
       </div>
   );
 
-  // --- Portfolio Editor Content ---
   const renderPortfolioEditor = () => {
     if (!editingItem) return null;
     return (
         <div className="space-y-8">
             {/* Basic Info */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1">学生姓名</label>
                     <input className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" value={editingItem.student_name} onChange={e => setEditingItem({...editingItem, student_name: e.target.value})} />
@@ -403,9 +376,9 @@ export const AdminPage: React.FC = () => {
 
             {/* Content Blocks */}
             <div>
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
                     <h3 className="font-bold text-lg">页面内容区块</h3>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                         {['profile_header', 'text', 'project_highlight', 'skills_matrix', 'image_grid', 'info_list', 'table'].map(type => (
                             <button key={type} onClick={() => addContentBlock(type)} className="text-xs bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded border border-slate-300">
                                 + {type.replace('_', ' ')}
@@ -427,7 +400,6 @@ export const AdminPage: React.FC = () => {
                                 <span className="text-xs font-bold uppercase tracking-wider text-slate-400 bg-white px-2 py-1 rounded border">{b.type}</span>
                             </div>
 
-                            {/* Block Specific Editors */}
                             <div className="space-y-3">
                                 {b.type === 'profile_header' && (
                                     <>
@@ -546,7 +518,6 @@ export const AdminPage: React.FC = () => {
   };
 
   const renderGenericEditor = () => {
-      // Very basic JSON editor fallback or specific forms for other types
       return (
           <div className="space-y-4">
               <div className="p-4 bg-yellow-50 text-yellow-800 rounded text-sm mb-4">
@@ -577,20 +548,25 @@ export const AdminPage: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans">
+    <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
       {renderSidebar()}
       
-      <main className="flex-1 ml-64 p-8 overflow-y-auto">
-         <header className="mb-8 flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-slate-800">
-                {activeTab === 'bookings' && '预约管理'}
-                {activeTab === 'portfolios' && '学生档案'}
-                {activeTab === 'curriculum' && '课程体系'}
-                {activeTab === 'showcases' && '学员作品'}
-            </h1>
-            <div className="flex items-center gap-4 text-sm text-slate-500 bg-white px-4 py-2 rounded-full border shadow-sm">
+      <main className="flex-1 md:ml-64 p-4 md:p-8 overflow-y-auto h-screen w-full">
+         <header className="mb-8 flex justify-between items-center sticky top-0 bg-slate-50/90 backdrop-blur-sm z-30 py-4 border-b border-transparent">
+            <div className="flex items-center gap-4">
+                <button className="md:hidden text-slate-600 p-1" onClick={() => setIsSidebarOpen(true)}>
+                    <Icons.Menu size={24} />
+                </button>
+                <h1 className="text-xl md:text-2xl font-bold text-slate-800">
+                    {activeTab === 'bookings' && '预约管理'}
+                    {activeTab === 'portfolios' && '学生档案'}
+                    {activeTab === 'curriculum' && '课程体系'}
+                    {activeTab === 'showcases' && '学员作品'}
+                </h1>
+            </div>
+            <div className="flex items-center gap-4 text-xs md:text-sm text-slate-500 bg-white px-3 py-1.5 md:px-4 md:py-2 rounded-fullHS border shadow-sm">
                 <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                管理员: {session?.user?.email}
+                <span className="hidden md:inline">管理员:</span> {session?.user?.email?.split('@')[0]}
             </div>
          </header>
 
@@ -601,7 +577,6 @@ export const AdminPage: React.FC = () => {
                 {activeTab === 'bookings' && renderBookingsTable()}
                 {activeTab === 'portfolios' && renderPortfoliosTable()}
                 
-                {/* Generic List View for other types */}
                 {(activeTab === 'curriculum' || activeTab === 'showcases') && (
                     <div>
                          <div className="flex justify-end mb-4">
@@ -612,11 +587,11 @@ export const AdminPage: React.FC = () => {
                          <div className="grid gap-4">
                              {(activeTab === 'curriculum' ? curriculum : showcases).map((item: any) => (
                                  <div key={item.id} className="bg-white p-4 rounded-lg border border-slate-200 flex justify-between items-center">
-                                     <div>
-                                         <div className="font-bold">{item.title}</div>
+                                     <div className="flex-1 min-w-0 pr-4">
+                                         <div className="font-bold truncate">{item.title}</div>
                                          <div className="text-xs text-slate-500 line-clamp-1">{item.description}</div>
                                      </div>
-                                     <div className="flex gap-2">
+                                     <div className="flex gap-2 shrink-0">
                                          <button onClick={() => openModal(item)} className="p-2 hover:bg-slate-100 rounded text-blue-600"><Icons.Edit size={16}/></button>
                                          <button onClick={() => handleDelete(item.id, activeTab)} className="p-2 hover:bg-slate-100 rounded text-red-600"><Icons.Trash2 size={16}/></button>
                                      </div>

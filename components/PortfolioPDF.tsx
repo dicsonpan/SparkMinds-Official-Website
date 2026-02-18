@@ -102,7 +102,8 @@ const styles = StyleSheet.create({
   infoValue: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: '#334155'
+    color: '#334155',
+    flexWrap: 'wrap'
   },
 
   // === Skills (Progress Bars) ===
@@ -174,12 +175,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: 'bold',
     color: '#0f172a',
-    marginBottom: 4
+    marginBottom: 4,
+    flexWrap: 'wrap'
   },
   timelineDesc: {
     fontSize: 9,
     color: '#475569',
-    lineHeight: 1.5
+    lineHeight: 1.5,
+    flexWrap: 'wrap'
   },
   timelineImages: {
     marginTop: 6,
@@ -222,7 +225,8 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     borderRightColor: '#f1f5f9',
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9'
+    borderBottomColor: '#f1f5f9',
+    flexDirection: 'column'
   },
   starLabel: {
     fontSize: 8,
@@ -232,7 +236,8 @@ const styles = StyleSheet.create({
   },
   starText: {
     fontSize: 9,
-    color: '#334155'
+    color: '#334155',
+    flexWrap: 'wrap'
   },
   starEvidence: {
     padding: 10,
@@ -259,7 +264,8 @@ const styles = StyleSheet.create({
   textBlock: {
     fontSize: 10,
     lineHeight: 1.6,
-    color: '#334155'
+    color: '#334155',
+    flexWrap: 'wrap'
   },
 
   // === Table ===
@@ -288,14 +294,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#0f172a',
     borderRightWidth: 1,
-    borderRightColor: '#cbd5e1'
+    borderRightColor: '#cbd5e1',
+    flexDirection: 'column', // Important for wrapping
+    flexGrow: 1
   },
   tableCell: {
     padding: 6,
     fontSize: 9,
     color: '#334155',
     borderRightWidth: 1,
-    borderRightColor: '#e2e8f0'
+    borderRightColor: '#e2e8f0',
+    flexDirection: 'column', // Important for wrapping
+    flexGrow: 1
   },
 
   // === Footer ===

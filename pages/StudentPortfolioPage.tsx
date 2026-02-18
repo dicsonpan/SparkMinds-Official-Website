@@ -191,7 +191,7 @@ export const StudentPortfolioPage: React.FC = () => {
       if (!items.length) return null;
       const size = 240;
       const center = size / 2;
-      const radius = 80;
+      const radius = 75; // Slightly reduced to make room for text
       const angleStep = (Math.PI * 2) / items.length;
 
       const getPoint = (value: number, index: number, rScale = radius) => {
@@ -204,7 +204,7 @@ export const StudentPortfolioPage: React.FC = () => {
       
       return (
           <div className="flex flex-col items-center justify-center py-2">
-              <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+              <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="overflow-visible">
                   {/* Grid Levels */}
                   {[25, 50, 75, 100].map(level => (
                       <polygon key={level} 
@@ -219,12 +219,12 @@ export const StudentPortfolioPage: React.FC = () => {
                   })}
                   {/* Data Shape */}
                   <polygon points={points} className={`${styles.radarPolygon} stroke-2`} />
-                  {/* Labels */}
+                  {/* Labels with Scores */}
                   {items.map((item, i) => {
-                      const [x, y] = getPoint(100, i, radius + 20).split(',').map(Number);
+                      const [x, y] = getPoint(100, i, radius + 25).split(',').map(Number);
                       return (
                           <text key={i} x={x} y={y} textAnchor="middle" dominantBaseline="middle" className={`text-[10px] font-bold fill-current ${styles.text}`}>
-                              {item.name}
+                              {item.name} <tspan className="fill-current opacity-60 font-mono" dx="2" fontSize="9">{item.value}</tspan>
                           </text>
                       );
                   })}
@@ -239,15 +239,15 @@ export const StudentPortfolioPage: React.FC = () => {
     switch (block.type) {
       case 'profile_header':
          return (
-            <header key={block.id} className="relative w-full pt-16 pb-12 px-4 md:px-12 max-w-6xl mx-auto mb-12">
-                <div className="flex flex-col md:flex-row md:items-center gap-8 md:gap-12">
-                    <div className={`w-40 h-40 md:w-72 md:h-72 rounded-full ${styles.cardBg} border-4 ${styles.border} flex items-center justify-center text-6xl md:text-8xl font-bold shadow-2xl overflow-hidden relative backdrop-blur-md shrink-0`}>
+            <header key={block.id} className="relative w-full pt-24 md:pt-32 pb-8 md:pb-12 px-6 md:px-12 max-w-6xl mx-auto mb-10 md:mb-16">
+                <div className="flex flex-col md:flex-row items-center gap-6 md:gap-12 text-center md:text-left">
+                    <div className={`w-32 h-32 md:w-72 md:h-72 rounded-full ${styles.cardBg} border-4 ${styles.border} flex items-center justify-center text-5xl md:text-8xl font-bold shadow-2xl overflow-hidden relative backdrop-blur-md shrink-0`}>
                         {block.data.avatar_url ? <img src={block.data.avatar_url} className="w-full h-full object-cover" /> : portfolio.student_name[0]}
                     </div>
                     <div className="flex-1 mb-2">
                         <div className={`inline-block px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-widest mb-3 md:mb-4 ${styles.cardBg} ${styles.accent} border ${styles.border}`}>SparkMinds Portfolio</div>
                         <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2 opacity-80">{portfolio.student_name}</h1>
-                        <p className={`text-2xl md:text-6xl font-extrabold leading-tight ${styles.font} max-w-4xl mb-4 md:mb-6 drop-shadow-sm`}>{block.data.student_title || 'Future Innovator & Builder'}</p>
+                        <p className={`text-xl md:text-5xl font-extrabold leading-tight ${styles.font} max-w-4xl mb-4 md:mb-6 drop-shadow-sm`}>{block.data.student_title || 'Future Innovator & Builder'}</p>
                         {block.data.summary_bio && (
                         <div className={`mt-2 md:mt-4 text-sm md:text-lg opacity-80 max-w-3xl leading-relaxed whitespace-pre-wrap ${styles.muted}`}>
                             {block.data.summary_bio}
@@ -267,12 +267,12 @@ export const StudentPortfolioPage: React.FC = () => {
 
       case 'skills_matrix':
         return (
-            <section key={block.id} className="max-w-6xl mx-auto px-4 mb-20">
+            <section key={block.id} className="max-w-6xl mx-auto px-4 mb-16 md:mb-24">
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {block.data.skills_categories?.map((cat, idx) => {
                       const isRadar = cat.layout === 'radar';
                       return (
-                        <div key={idx} className={`p-8 rounded-3xl ${styles.cardBg} border ${styles.border} shadow-lg backdrop-blur-sm hover:border-blue-500/30 transition-colors ${isRadar ? 'md:col-span-2 lg:col-span-1' : ''}`}>
+                        <div key={idx} className={`p-6 md:p-8 rounded-3xl ${styles.cardBg} border ${styles.border} shadow-lg backdrop-blur-sm hover:border-blue-500/30 transition-colors ${isRadar ? 'md:col-span-2 lg:col-span-1' : ''}`}>
                             <h3 className={`font-bold text-lg mb-6 flex items-center gap-2 ${styles.accent}`}>
                                 <Icons.Zap size={20} className="fill-current" /> {cat.name}
                             </h3>
@@ -302,32 +302,32 @@ export const StudentPortfolioPage: React.FC = () => {
       
       case 'project_highlight':
          return (
-             <section key={block.id} className="max-w-6xl mx-auto px-4 mb-24">
+             <section key={block.id} className="max-w-6xl mx-auto px-4 mb-16 md:mb-24">
                  {/* Header Area */}
-                 <div className="mb-12">
+                 <div className="mb-8 md:mb-12">
                      <div className={`inline-block px-4 py-1.5 rounded-full text-[10px] font-bold mb-6 tracking-widest bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase`}>
                          Project Highlight
                      </div>
-                     <h3 className={`text-3xl md:text-5xl font-bold text-white leading-tight mb-4`}>{block.data.title}</h3>
+                     <h3 className={`text-2xl md:text-5xl font-bold text-white leading-tight mb-4`}>{block.data.title}</h3>
                  </div>
 
                  {/* STAR Grid - 2x2 Layout matching screenshot */}
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                      {[
                          { letter: 'S', title: '背景 (SITUATION)', text: block.data.star_situation },
                          { letter: 'T', title: '任务 (TASK)', text: block.data.star_task },
                          { letter: 'A', title: '行动 (ACTION)', text: block.data.star_action },
                          { letter: 'R', title: '结果 (RESULT)', text: block.data.star_result },
                      ].map((item, index) => (
-                         <div key={index} className={`relative p-8 rounded-3xl border border-slate-800 bg-[#0B1121] overflow-hidden group hover:border-blue-500/30 transition-all duration-300`}>
-                             {/* Large Watermark Letter */}
-                             <div className="absolute -right-2 -bottom-10 text-[10rem] font-black text-slate-800/20 select-none pointer-events-none group-hover:text-blue-900/20 transition-colors font-sans leading-none">
+                         <div key={index} className={`relative p-6 md:p-8 rounded-3xl border border-slate-800 bg-[#0B1121] overflow-hidden group hover:border-blue-500/30 transition-all duration-300 min-h-[180px]`}>
+                             {/* Large Watermark Letter - Smaller on Mobile */}
+                             <div className="absolute -right-2 -bottom-6 md:-bottom-10 text-[6rem] md:text-[10rem] font-black text-slate-800/20 select-none pointer-events-none group-hover:text-blue-900/20 transition-colors font-sans leading-none">
                                  {item.letter}
                              </div>
                              
                              {/* Card Content */}
                              <div className="relative z-10">
-                                 <h4 className="text-blue-400 font-bold text-sm tracking-widest uppercase mb-4">{item.title}</h4>
+                                 <h4 className="text-blue-400 font-bold text-xs md:text-sm tracking-widest uppercase mb-3 md:mb-4">{item.title}</h4>
                                  <p className="text-slate-300 leading-relaxed text-sm md:text-base whitespace-pre-wrap">
                                      {item.text || "暂无描述"}
                                  </p>
@@ -342,7 +342,7 @@ export const StudentPortfolioPage: React.FC = () => {
                          <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Project Evidence</h4>
                          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
                              {block.data.evidence_urls.map((url, i) => (
-                                 <div key={i} className="h-32 w-48 shrink-0 rounded-xl overflow-hidden border border-slate-800 relative group cursor-pointer" onClick={() => window.open(url, '_blank')}>
+                                 <div key={i} className="h-24 w-36 md:h-32 md:w-48 shrink-0 rounded-xl overflow-hidden border border-slate-800 relative group cursor-pointer" onClick={() => window.open(url, '_blank')}>
                                      <img src={url} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                                      <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-colors"></div>
                                  </div>
@@ -355,8 +355,8 @@ export const StudentPortfolioPage: React.FC = () => {
       
       case 'info_list':
          return (
-             <section key={block.id} className="max-w-6xl mx-auto px-4 mb-20">
-                <div className={`p-8 md:p-10 rounded-3xl ${styles.cardBg} border ${styles.border}`}>
+             <section key={block.id} className="max-w-6xl mx-auto px-4 mb-16 md:mb-20">
+                <div className={`p-6 md:p-10 rounded-3xl ${styles.cardBg} border ${styles.border}`}>
                     {block.data.title && <h3 className="text-xl font-bold mb-8 pb-4 border-b border-slate-800">{block.data.title}</h3>}
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-8 gap-x-12">
                         {block.data.info_items?.map((item, idx) => {
@@ -380,24 +380,24 @@ export const StudentPortfolioPage: React.FC = () => {
 
       case 'section_heading':
          return (
-             <div key={block.id} className="max-w-4xl mx-auto px-4 mb-10 mt-24 text-center">
+             <div key={block.id} className="max-w-4xl mx-auto px-4 mb-8 md:mb-10 mt-16 md:mt-24 text-center">
                  <div className="flex items-center justify-center gap-4 mb-4 opacity-50">
-                    <div className={`h-px w-12 ${styles.muted} bg-current`}></div>
+                    <div className={`h-px w-8 md:w-12 ${styles.muted} bg-current`}></div>
                     <Icons.Hash size={16} className={styles.accent} />
-                    <div className={`h-px w-12 ${styles.muted} bg-current`}></div>
+                    <div className={`h-px w-8 md:w-12 ${styles.muted} bg-current`}></div>
                  </div>
-                 <h2 className={`text-3xl md:text-4xl font-bold ${styles.text}`}>{block.data.title}</h2>
+                 <h2 className={`text-2xl md:text-4xl font-bold ${styles.text}`}>{block.data.title}</h2>
              </div>
          );
       
       case 'timeline_node':
          return (
-            <div key={block.id} className="max-w-4xl mx-auto px-4 mb-8 flex gap-6 md:gap-10 group">
+            <div key={block.id} className="max-w-4xl mx-auto px-4 mb-6 md:mb-8 flex gap-4 md:gap-10 group">
                <div className="flex flex-col items-center shrink-0">
-                  <div className={`w-4 h-4 rounded-full ${styles.barFill} mt-2 ring-4 ${styles.bg} shadow-[0_0_15px_rgba(59,130,246,0.6)]`}></div>
+                  <div className={`w-3 h-3 md:w-4 md:h-4 rounded-full ${styles.barFill} mt-2 ring-4 ${styles.bg} shadow-[0_0_15px_rgba(59,130,246,0.6)]`}></div>
                   <div className={`w-0.5 flex-1 ${styles.border} bg-slate-800 my-2 group-last:hidden`}></div>
                </div>
-               <div className={`flex-1 pb-10 ${styles.cardBg} p-8 rounded-2xl border ${styles.border} relative hover:border-blue-500/30 transition-colors`}>
+               <div className={`flex-1 pb-8 ${styles.cardBg} p-6 md:p-8 rounded-2xl border ${styles.border} relative hover:border-blue-500/30 transition-colors`}>
                   <div className={`absolute top-6 -left-3 w-6 h-6 ${styles.cardBg} border-l border-b ${styles.border} transform rotate-45 md:block hidden rounded-bl-md`}></div>
                   <div className="flex flex-wrap items-center gap-3 mb-4">
                       <span className={`inline-block px-3 py-1 rounded-md text-xs font-mono font-bold ${styles.bg} ${styles.accent} border ${styles.border}`}>{block.data.date}</span>
@@ -417,7 +417,7 @@ export const StudentPortfolioPage: React.FC = () => {
 
       case 'table':
           return (
-              <section key={block.id} className="max-w-6xl mx-auto px-4 mb-20">
+              <section key={block.id} className="max-w-6xl mx-auto px-4 mb-16 md:mb-20">
                   {block.data.title && <h3 className="text-xl font-bold mb-6 px-2">{block.data.title}</h3>}
                   <div className={`overflow-hidden rounded-2xl border ${styles.border} ${styles.cardBg}`}>
                       <div className="overflow-x-auto">
@@ -446,7 +446,7 @@ export const StudentPortfolioPage: React.FC = () => {
 
       case 'text':
          return (
-             <section key={block.id} className="max-w-4xl mx-auto px-4 mb-16">
+             <section key={block.id} className="max-w-4xl mx-auto px-4 mb-12 md:mb-16">
                  {block.data.title && <h3 className="text-2xl font-bold mb-6">{block.data.title}</h3>}
                  <div className={`prose ${themeKey === 'tech_dark' ? 'prose-invert' : ''} max-w-none prose-lg leading-loose text-slate-300`}>
                      <p className="whitespace-pre-wrap">{block.data.content}</p>
@@ -456,7 +456,7 @@ export const StudentPortfolioPage: React.FC = () => {
       
       case 'image_grid':
          return (
-             <section key={block.id} className="max-w-6xl mx-auto px-4 mb-20">
+             <section key={block.id} className="max-w-6xl mx-auto px-4 mb-16 md:mb-20">
                  {block.data.title && <h3 className="text-xl font-bold mb-6 px-2">{block.data.title}</h3>}
                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                      {block.data.urls?.map((url, i) => (
@@ -481,7 +481,7 @@ export const StudentPortfolioPage: React.FC = () => {
          <div className="flex items-center gap-2">
              <Logo className={`h-8 w-auto ${themeKey === 'tech_dark' ? 'brightness-0 invert' : ''}`} />
          </div>
-         <div className="text-[10px] font-mono opacity-50 uppercase tracking-widest border px-2 py-1 rounded border-slate-800">
+         <div className="text-[10px] font-mono opacity-50 uppercase tracking-widest border px-2 py-1 rounded border-slate-800 hidden md:block">
              Student Portfolio
          </div>
       </nav>

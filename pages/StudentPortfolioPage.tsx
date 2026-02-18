@@ -302,55 +302,54 @@ export const StudentPortfolioPage: React.FC = () => {
       
       case 'project_highlight':
          return (
-             <section key={block.id} className="max-w-6xl mx-auto px-4 mb-20">
-                 <div className={`rounded-3xl overflow-hidden ${styles.cardBg} border ${styles.border} shadow-2xl`}>
-                     <div className="grid md:grid-cols-5">
-                         <div className="p-8 md:p-12 md:col-span-3 flex flex-col">
-                             <div className={`inline-block w-fit px-3 py-1 rounded-full text-[10px] font-bold mb-6 tracking-widest bg-blue-900/30 text-blue-300 border border-blue-800/50`}>
-                                 PROJECT HIGHLIGHT
-                             </div>
-                             <h3 className={`text-2xl md:text-3xl font-bold mb-10 text-white`}>{block.data.title}</h3>
-                             
-                             <div className="space-y-8 flex-1">
-                                 {/* First Row: Situation & Task */}
-                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b border-slate-800 pb-8">
-                                     <div className="relative pl-4 border-l-2 border-slate-700">
-                                         <h4 className={`text-[10px] font-bold ${styles.muted} uppercase tracking-[0.2em] mb-2`}>SITUATION</h4>
-                                         <p className="text-sm md:text-base leading-relaxed text-slate-300">{block.data.star_situation}</p>
-                                     </div>
-                                     <div className="relative pl-4 border-l-2 border-slate-700">
-                                         <h4 className={`text-[10px] font-bold ${styles.muted} uppercase tracking-[0.2em] mb-2`}>TASK</h4>
-                                         <p className="text-sm md:text-base leading-relaxed text-slate-300">{block.data.star_task}</p>
-                                     </div>
-                                 </div>
+             <section key={block.id} className="max-w-6xl mx-auto px-4 mb-24">
+                 {/* Header Area */}
+                 <div className="mb-12">
+                     <div className={`inline-block px-4 py-1.5 rounded-full text-[10px] font-bold mb-6 tracking-widest bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase`}>
+                         Project Highlight
+                     </div>
+                     <h3 className={`text-3xl md:text-5xl font-bold text-white leading-tight mb-4`}>{block.data.title}</h3>
+                 </div>
 
-                                 {/* Second Row: Action & Result */}
-                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                     <div className="relative pl-4 border-l-2 border-slate-700">
-                                         <h4 className={`text-[10px] font-bold ${styles.muted} uppercase tracking-[0.2em] mb-2`}>ACTION</h4>
-                                         <p className="text-sm md:text-base leading-relaxed text-slate-300">{block.data.star_action}</p>
-                                     </div>
-                                     <div className="relative pl-4 border-l-2 border-slate-700">
-                                         <h4 className={`text-[10px] font-bold ${styles.muted} uppercase tracking-[0.2em] mb-2`}>RESULT</h4>
-                                         <p className="text-sm md:text-base leading-relaxed text-slate-300">{block.data.star_result}</p>
-                                     </div>
-                                 </div>
+                 {/* STAR Grid - 2x2 Layout matching screenshot */}
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                     {[
+                         { letter: 'S', title: '背景 (SITUATION)', text: block.data.star_situation },
+                         { letter: 'T', title: '任务 (TASK)', text: block.data.star_task },
+                         { letter: 'A', title: '行动 (ACTION)', text: block.data.star_action },
+                         { letter: 'R', title: '结果 (RESULT)', text: block.data.star_result },
+                     ].map((item, index) => (
+                         <div key={index} className={`relative p-8 rounded-3xl border border-slate-800 bg-[#0B1121] overflow-hidden group hover:border-blue-500/30 transition-all duration-300`}>
+                             {/* Large Watermark Letter */}
+                             <div className="absolute -right-2 -bottom-10 text-[10rem] font-black text-slate-800/20 select-none pointer-events-none group-hover:text-blue-900/20 transition-colors font-sans leading-none">
+                                 {item.letter}
+                             </div>
+                             
+                             {/* Card Content */}
+                             <div className="relative z-10">
+                                 <h4 className="text-blue-400 font-bold text-sm tracking-widest uppercase mb-4">{item.title}</h4>
+                                 <p className="text-slate-300 leading-relaxed text-sm md:text-base whitespace-pre-wrap">
+                                     {item.text || "暂无描述"}
+                                 </p>
                              </div>
                          </div>
-                         <div className={`md:col-span-2 bg-black/40 min-h-[300px] relative border-l ${styles.border}`}>
-                             {block.data.evidence_urls && block.data.evidence_urls.length > 0 ? (
-                                 <img src={block.data.evidence_urls[0]} className="w-full h-full object-cover absolute inset-0" />
-                             ) : (
-                                 <div className="w-full h-full flex flex-col items-center justify-center text-slate-600 gap-4 p-8 text-center">
-                                     <Icons.Image size={64} strokeWidth={1} />
-                                     <span className="text-xs uppercase tracking-widest">Project Evidence</span>
+                     ))}
+                 </div>
+
+                 {/* Evidence Footer (Optional) */}
+                 {block.data.evidence_urls && block.data.evidence_urls.length > 0 && (
+                     <div className="mt-8 pt-8 border-t border-slate-800/50">
+                         <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Project Evidence</h4>
+                         <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                             {block.data.evidence_urls.map((url, i) => (
+                                 <div key={i} className="h-32 w-48 shrink-0 rounded-xl overflow-hidden border border-slate-800 relative group cursor-pointer" onClick={() => window.open(url, '_blank')}>
+                                     <img src={url} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                                     <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-colors"></div>
                                  </div>
-                             )}
-                             {/* Overlay Gradient */}
-                             <div className="absolute inset-0 bg-gradient-to-t from-slate-900/50 to-transparent"></div>
+                             ))}
                          </div>
                      </div>
-                 </div>
+                 )}
              </section>
          );
       

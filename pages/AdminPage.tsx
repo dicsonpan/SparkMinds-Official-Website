@@ -352,7 +352,7 @@ export const AdminPage: React.FC = () => {
                         onClick={() => addContentBlock(type.type)}
                         className="flex flex-col items-center justify-center p-3 rounded-lg border border-slate-200 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all text-xs font-medium text-slate-600 gap-2"
                      >
-                        {React.createElement(Icons[type.icon], { size: 20 })}
+                        {React.createElement(Icons[type.icon] as React.ElementType, { size: 20 })}
                         {type.label}
                      </button>
                   ))}
@@ -533,7 +533,7 @@ export const AdminPage: React.FC = () => {
                                                                   className="min-w-[80px] w-full text-xs font-bold bg-slate-100 border border-slate-200 rounded px-2 py-1 focus:border-green-400 outline-none"
                                                                   value={col}
                                                                   onChange={e => {
-                                                                      const newCols = [...b.data.table_columns];
+                                                                      const newCols = [...(b.data.table_columns || [])];
                                                                       newCols[cIdx] = e.target.value;
                                                                       updateContentBlock(b.id, 'table_columns', newCols);
                                                                   }}
@@ -554,7 +554,7 @@ export const AdminPage: React.FC = () => {
                                                                   ))}
                                                                   <button 
                                                                       onClick={() => {
-                                                                          const newRows = [...b.data.table_rows];
+                                                                          const newRows = [...(b.data.table_rows || [])];
                                                                           newRows.splice(rIdx, 1);
                                                                           updateContentBlock(b.id, 'table_rows', newRows);
                                                                       }}
@@ -567,7 +567,7 @@ export const AdminPage: React.FC = () => {
                                                       </div>
                                                       <div className="flex gap-2 mt-2">
                                                           <button 
-                                                              onClick={() => updateContentBlock(b.id, 'table_rows', [...(b.data.table_rows || []), new Array(b.data.table_columns.length).fill('')])}
+                                                              onClick={() => updateContentBlock(b.id, 'table_rows', [...(b.data.table_rows || []), new Array((b.data.table_columns || []).length).fill('')])}
                                                               className="text-xs bg-green-50 text-green-600 px-3 py-1.5 rounded border border-green-200 hover:bg-green-100 font-bold"
                                                           >
                                                               + 添加行

@@ -689,32 +689,23 @@ export const StudentPortfolioPage: React.FC = () => {
            <div className={`absolute bottom-0 left-0 w-[600px] h-[600px] ${styles.blobColor2} rounded-full mix-blend-screen filter blur-[100px] opacity-10 -translate-x-1/3 translate-y-1/3`}></div>
         </div>
 
-        {/* Optimzied Hero Section: Reduced Height (50vh) & Better Alignment (Top 25%) */}
-        <header className="relative w-full h-[40vh] md:h-[50vh] min-h-[350px] max-h-[600px] flex items-end">
-           {currentPortfolio?.hero_image_url ? (
-             <div className="absolute inset-0 z-0">
-               {/* Use bg-[center_25%] to focus on the upper part of the image (faces) */}
-               <div className="absolute inset-0 bg-cover bg-[center_25%] bg-no-repeat" style={{ backgroundImage: `url(${currentPortfolio.hero_image_url})` }} />
-               <div className={`absolute inset-0 bg-gradient-to-t ${themeName === 'tech_dark' ? 'from-slate-950 via-slate-950/50' : 'from-slate-50 via-slate-50/50'} to-transparent z-10`}></div>
-             </div>
-           ) : null}
-           <div className="relative z-20 px-6 md:px-12 max-w-6xl mx-auto w-full pb-6 md:pb-10">
-              <div className="flex flex-col md:flex-row md:items-end gap-6 md:gap-8">
-                  <div className={`w-24 h-24 md:w-40 md:h-40 rounded-full ${styles.cardBg} border-4 ${styles.border} flex items-center justify-center text-4xl md:text-5xl font-bold shadow-2xl overflow-hidden relative backdrop-blur-md shrink-0`}>
-                      {currentPortfolio?.avatar_url ? <img src={currentPortfolio.avatar_url} className="w-full h-full object-cover" /> : currentPortfolio?.student_name[0]}
-                  </div>
-                  <div className="flex-1 mb-2">
-                      <div className={`inline-block px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-widest mb-3 md:mb-4 ${styles.cardBg} ${styles.accent} border ${styles.border}`}>SparkMinds Portfolio</div>
-                      <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2 opacity-80">{currentPortfolio?.student_name}</h1>
-                      <p className={`text-2xl md:text-6xl font-extrabold leading-tight ${styles.font} max-w-4xl mb-4 md:mb-6 drop-shadow-sm`}>{currentPortfolio?.student_title || 'Future Innovator & Builder'}</p>
-                      {currentPortfolio?.summary_bio && (
-                        <div className="mt-2 md:mt-4 text-xs md:text-base opacity-80 max-w-4xl leading-relaxed whitespace-pre-wrap">
-                            {currentPortfolio.summary_bio}
-                        </div>
-                      )}
-                  </div>
-              </div>
-           </div>
+        {/* Header without Hero Image */}
+        <header className="relative w-full pt-24 pb-12 md:pt-32 md:pb-16 px-6 md:px-12 max-w-6xl mx-auto">
+            <div className="flex flex-col md:flex-row md:items-end gap-6 md:gap-8">
+                <div className={`w-24 h-24 md:w-40 md:h-40 rounded-full ${styles.cardBg} border-4 ${styles.border} flex items-center justify-center text-4xl md:text-5xl font-bold shadow-2xl overflow-hidden relative backdrop-blur-md shrink-0`}>
+                    {currentPortfolio?.avatar_url ? <img src={currentPortfolio.avatar_url} className="w-full h-full object-cover" /> : currentPortfolio?.student_name[0]}
+                </div>
+                <div className="flex-1 mb-2">
+                    <div className={`inline-block px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-widest mb-3 md:mb-4 ${styles.cardBg} ${styles.accent} border ${styles.border}`}>SparkMinds Portfolio</div>
+                    <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2 opacity-80">{currentPortfolio?.student_name}</h1>
+                    <p className={`text-2xl md:text-6xl font-extrabold leading-tight ${styles.font} max-w-4xl mb-4 md:mb-6 drop-shadow-sm`}>{currentPortfolio?.student_title || 'Future Innovator & Builder'}</p>
+                    {currentPortfolio?.summary_bio && (
+                    <div className="mt-2 md:mt-4 text-xs md:text-base opacity-80 max-w-4xl leading-relaxed whitespace-pre-wrap">
+                        {currentPortfolio.summary_bio}
+                    </div>
+                    )}
+                </div>
+            </div>
         </header>
 
         <main className="px-4 md:px-12 max-w-5xl mx-auto relative z-10 pt-8 md:pt-12">

@@ -8,6 +8,16 @@ Font.register({
   src: '/microsoft yahei.ttf'
 });
 
+// 【关键修复】注册断行回调函数
+// 解决中文被视为一个长单词而不换行的问题
+Font.registerHyphenationCallback(word => {
+  // 只有当单词长度大于1时才处理（避免处理单个字符）
+  if (word.length === 1) return [word];
+  
+  // 将字符串拆分为字符数组，告诉引擎可以在任意字符之间断行
+  return Array.from(word);
+});
+
 const styles = StyleSheet.create({
   page: {
     padding: 40,

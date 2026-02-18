@@ -5,6 +5,7 @@ import { StudentPortfolio, ContentBlock, PortfolioTheme, SkillCategory, SkillIte
 import { Logo } from '../components/Logo';
 import * as Icons from 'lucide-react';
 import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 const AI_SETTINGS_KEY = 'SM_AI_CONFIG';
 
@@ -64,6 +65,7 @@ const LABELS = {
     footerSubtitle: "青少年硬核科技创新教育",
     generating: "生成中...",
     saveImage: "保存长图",
+    savePDF: "保存PDF",
     mobileMode: "手机模式",
     webMode: "网页模式",
     translateBtn: "English",
@@ -85,6 +87,7 @@ const LABELS = {
     footerSubtitle: "Hardcore Tech Education for Youth",
     generating: "Rendering...",
     saveImage: "Save Image",
+    savePDF: "Save as PDF",
     mobileMode: "Mobile View",
     webMode: "Web View",
     translateBtn: "中文",
@@ -228,64 +231,91 @@ export const StudentPortfolioPage: React.FC = () => {
     }
   };
 
-  const handleSnapshot = async () => {
-    if (!contentRef.current) return;
+  const generateCanvas = async () => {
+    if (!contentRef.current) return null;
+    const theme = originalPortfolio?.theme_config?.theme || 'tech_dark';
+    const bgColor = theme === 'tech_dark' ? '#020617' : '#f8fafc';
+    
+    window.scrollTo(0,0);
+    await new Promise(r => setTimeout(r, 500));
+
+    return html2canvas(contentRef.current, {
+      useCORS: true, 
+      scale: 2, 
+      backgroundColor: bgColor,
+      ignoreElements: (element) => element.classList.contains('no-snapshot'),
+      logging: false,
+      windowWidth: isMobileMode ? 420 : document.body.scrollWidth,
+      onclone: (clonedDoc) => {
+          const container = clonedDoc.getElementById('portfolio-content');
+          if (container) {
+              // Compression Map: Old Spacing -> Compact Spacing
+              const compressionMap: Record<string, string> = {
+                  'mb-24': 'mb-12',
+                  'mb-20': 'mb-10',
+                  'mb-16': 'mb-8',
+                  'mb-12': 'mb-6',
+                  'mt-16': 'mt-8',
+                  'mt-32': 'mt-16',
+                  'pb-16': 'pb-8', 
+                  'gap-y-10': 'gap-y-5', 
+                  'gap-y-16': 'gap-y-8',
+                  'p-8': 'p-5',
+                  'p-6': 'p-4',
+                  'gap-6': 'gap-3',
+                  'text-6xl': 'text-4xl',
+                  'text-4xl': 'text-3xl',
+                  'h-[60vh]': 'h-[auto]',
+                  'py-20': 'py-10'
+              };
+
+              const allElements = container.querySelectorAll('*');
+              allElements.forEach(el => {
+                  for (const [oldClass, newClass] of Object.entries(compressionMap)) {
+                      if (el.classList.contains(oldClass)) {
+                          el.classList.remove(oldClass);
+                          el.classList.add(newClass);
+                      }
+                  }
+              });
+          }
+      }
+    });
+  };
+
+  const handleDownloadImage = async () => {
     setIsSnapshotting(true);
     try {
-      const theme = originalPortfolio?.theme_config?.theme || 'tech_dark';
-      const bgColor = theme === 'tech_dark' ? '#020617' : '#f8fafc';
-      
-      window.scrollTo(0,0);
-      await new Promise(r => setTimeout(r, 500));
-
-      const canvas = await html2canvas(contentRef.current, {
-        useCORS: true, 
-        scale: 2, 
-        backgroundColor: bgColor,
-        ignoreElements: (element) => element.classList.contains('no-snapshot'),
-        logging: false,
-        windowWidth: isMobileMode ? 420 : document.body.scrollWidth,
-        onclone: (clonedDoc) => {
-            const container = clonedDoc.getElementById('portfolio-content');
-            if (container) {
-                // Compression Map: Old Spacing -> Compact Spacing
-                const compressionMap: Record<string, string> = {
-                    'mb-24': 'mb-12',
-                    'mb-20': 'mb-10',
-                    'mb-16': 'mb-8',
-                    'mb-12': 'mb-6',
-                    'mt-16': 'mt-8',
-                    'mt-32': 'mt-16',
-                    'pb-16': 'pb-8', 
-                    'gap-y-10': 'gap-y-5', 
-                    'gap-y-16': 'gap-y-8',
-                    'p-8': 'p-5',
-                    'p-6': 'p-4',
-                    'gap-6': 'gap-3',
-                    'text-6xl': 'text-4xl',
-                    'text-4xl': 'text-3xl',
-                    'h-[60vh]': 'h-[auto]',
-                    'py-20': 'py-10'
-                };
-
-                const allElements = container.querySelectorAll('*');
-                allElements.forEach(el => {
-                    for (const [oldClass, newClass] of Object.entries(compressionMap)) {
-                        if (el.classList.contains(oldClass)) {
-                            el.classList.remove(oldClass);
-                            el.classList.add(newClass);
-                        }
-                    }
-                });
-            }
-        }
-      });
-      
+      const canvas = await generateCanvas();
+      if (!canvas) return;
       const link = document.createElement('a');
       link.download = `SparkMinds_${originalPortfolio?.student_name}_${isMobileMode ? 'Mobile' : 'Web'}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
     } catch (err) { alert('生成长图失败'); } finally { setIsSnapshotting(false); }
+  };
+
+  const handleDownloadPDF = async () => {
+    setIsSnapshotting(true);
+    try {
+      const canvas = await generateCanvas();
+      if (!canvas) return;
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const pxToMm = 0.2645833333; // 1px = ~0.26mm
+      const pdfWidth = canvas.width * pxToMm;
+      const pdfHeight = canvas.height * pxToMm;
+
+      // Create a single-page PDF that fits the content
+      const pdf = new jsPDF({
+        orientation: pdfWidth > pdfHeight ? 'l' : 'p',
+        unit: 'mm',
+        format: [pdfWidth, pdfHeight]
+      });
+
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`SparkMinds_${originalPortfolio?.student_name}_${isMobileMode ? 'Mobile' : 'Web'}.pdf`);
+    } catch (err) { alert('生成PDF失败'); } finally { setIsSnapshotting(false); }
   };
 
   const currentPortfolio = language === 'en' && translatedPortfolio ? translatedPortfolio : originalPortfolio;
@@ -710,7 +740,15 @@ export const StudentPortfolioPage: React.FC = () => {
       <div className="fixed bottom-8 right-8 z-50 flex flex-col gap-4 no-snapshot items-end">
          <button onClick={handleTranslate} disabled={isTranslating} className={`${styles.button} h-12 px-6 rounded-full shadow-xl flex items-center gap-2 font-bold backdrop-blur-md bg-opacity-90 transition-all hover:scale-105 active:scale-95`}>{isTranslating ? <Icons.Loader2 className="animate-spin w-4 h-4" /> : <Icons.Languages className="w-4 h-4" />}{isTranslating ? t.translating : t.translateBtn}</button>
          <button onClick={() => setIsMobileMode(!isMobileMode)} className={`${isMobileMode ? 'bg-white text-slate-900' : 'bg-slate-800 text-white'} h-12 px-6 rounded-full shadow-xl flex items-center gap-2 font-bold transition-all hover:scale-105 active:scale-95 border border-slate-700`}>{isMobileMode ? <Icons.Monitor className="w-4 h-4" /> : <Icons.Smartphone className="w-4 h-4" />}{isMobileMode ? t.webMode : t.mobileMode}</button>
-         <button onClick={handleSnapshot} disabled={isSnapshotting} className={`${styles.button} w-14 h-14 rounded-full shadow-2xl flex items-center justify-center group relative hover:scale-110 transition-transform`} title={t.saveImage}>{isSnapshotting ? <Icons.Loader2 className="animate-spin" /> : <Icons.Download />}</button>
+         
+         <div className="flex gap-3">
+            <button onClick={handleDownloadImage} disabled={isSnapshotting} className={`${styles.button} w-14 h-14 rounded-full shadow-2xl flex items-center justify-center group relative hover:scale-110 transition-transform`} title={t.saveImage}>
+                {isSnapshotting ? <Icons.Loader2 className="animate-spin" /> : <Icons.ImageDown />}
+            </button>
+            <button onClick={handleDownloadPDF} disabled={isSnapshotting} className={`${styles.button} w-14 h-14 rounded-full shadow-2xl flex items-center justify-center group relative hover:scale-110 transition-transform`} title={t.savePDF}>
+                {isSnapshotting ? <Icons.Loader2 className="animate-spin" /> : <Icons.FileText />}
+            </button>
+         </div>
       </div>
 
       {isSnapshotting && (

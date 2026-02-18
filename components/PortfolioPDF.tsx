@@ -2,22 +2,16 @@ import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image, Font } from '@react-pdf/renderer';
 import { StudentPortfolio, ContentBlock, SkillItem } from '../types';
 
-// NOTE: Chinese font loading from public CDNs is unreliable and often causes CORS or 404 errors.
-// For production, you MUST download a font like "SourceHanSansCN-Regular.ttf", place it in your 'public' folder,
-// and reference it relatively like `/fonts/SourceHanSansCN-Regular.ttf`.
-// Falling back to standard Helvetica to ensure PDF generation works, though Chinese characters may not render correctly without the custom font.
-
-// Uncomment and adjust path if you have a local font file:
-// Font.register({
-//   family: 'SourceHanSans',
-//   src: '/fonts/SourceHanSansCN-Regular.ttf'
-// });
+// Register the Microsoft YaHei font located in the public folder to support Chinese characters
+Font.register({
+  family: 'Microsoft YaHei',
+  src: '/microsoft yahei.ttf'
+});
 
 const styles = StyleSheet.create({
   page: {
     padding: 40,
-    // fontFamily: 'SourceHanSans', // Switch back to this if you have the font
-    fontFamily: 'Helvetica',
+    fontFamily: 'Microsoft YaHei',
     backgroundColor: '#ffffff',
     color: '#1e293b'
   },
@@ -181,21 +175,12 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            {/* Note: Chinese characters might not render with Helvetica */}
             <Text style={styles.studentName}>{portfolio.student_name}</Text>
             <Text style={styles.studentTitle}>SparkMinds Portfolio</Text>
           </View>
           {portfolio.avatar_url && (
              <Image src={portfolio.avatar_url} style={styles.headerAvatar} />
           )}
-        </View>
-
-        {/* Warning about Chinese characters */}
-        <View style={{marginBottom: 10, padding: 10, backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fdba74'}}>
-            <Text style={{fontSize: 10, color: '#c2410c'}}>
-                Note: Chinese characters may not display correctly because a custom Chinese font file was not found. 
-                Please configure a local font file in 'components/PortfolioPDF.tsx' for full support.
-            </Text>
         </View>
 
         {/* Content Blocks */}

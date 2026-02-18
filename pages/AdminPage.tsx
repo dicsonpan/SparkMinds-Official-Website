@@ -161,6 +161,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                 { icon: 'Mail', label: '邮箱', value: '' }
             ]
         };
+    } else if (type === 'table') {
+        initialData = {
+            title: '表格数据',
+            table_columns: ['项目', '内容'],
+            table_rows: [['示例1', '数据1'], ['示例2', '数据2']]
+        };
     }
 
     const newBlock: ContentBlock = {
@@ -187,7 +193,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
     setEditingItem({ ...editingItem, content_blocks: blocks });
   };
 
-  // Helper for Info List (Add/Remove items)
+  // Helper for Info List
   const addInfoItem = (blockId: string) => {
       const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => {
           if (b.id === blockId) {
@@ -222,6 +228,86 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
               const newItems = [...(b.data.info_items || [])];
               newItems[itemIndex] = { ...newItems[itemIndex], [field]: value };
               return { ...b, data: { ...b.data, info_items: newItems } };
+          }
+          return b;
+      });
+      setEditingItem({ ...editingItem, content_blocks: newBlocks });
+  };
+
+  // Helper for Tables
+  const addTableColumn = (blockId: string) => {
+      const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => {
+          if (b.id === blockId) {
+              const newCols = [...(b.data.table_columns || []), '新列'];
+              const newRows = (b.data.table_rows || []).map(row => [...row, '']);
+              return { ...b, data: { ...b.data, table_columns: newCols, table_rows: newRows } };
+          }
+          return b;
+      });
+      setEditingItem({ ...editingItem, content_blocks: newBlocks });
+  };
+
+  const removeTableColumn = (blockId: string, colIndex: number) => {
+      const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => {
+          if (b.id === blockId) {
+              const newCols = [...(b.data.table_columns || [])];
+              newCols.splice(colIndex, 1);
+              const newRows = (b.data.table_rows || []).map(row => {
+                  const r = [...row];
+                  r.splice(colIndex, 1);
+                  return r;
+              });
+              return { ...b, data: { ...b.data, table_columns: newCols, table_rows: newRows } };
+          }
+          return b;
+      });
+      setEditingItem({ ...editingItem, content_blocks: newBlocks });
+  };
+
+  const updateTableColumn = (blockId: string, colIndex: number, value: string) => {
+      const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => {
+          if (b.id === blockId) {
+              const newCols = [...(b.data.table_columns || [])];
+              newCols[colIndex] = value;
+              return { ...b, data: { ...b.data, table_columns: newCols } };
+          }
+          return b;
+      });
+      setEditingItem({ ...editingItem, content_blocks: newBlocks });
+  };
+
+  const addTableRow = (blockId: string) => {
+      const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => {
+          if (b.id === blockId) {
+              const colCount = (b.data.table_columns || []).length;
+              const newRow = new Array(colCount).fill('');
+              return { ...b, data: { ...b.data, table_rows: [...(b.data.table_rows || []), newRow] } };
+          }
+          return b;
+      });
+      setEditingItem({ ...editingItem, content_blocks: newBlocks });
+  };
+
+  const removeTableRow = (blockId: string, rowIndex: number) => {
+      const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => {
+          if (b.id === blockId) {
+              const newRows = [...(b.data.table_rows || [])];
+              newRows.splice(rowIndex, 1);
+              return { ...b, data: { ...b.data, table_rows: newRows } };
+          }
+          return b;
+      });
+      setEditingItem({ ...editingItem, content_blocks: newBlocks });
+  };
+
+  const updateTableCell = (blockId: string, rowIndex: number, colIndex: number, value: string) => {
+      const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => {
+          if (b.id === blockId) {
+              const newRows = [...(b.data.table_rows || [])];
+              const newRow = [...newRows[rowIndex]];
+              newRow[colIndex] = value;
+              newRows[rowIndex] = newRow;
+              return { ...b, data: { ...b.data, table_rows: newRows } };
           }
           return b;
       });
@@ -390,7 +476,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
             {"type": "info_list", "data": {"title": "基本信息", "info_items": [{"icon": "User", "label": "Age", "value": "10"}]}},
             {"type": "section_heading", "data": {"title": "Section Title"}},
             {"type": "project_highlight", "data": {"title": "Project", "star_situation": "...", "star_task": "...", "star_action": "...", "star_result": "..."}},
-            {"type": "timeline_node", "data": {"date": "...", "title": "...", "content": "..."}}
+            {"type": "timeline_node", "data": {"date": "...", "title": "...", "content": "..."}},
+            {"type": "table", "data": {"title": "Table Title", "table_columns": ["Col1", "Col2"], "table_rows": [["R1C1", "R1C2"]]}}
           ]
         }`;
       const response = await fetch(`${aiConfig.baseUrl}/chat/completions`, {
@@ -455,7 +542,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                         star_task: b.data.star_task,
                         star_action: b.data.star_action,
                         star_result: b.data.star_result,
-                        info_items: b.data.info_items
+                        info_items: b.data.info_items,
+                        table_columns: b.data.table_columns,
+                        table_rows: b.data.table_rows
                     }
                 }))
             };
@@ -468,6 +557,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                 - For 'timeline_node': Rewrite 'title' and 'content'. Make the title concise (e.g., "Technology Initiation" -> "科创启蒙") and the content descriptive.
                 - For 'section_heading': Upgrade the 'title' if it's too casual.
                 - For 'info_list': Standardize the labels (e.g., "Age" -> "年龄", "School" -> "就读学校") if mixed.
+                - For 'table': Polish headers and cell content if necessary.
                 
                 CRITICAL RULES:
                 1. You MUST return the exact same 'id' for each block. This is used to merge the changes.
@@ -524,6 +614,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                 star_action: polishedBlock.data.star_action !== undefined ? polishedBlock.data.star_action : oldBlock.data.star_action,
                                 star_result: polishedBlock.data.star_result !== undefined ? polishedBlock.data.star_result : oldBlock.data.star_result,
                                 info_items: polishedBlock.data.info_items !== undefined ? polishedBlock.data.info_items : oldBlock.data.info_items,
+                                table_columns: polishedBlock.data.table_columns !== undefined ? polishedBlock.data.table_columns : oldBlock.data.table_columns,
+                                table_rows: polishedBlock.data.table_rows !== undefined ? polishedBlock.data.table_rows : oldBlock.data.table_rows,
                                 // Preserve media and layout fields
                                 urls: oldBlock.data.urls, 
                                 evidence_urls: oldBlock.data.evidence_urls,
@@ -817,6 +909,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                 <button onClick={() => addContentBlock('section_heading')} className="text-xs bg-blue-100 text-blue-700 p-2 rounded border border-blue-200 font-bold">+ 章节标题</button>
                                 <button onClick={() => addContentBlock('image_grid')} className="text-xs bg-slate-100 p-2 rounded border">+ 图集</button>
                                 <button onClick={() => addContentBlock('info_list')} className="text-xs bg-orange-100 text-orange-700 p-2 rounded border border-orange-200 font-bold">+ 个人信息</button>
+                                <button onClick={() => addContentBlock('table')} className="text-xs bg-green-100 text-green-700 p-2 rounded border border-green-200 font-bold">+ 表格</button>
                             </div>
                             {editingItem.content_blocks?.map((b: any, i: number) => (
                                <div key={b.id} className="border p-4 rounded bg-slate-50 relative group">
@@ -874,6 +967,57 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                                 <Icons.Plus size={12} /> 添加信息项
                                             </button>
                                         </div>
+                                     </div>
+                                  ) : b.type === 'table' ? (
+                                     <div className="space-y-4">
+                                        <input className="w-full border p-2 rounded font-bold" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="表格标题 (可选)" />
+                                        <div className="overflow-x-auto border rounded-lg bg-white">
+                                            <table className="w-full text-sm">
+                                                <thead>
+                                                    <tr className="bg-slate-100 border-b">
+                                                        {b.data.table_columns?.map((col: string, colIdx: number) => (
+                                                            <th key={colIdx} className="p-2 border-r min-w-[100px] relative group">
+                                                                <input 
+                                                                    className="w-full bg-transparent font-bold outline-none" 
+                                                                    value={col} 
+                                                                    onChange={(e) => updateTableColumn(b.id, colIdx, e.target.value)} 
+                                                                />
+                                                                <button 
+                                                                    onClick={() => removeTableColumn(b.id, colIdx)} 
+                                                                    className="absolute top-0 right-0 p-1 text-red-400 opacity-0 group-hover:opacity-100 hover:text-red-600 bg-slate-100"
+                                                                >
+                                                                    <Icons.X size={12} />
+                                                                </button>
+                                                            </th>
+                                                        ))}
+                                                        <th className="p-2 w-10 text-center">
+                                                            <button onClick={() => addTableColumn(b.id)} className="text-blue-500 hover:text-blue-700"><Icons.PlusSquare size={16}/></button>
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {b.data.table_rows?.map((row: string[], rowIdx: number) => (
+                                                        <tr key={rowIdx} className="border-b last:border-b-0">
+                                                            {row.map((cell: string, cellIdx: number) => (
+                                                                <td key={cellIdx} className="p-2 border-r">
+                                                                    <input 
+                                                                        className="w-full outline-none" 
+                                                                        value={cell} 
+                                                                        onChange={(e) => updateTableCell(b.id, rowIdx, cellIdx, e.target.value)} 
+                                                                    />
+                                                                </td>
+                                                            ))}
+                                                            <td className="p-2 text-center">
+                                                                <button onClick={() => removeTableRow(b.id, rowIdx)} className="text-red-400 hover:text-red-600"><Icons.Trash2 size={14}/></button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <button onClick={() => addTableRow(b.id)} className="text-xs bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-slate-200">
+                                            <Icons.Plus size={12} /> 添加行
+                                        </button>
                                      </div>
                                   ) : (
                                      <div className="space-y-2">{b.type !== 'text' && <input className="w-full border p-2 rounded" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="标题" />}<textarea className="w-full border p-2 rounded h-24" value={b.data.content || ''} onChange={e => updateContentBlock(b.id, 'content', e.target.value)} placeholder="内容..." /></div>

@@ -64,7 +64,7 @@ export interface SocialProject {
 
 // === New Student Portfolio Types ===
 
-export type ContentBlockType = 'header' | 'text' | 'image_grid' | 'video' | 'skills' | 'project_highlight' | 'timeline_node' | 'section_heading' | 'info_list';
+export type ContentBlockType = 'header' | 'text' | 'image_grid' | 'video' | 'skills' | 'project_highlight' | 'timeline_node' | 'section_heading' | 'info_list' | 'table';
 
 export type PortfolioTheme = 'tech_dark' | 'academic_light' | 'creative_color';
 export type SkillsLayout = 'bar' | 'radar' | 'circle' | 'stat_grid';
@@ -105,6 +105,9 @@ export interface ContentBlock {
         label: string;
         value: string;
     }[];
+    // Table Data
+    table_columns?: string[];
+    table_rows?: string[][];
   };
 }
 

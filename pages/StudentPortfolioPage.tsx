@@ -677,6 +677,36 @@ export const StudentPortfolioPage: React.FC = () => {
                 </div>
             </div>
          );
+      case 'table':
+         return (
+            <div key={block.id} className="mb-12 md:mb-16 animate-fade-in-up">
+                {block.data.title && <h3 className={`text-lg md:text-xl font-bold mb-6 px-2 ${styles.text}`}>{block.data.title}</h3>}
+                <div className="overflow-x-auto rounded-xl border border-slate-700/20 shadow-lg">
+                    <table className={`w-full text-left text-sm border-collapse ${styles.cardBg}`}>
+                        <thead>
+                            <tr className={`border-b ${styles.border} bg-black/5`}>
+                                {block.data.table_columns?.map((col, idx) => (
+                                    <th key={idx} className={`p-4 font-bold uppercase tracking-wider text-xs md:text-sm ${styles.text} opacity-80 whitespace-nowrap`}>
+                                        {col}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-700/20">
+                            {block.data.table_rows?.map((row, rIdx) => (
+                                <tr key={rIdx} className="hover:bg-black/5 transition-colors">
+                                    {row.map((cell, cIdx) => (
+                                        <td key={cIdx} className={`p-4 ${styles.text} opacity-90`}>
+                                            {cell}
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+         );
       case 'project_highlight':
          return <ProjectHighlight key={block.id} block={block} styles={styles} />;
       default: return null;

@@ -822,20 +822,98 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                           </div>
                                       )}
 
-                                      {/* === INFO LIST & TABLE (Simplified View) === */}
-                                      {(b.type === 'info_list' || b.type === 'table') && (
+                                      {/* === INFO LIST (Detailed) === */}
+                                      {b.type === 'info_list' && (
                                           <div>
-                                              <input className="font-bold border-b mb-2 w-full" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder={b.type === 'table' ? '表格标题' : '信息栏标题'} />
-                                              <div className="text-xs text-slate-400 italic">在此处无法预览完整表格/列表交互，请在上方使用 "表格" / "个人信息" 专属按钮添加后，使用详细编辑器或点击预览查看效果。简单编辑：点击各项文字修改。</div>
-                                              {/* Simple JSON-like editor fallback for complex structures if needed, or specific mapped inputs */}
-                                              {b.type === 'info_list' && (
-                                                  <div className="mt-2 grid grid-cols-2 gap-2">
-                                                      {b.data.info_items?.map((item: any, idx: number) => (
-                                                          <div key={idx} className="flex gap-1 border p-1 rounded"><input className="w-1/3 font-bold text-xs" value={item.label} onChange={e => updateBlockDataNested(b.id, ['info_items', idx, 'label'], e.target.value)} /><input className="w-2/3 text-xs" value={item.value} onChange={e => updateBlockDataNested(b.id, ['info_items', idx, 'value'], e.target.value)} /></div>
-                                                      ))}
-                                                      <button onClick={() => updateContentBlock(b.id, 'info_items', [...(b.data.info_items || []), { icon: 'Star', label: 'Label', value: 'Value' }])} className="text-xs bg-orange-50 text-orange-500 p-1 rounded font-bold">+ Add</button>
-                                                  </div>
-                                              )}
+                                              <input className="font-bold border-b mb-2 w-full" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="信息栏标题" />
+                                              <div className="mt-2 grid grid-cols-2 gap-2">
+                                                  {b.data.info_items?.map((item: any, idx: number) => (
+                                                      <div key={idx} className="flex gap-1 border p-1 rounded group/item relative">
+                                                          <input className="w-1/3 font-bold text-xs bg-transparent outline-none" value={item.label} onChange={e => updateBlockDataNested(b.id, ['info_items', idx, 'label'], e.target.value)} placeholder="Label" />
+                                                          <input className="w-2/3 text-xs bg-transparent outline-none" value={item.value} onChange={e => updateBlockDataNested(b.id, ['info_items', idx, 'value'], e.target.value)} placeholder="Value" />
+                                                          <button onClick={() => {
+                                                              const newItems = [...b.data.info_items]; newItems.splice(idx, 1);
+                                                              updateContentBlock(b.id, 'info_items', newItems);
+                                                          }} className="absolute top-0.5 right-0.5 text-slate-300 hover:text-red-500 opacity-0 group-hover/item:opacity-100"><Icons.X size={10}/></button>
+                                                      </div>
+                                                  ))}
+                                                  <button onClick={() => updateContentBlock(b.id, 'info_items', [...(b.data.info_items || []), { icon: 'Star', label: '', value: '' }])} className="text-xs bg-orange-50 text-orange-500 p-1 rounded font-bold hover:bg-orange-100">+ Add Info</button>
+                                              </div>
+                                          </div>
+                                      )}
+
+                                      {/* === TABLE (Full Editor) === */}
+                                      {b.type === 'table' && (
+                                          <div className="space-y-4">
+                                              <input className="font-bold border-b w-full" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="表格标题" />
+                                              
+                                              <div className="overflow-x-auto pb-2">
+                                                  <table className="w-full text-xs border-collapse">
+                                                      <thead>
+                                                          <tr>
+                                                              {(b.data.table_columns || []).map((col: string, colIdx: number) => (
+                                                                  <th key={colIdx} className="border border-slate-200 bg-slate-50 p-2 min-w-[100px] relative group/col">
+                                                                      <input className="w-full bg-transparent font-bold outline-none text-center" value={col} onChange={(e) => {
+                                                                          const newCols = [...b.data.table_columns];
+                                                                          newCols[colIdx] = e.target.value;
+                                                                          updateContentBlock(b.id, 'table_columns', newCols);
+                                                                      }} />
+                                                                      <button onClick={() => {
+                                                                          const newCols = [...b.data.table_columns];
+                                                                          newCols.splice(colIdx, 1);
+                                                                          // Also remove this index from all rows
+                                                                          const newRows = (b.data.table_rows || []).map((row: string[]) => {
+                                                                              const r = [...row]; r.splice(colIdx, 1); return r;
+                                                                          });
+                                                                          const newBlocks = editingItem.content_blocks.map((bl: ContentBlock) => bl.id === b.id ? { ...bl, data: { ...bl.data, table_columns: newCols, table_rows: newRows } } : bl);
+                                                                          setEditingItem({ ...editingItem, content_blocks: newBlocks });
+                                                                      }} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover/col:opacity-100 hover:bg-red-600 transition-opacity"><Icons.X size={8}/></button>
+                                                                  </th>
+                                                              ))}
+                                                              <th className="border border-slate-200 bg-slate-50 p-2 w-10">
+                                                                  <button onClick={() => {
+                                                                      const newCols = [...(b.data.table_columns || []), "新列"];
+                                                                      // Add empty cell to all rows
+                                                                      const newRows = (b.data.table_rows || []).map((row: string[]) => [...row, ""]);
+                                                                      const newBlocks = editingItem.content_blocks.map((bl: ContentBlock) => bl.id === b.id ? { ...bl, data: { ...bl.data, table_columns: newCols, table_rows: newRows } } : bl);
+                                                                      setEditingItem({ ...editingItem, content_blocks: newBlocks });
+                                                                  }} className="text-green-600 hover:text-green-800"><Icons.PlusCircle size={16}/></button>
+                                                              </th>
+                                                          </tr>
+                                                      </thead>
+                                                      <tbody>
+                                                          {(b.data.table_rows || []).map((row: string[], rIdx: number) => (
+                                                              <tr key={rIdx} className="group/row">
+                                                                  {row.map((cell, cIdx) => (
+                                                                      <td key={cIdx} className="border border-slate-200 p-2">
+                                                                          <input className="w-full outline-none" value={cell} onChange={(e) => {
+                                                                              const newRows = [...b.data.table_rows];
+                                                                              newRows[rIdx][cIdx] = e.target.value;
+                                                                              updateContentBlock(b.id, 'table_rows', newRows);
+                                                                          }} />
+                                                                      </td>
+                                                                  ))}
+                                                                  <td className="border border-slate-200 p-2 text-center">
+                                                                      <button onClick={() => {
+                                                                          const newRows = [...b.data.table_rows];
+                                                                          newRows.splice(rIdx, 1);
+                                                                          updateContentBlock(b.id, 'table_rows', newRows);
+                                                                      }} className="text-red-300 hover:text-red-500"><Icons.Trash2 size={14}/></button>
+                                                                  </td>
+                                                              </tr>
+                                                          ))}
+                                                          <tr>
+                                                              <td colSpan={(b.data.table_columns?.length || 0) + 1} className="p-2 text-center border border-dashed border-slate-200">
+                                                                  <button onClick={() => {
+                                                                      const colCount = b.data.table_columns?.length || 1;
+                                                                      const newRow = new Array(colCount).fill("");
+                                                                      updateContentBlock(b.id, 'table_rows', [...(b.data.table_rows || []), newRow]);
+                                                                  }} className="text-xs font-bold text-slate-400 hover:text-green-600 flex items-center justify-center gap-1 w-full">+ 添加行</button>
+                                                              </td>
+                                                          </tr>
+                                                      </tbody>
+                                                  </table>
+                                              </div>
                                           </div>
                                       )}
 

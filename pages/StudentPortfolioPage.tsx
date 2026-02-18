@@ -490,7 +490,7 @@ export const StudentPortfolioPage: React.FC = () => {
          {/* Export PDF Button */}
          <div>
             <PDFDownloadLink document={<PortfolioPDF portfolio={portfolio} />} fileName={`${portfolio.student_name}_Portfolio.pdf`}>
-              {({ loading }) => (
+              {({ loading }: { loading: boolean }) => (
                 <button 
                   disabled={loading}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'} ${styles.button}`}

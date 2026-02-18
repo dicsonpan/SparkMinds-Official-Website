@@ -150,10 +150,23 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
 
   // --- Student Editor Logic ---
   const addContentBlock = (type: ContentBlockType) => {
+    let initialData: any = { title: '', content: '', urls: [], layout: 'grid', star_situation: '', star_task: '', star_action: '', star_result: '', evidence_urls: [] };
+    
+    if (type === 'info_list') {
+        initialData = {
+            title: '个人信息',
+            info_items: [
+                { icon: 'School', label: '学校', value: '' },
+                { icon: 'MapPin', label: '坐标', value: '' },
+                { icon: 'Mail', label: '邮箱', value: '' }
+            ]
+        };
+    }
+
     const newBlock: ContentBlock = {
       id: Math.random().toString(36).substr(2, 9),
       type,
-      data: { title: '', content: '', urls: [], layout: 'grid', star_situation: '', star_task: '', star_action: '', star_result: '', evidence_urls: [] }
+      data: initialData
     };
     setEditingItem({ ...editingItem, content_blocks: [...(editingItem.content_blocks || []), newBlock] });
   };
@@ -172,6 +185,47 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
     if (direction === 'up' && index > 0) { [blocks[index], blocks[index - 1]] = [blocks[index - 1], blocks[index]]; } 
     else if (direction === 'down' && index < blocks.length - 1) { [blocks[index], blocks[index + 1]] = [blocks[index + 1], blocks[index]]; }
     setEditingItem({ ...editingItem, content_blocks: blocks });
+  };
+
+  // Helper for Info List (Add/Remove items)
+  const addInfoItem = (blockId: string) => {
+      const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => {
+          if (b.id === blockId) {
+              return { 
+                  ...b, 
+                  data: { 
+                      ...b.data, 
+                      info_items: [...(b.data.info_items || []), { icon: 'Star', label: '新项目', value: '' }]
+                  } 
+              };
+          }
+          return b;
+      });
+      setEditingItem({ ...editingItem, content_blocks: newBlocks });
+  };
+
+  const removeInfoItem = (blockId: string, itemIndex: number) => {
+      const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => {
+          if (b.id === blockId) {
+              const newItems = [...(b.data.info_items || [])];
+              newItems.splice(itemIndex, 1);
+              return { ...b, data: { ...b.data, info_items: newItems } };
+          }
+          return b;
+      });
+      setEditingItem({ ...editingItem, content_blocks: newBlocks });
+  };
+
+  const updateInfoItem = (blockId: string, itemIndex: number, field: string, value: string) => {
+      const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => {
+          if (b.id === blockId) {
+              const newItems = [...(b.data.info_items || [])];
+              newItems[itemIndex] = { ...newItems[itemIndex], [field]: value };
+              return { ...b, data: { ...b.data, info_items: newItems } };
+          }
+          return b;
+      });
+      setEditingItem({ ...editingItem, content_blocks: newBlocks });
   };
 
   // --- SKILLS LOGIC ---
@@ -333,6 +387,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
           "summary_bio": "100-200 words bio",
           "skills": [{"name": "Category", "layout": "bar", "items": [{"name": "Skill", "value": 80, "unit": "%"}]}],
           "content_blocks": [
+            {"type": "info_list", "data": {"title": "基本信息", "info_items": [{"icon": "User", "label": "Age", "value": "10"}]}},
             {"type": "section_heading", "data": {"title": "Section Title"}},
             {"type": "project_highlight", "data": {"title": "Project", "star_situation": "...", "star_task": "...", "star_action": "...", "star_result": "..."}},
             {"type": "timeline_node", "data": {"date": "...", "title": "...", "content": "..."}}
@@ -399,7 +454,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                         star_situation: b.data.star_situation,
                         star_task: b.data.star_task,
                         star_action: b.data.star_action,
-                        star_result: b.data.star_result
+                        star_result: b.data.star_result,
+                        info_items: b.data.info_items
                     }
                 }))
             };
@@ -411,6 +467,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                 - For 'project_highlight' (STAR): Rewrite 'title', 'star_situation', 'star_task', 'star_action', 'star_result'. Use strong action verbs and quantitative metrics.
                 - For 'timeline_node': Rewrite 'title' and 'content'. Make the title concise (e.g., "Technology Initiation" -> "科创启蒙") and the content descriptive.
                 - For 'section_heading': Upgrade the 'title' if it's too casual.
+                - For 'info_list': Standardize the labels (e.g., "Age" -> "年龄", "School" -> "就读学校") if mixed.
                 
                 CRITICAL RULES:
                 1. You MUST return the exact same 'id' for each block. This is used to merge the changes.
@@ -466,6 +523,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                 star_task: polishedBlock.data.star_task !== undefined ? polishedBlock.data.star_task : oldBlock.data.star_task,
                                 star_action: polishedBlock.data.star_action !== undefined ? polishedBlock.data.star_action : oldBlock.data.star_action,
                                 star_result: polishedBlock.data.star_result !== undefined ? polishedBlock.data.star_result : oldBlock.data.star_result,
+                                info_items: polishedBlock.data.info_items !== undefined ? polishedBlock.data.info_items : oldBlock.data.info_items,
                                 // Preserve media and layout fields
                                 urls: oldBlock.data.urls, 
                                 evidence_urls: oldBlock.data.evidence_urls,
@@ -758,6 +816,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                 <button onClick={() => addContentBlock('project_highlight')} className="text-xs bg-blue-100 text-blue-700 p-2 rounded border border-blue-200 font-bold">+ STAR项目</button>
                                 <button onClick={() => addContentBlock('section_heading')} className="text-xs bg-blue-100 text-blue-700 p-2 rounded border border-blue-200 font-bold">+ 章节标题</button>
                                 <button onClick={() => addContentBlock('image_grid')} className="text-xs bg-slate-100 p-2 rounded border">+ 图集</button>
+                                <button onClick={() => addContentBlock('info_list')} className="text-xs bg-orange-100 text-orange-700 p-2 rounded border border-orange-200 font-bold">+ 个人信息</button>
                             </div>
                             {editingItem.content_blocks?.map((b: any, i: number) => (
                                <div key={b.id} className="border p-4 rounded bg-slate-50 relative group">
@@ -796,6 +855,25 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                      <div className="space-y-2 text-center py-4">
                                         <label className="block text-xs font-bold text-blue-500 uppercase tracking-widest mb-2">章节大标题</label>
                                         <input className="w-full border-b-2 border-blue-100 p-2 text-center text-xl font-bold focus:border-blue-500 outline-none bg-transparent" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="输入标题 (例如: 个人荣誉)" />
+                                     </div>
+                                  ) : b.type === 'info_list' ? (
+                                     <div className="space-y-4">
+                                        <input className="w-full border p-2 rounded font-bold" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="标题 (可选，如: 基本信息)" />
+                                        <div className="space-y-2">
+                                            {b.data.info_items?.map((item: any, itemIdx: number) => (
+                                                <div key={itemIdx} className="flex gap-2 items-center">
+                                                    <div className="flex flex-col w-20">
+                                                        <input className="border p-1.5 rounded text-xs" placeholder="图标" value={item.icon || ''} onChange={e => updateInfoItem(b.id, itemIdx, 'icon', e.target.value)} />
+                                                    </div>
+                                                    <input className="border p-1.5 rounded text-sm w-24" placeholder="标签 (Age)" value={item.label || ''} onChange={e => updateInfoItem(b.id, itemIdx, 'label', e.target.value)} />
+                                                    <input className="border p-1.5 rounded text-sm flex-1" placeholder="内容" value={item.value || ''} onChange={e => updateInfoItem(b.id, itemIdx, 'value', e.target.value)} />
+                                                    <button onClick={() => removeInfoItem(b.id, itemIdx)} className="text-red-400 hover:text-red-600"><Icons.X size={16}/></button>
+                                                </div>
+                                            ))}
+                                            <button onClick={() => addInfoItem(b.id)} className="text-xs bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-slate-200 mt-2">
+                                                <Icons.Plus size={12} /> 添加信息项
+                                            </button>
+                                        </div>
                                      </div>
                                   ) : (
                                      <div className="space-y-2">{b.type !== 'text' && <input className="w-full border p-2 rounded" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="标题" />}<textarea className="w-full border p-2 rounded h-24" value={b.data.content || ''} onChange={e => updateContentBlock(b.id, 'content', e.target.value)} placeholder="内容..." /></div>

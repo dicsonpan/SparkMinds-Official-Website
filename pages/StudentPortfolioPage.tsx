@@ -657,6 +657,26 @@ export const StudentPortfolioPage: React.FC = () => {
                {block.data.content && <p className={`text-xs md:text-sm mt-4 opacity-60 ${styles.text}`}>{block.data.content}</p>}
             </div>
          );
+      case 'info_list':
+         return (
+            <div key={block.id} className="mb-12 md:mb-16 animate-fade-in-up">
+                {block.data.title && <h3 className={`text-lg md:text-xl font-bold mb-6 px-2 ${styles.text}`}>{block.data.title}</h3>}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {block.data.info_items?.map((item, idx) => {
+                        const Icon = (Icons as any)[item.icon || 'Star'] || Icons.Star;
+                        return (
+                            <div key={idx} className={`${styles.cardBg} border ${styles.border} p-4 rounded-xl flex flex-col items-center text-center hover:bg-opacity-80 transition-colors`}>
+                                <div className={`w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center mb-3 ${styles.accent}`}>
+                                    <Icon size={20} />
+                                </div>
+                                <span className="text-[10px] uppercase font-bold tracking-wider opacity-60 mb-1">{item.label}</span>
+                                <span className={`font-bold text-sm md:text-base ${styles.text} break-all`}>{item.value}</span>
+                            </div>
+                        )
+                    })}
+                </div>
+            </div>
+         );
       case 'project_highlight':
          return <ProjectHighlight key={block.id} block={block} styles={styles} />;
       default: return null;

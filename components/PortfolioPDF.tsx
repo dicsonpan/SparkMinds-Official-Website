@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#2563eb', // Blue 600
     paddingBottom: 20,
-    alignItems: 'flex-start' // Changed from center to flex-start to allow text to grow down
+    alignItems: 'flex-start' 
   },
   headerAvatar: {
     width: 80,
@@ -203,11 +203,12 @@ const styles = StyleSheet.create({
   timelineImages: {
     marginTop: 8,
     flexDirection: 'row',
-    gap: 6
+    gap: 8,
+    flexWrap: 'wrap'
   },
   timelineImg: {
-    width: 80,
-    height: 50,
+    width: 140,  // Increased size
+    height: 90,
     borderRadius: 4,
     objectFit: 'cover',
     backgroundColor: '#f1f5f9'
@@ -269,12 +270,14 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8
   },
+  // Default Style (3 cols)
   imageGridItem: {
-    width: '31%', // 3 columns
+    width: '31%', 
     height: 120,
     borderRadius: 4,
     objectFit: 'cover',
-    backgroundColor: '#f1f5f9'
+    backgroundColor: '#f1f5f9',
+    marginBottom: 8
   },
 
   // === Text Block ===
@@ -431,7 +434,7 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
                      <Text style={styles.timelineDesc}>{block.data.content}</Text>
                      {block.data.urls && block.data.urls.length > 0 && (
                         <View style={styles.timelineImages}>
-                           {block.data.urls.slice(0, 3).map((url, i) => (
+                           {block.data.urls.map((url, i) => (
                               <Image key={i} src={url} style={styles.timelineImg} />
                            ))}
                         </View>
@@ -470,9 +473,9 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
                   {block.data.evidence_urls && block.data.evidence_urls.length > 0 && (
                     <View style={styles.starEvidence}>
                         <Text style={{fontSize: 8, fontWeight: 'bold', marginBottom: 6, color: '#64748b'}}>EVIDENCE</Text>
-                        <View style={{flexDirection: 'row', gap: 8}}>
-                           {block.data.evidence_urls.slice(0, 4).map((url, i) => (
-                              <Image key={i} src={url} style={{width: 60, height: 40, borderRadius: 4, objectFit: 'cover'}} />
+                        <View style={{flexDirection: 'row', gap: 8, flexWrap: 'wrap'}}>
+                           {block.data.evidence_urls.map((url, i) => (
+                              <Image key={i} src={url} style={{width: 100, height: 60, borderRadius: 4, objectFit: 'cover'}} />
                            ))}
                         </View>
                     </View>
@@ -516,12 +519,24 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
 
           // === 6. Image Grid ===
           if (block.type === 'image_grid' && block.data.urls && block.data.urls.length > 0) {
+             const urls = block.data.urls;
+             
+             // Dynamic styling based on count
+             let dynamicStyle = {};
+             if (urls.length === 1) {
+                 dynamicStyle = { width: '100%', height: 300 }; // Full width for 1 image
+             } else if (urls.length === 2) {
+                 dynamicStyle = { width: '48%', height: 200 }; // Half width for 2 images
+             } else {
+                 dynamicStyle = styles.imageGridItem; // Default 31% for 3+
+             }
+
              return (
                <View key={block.id} style={styles.section} wrap={false}>
                   {block.data.title && <Text style={{fontSize: 12, fontWeight: 'bold', marginBottom: 8}}>{block.data.title}</Text>}
                   <View style={styles.imageGridContainer}>
-                     {block.data.urls.slice(0, 6).map((url, idx) => (
-                        <Image key={idx} src={url} style={styles.imageGridItem} />
+                     {urls.map((url, idx) => (
+                        <Image key={idx} src={url} style={[styles.imageGridItem, dynamicStyle]} />
                      ))}
                   </View>
                </View>

@@ -257,7 +257,7 @@ export const StudentPortfolioPage: React.FC = () => {
                 </div>
                 {/* Hero Background Image if available */}
                 {block.data.hero_image_url && (
-                    <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 opacity-20 mask-image-gradient">
+                    <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 opacity-20" style={{ maskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)' }}>
                          <img src={block.data.hero_image_url} className="w-full h-full object-cover blur-sm" />
                          <div className={`absolute inset-0 bg-gradient-to-b ${styles.gradient}`}></div>
                     </div>

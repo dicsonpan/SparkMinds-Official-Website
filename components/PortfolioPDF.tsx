@@ -36,36 +36,46 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     alignItems: 'flex-start' 
   },
-  headerAvatar: {
+  // Updated Avatar Styles
+  headerAvatarContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#f1f5f9',
     marginRight: 20,
-    objectFit: 'cover'
+    overflow: 'hidden', // Clip content to circle
+    backgroundColor: '#f1f5f9'
+  },
+  headerAvatarImage: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover' // Simulates background-size: cover
   },
   headerContent: {
     flex: 1,
-    flexDirection: 'column'
+    flexDirection: 'column',
+    justifyContent: 'center' // Center vertically if content is short
   },
   studentName: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#0f172a', // Slate 900
-    marginBottom: 4
+    marginBottom: 10, // Increased spacing
+    lineHeight: 1.2
   },
   studentTitle: {
     fontSize: 12,
     color: '#2563eb', // Blue 600
     fontWeight: 'bold',
     marginBottom: 8,
+    marginTop: 0, 
     textTransform: 'uppercase'
   },
   studentBio: {
     fontSize: 10,
     color: '#64748b',
     lineHeight: 1.5,
-    textAlign: 'justify'
+    textAlign: 'justify',
+    marginTop: 4
   },
 
   // === Section Defaults ===
@@ -523,7 +533,10 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
         {/* === 1. Profile Header (Main) === */}
         <View style={styles.header}>
           {portfolio.avatar_url && (
-             <Image src={portfolio.avatar_url} style={styles.headerAvatar} />
+             // Wrap Image in a View with overflow: hidden to create a clean circle (background simulation)
+             <View style={styles.headerAvatarContainer}>
+                <Image src={portfolio.avatar_url} style={styles.headerAvatarImage} />
+             </View>
           )}
           <View style={styles.headerContent}>
             <Text style={styles.studentName}>{portfolio.student_name}</Text>

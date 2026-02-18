@@ -1,458 +1,822 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom'; 
 import { supabase } from '../lib/supabaseClient';
-import { StudentPortfolio, ContentBlock, ContentBlockType, PortfolioTheme } from '../types';
 import { Logo } from '../components/Logo';
 import * as Icons from 'lucide-react';
+import { Booking, StudentPortfolio, ContentBlock, ContentBlockType, SkillCategory, SkillItem } from '../types';
+import imageCompression from 'browser-image-compression';
 
-// Default empty portfolio template
-const DEFAULT_PORTFOLIO: Partial<StudentPortfolio> = {
-  student_name: '新学生',
-  slug: '',
-  access_password: '123',
-  content_blocks: [
-    {
-      id: 'profile-1',
-      type: 'profile_header',
-      data: {
-        student_title: 'Student Title',
-        summary_bio: 'Short bio...',
-      }
-    }
-  ],
-  theme_config: {
-    theme: 'tech_dark'
-  }
+const COMPRESSION_OPTIONS = {
+  maxSizeMB: 0.6,
+  maxWidthOrHeight: 1920,
+  useWebWorker: true,
+  fileType: 'image/jpeg'
 };
 
-const BLOCK_TYPES: { type: ContentBlockType; label: string; icon: keyof typeof Icons }[] = [
-  { type: 'text', label: '文本段落', icon: 'Type' },
-  { type: 'image_grid', label: '图片墙/Bento', icon: 'Image' },
-  { type: 'video', label: '视频嵌入', icon: 'Video' },
-  { type: 'timeline_node', label: '时间轴节点', icon: 'GitCommit' },
-  { type: 'project_highlight', label: 'STAR项目亮点', icon: 'Star' },
-  { type: 'skills_matrix', label: '技能矩阵', icon: 'BarChart2' },
-  { type: 'section_heading', label: '章节标题', icon: 'Heading' },
-  { type: 'info_list', label: '信息列表', icon: 'List' },
-  { type: 'table', label: '数据表格', icon: 'Table' },
+const CACHE_CONTROL_MAX_AGE = '31536000';
+const AI_SETTINGS_KEY = 'SM_AI_CONFIG';
+
+const AI_PROVIDERS = [
+  { name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', defaultModel: 'gpt-4o' },
+  { name: 'Cerebras', baseUrl: 'https://api.cerebras.ai/v1', defaultModel: 'llama3.1-70b' },
+  { name: 'SiliconFlow', baseUrl: 'https://api.siliconflow.cn/v1', defaultModel: 'deepseek-ai/DeepSeek-V3' },
+  { name: 'DeepSeek', baseUrl: 'https://api.deepseek.com', defaultModel: 'deepseek-chat' },
 ];
+
+type AdminTab = 'curriculum' | 'showcase' | 'social' | 'philosophy' | 'pages' | 'bookings' | 'students' | 'settings';
 
 export const AdminPage: React.FC = () => {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<AdminTab>('bookings');
+  
+  // Data States
+  const [curriculum, setCurriculum] = useState<any[]>([]);
+  const [philosophy, setPhilosophy] = useState<any[]>([]);
+  const [showcases, setShowcases] = useState<any[]>([]);
+  const [socialProjects, setSocialProjects] = useState<any[]>([]);
+  const [pageSections, setPageSections] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [students, setStudents] = useState<StudentPortfolio[]>([]);
+  
+  // UI States
   const [loading, setLoading] = useState(true);
-  const [portfolios, setPortfolios] = useState<StudentPortfolio[]>([]);
-  const [editingPortfolio, setEditingPortfolio] = useState<StudentPortfolio | null>(null);
+  const [editingItem, setEditingItem] = useState<any | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isNewRecord, setIsNewRecord] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
   const [showJsonEditor, setShowJsonEditor] = useState(false);
+  
+  // AI States
+  const [aiConfig, setAiConfig] = useState({
+    baseUrl: 'https://api.openai.com/v1',
+    apiKey: '',
+    model: 'gpt-4o'
+  });
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
+  
+  // AI Polish State
+  const [isPolishing, setIsPolishing] = useState(false);
 
-  // Authentication Check
+  // Check auth & Load AI Config
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/login');
-      } else {
-        fetchPortfolios();
-      }
-    };
-    checkAuth();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) navigate('/login');
+    });
+    
+    const savedAiConfig = localStorage.getItem(AI_SETTINGS_KEY);
+    if (savedAiConfig) {
+      setAiConfig(JSON.parse(savedAiConfig));
+    }
   }, [navigate]);
 
-  const fetchPortfolios = async () => {
+  const fetchData = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('student_portfolios')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error('Error fetching portfolios:', error);
-    } else {
-      setPortfolios(data || []);
+    try {
+        const [c, p, s, sp, ps, b, st] = await Promise.all([
+            supabase.from('curriculum').select('*').order('sort_order', { ascending: true }),
+            supabase.from('philosophy').select('*').order('sort_order', { ascending: true }),
+            supabase.from('showcases').select('*').order('sort_order', { ascending: true }),
+            supabase.from('social_projects').select('*').order('sort_order', { ascending: true }),
+            supabase.from('page_sections').select('*').order('sort_order', { ascending: true }),
+            supabase.from('bookings').select('*').order('created_at', { ascending: false }),
+            supabase.from('student_portfolios').select('*').order('created_at', { ascending: false })
+        ]);
+
+        if (c.data) setCurriculum(c.data);
+        if (p.data) setPhilosophy(p.data);
+        if (s.data) setShowcases(s.data);
+        if (sp.data) setSocialProjects(sp.data);
+        if (ps.data) setPageSections(ps.data);
+        if (b.data) setBookings(b.data);
+        if (st.data) setStudents(st.data);
+
+    } catch (error) {
+        console.error("Data fetch error:", error);
+    } finally {
+        setLoading(false);
     }
-    setLoading(false);
   };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/login');
   };
 
-  const handleCreate = async () => {
-    const slug = prompt("请输入唯一的 URL Slug (例如: alex-2024):");
-    if (!slug) return;
+  const handleSaveSettings = () => {
+    localStorage.setItem(AI_SETTINGS_KEY, JSON.stringify(aiConfig));
+    alert('AI配置已保存');
+  };
 
-    const newPortfolio = {
-      ...DEFAULT_PORTFOLIO,
-      slug,
-      student_name: '新学生',
-      created_at: new Date().toISOString()
-    };
-
-    const { data, error } = await supabase
-      .from('student_portfolios')
-      .insert([newPortfolio])
-      .select()
-      .single();
-
-    if (error) {
-      alert('创建失败: ' + error.message);
-    } else if (data) {
-      setPortfolios([data, ...portfolios]);
-      setEditingPortfolio(data);
+  const applyAiPreset = (providerName: string) => {
+    const provider = AI_PROVIDERS.find(p => p.name === providerName);
+    if (provider) {
+      setAiConfig(prev => ({
+        ...prev,
+        baseUrl: provider.baseUrl,
+        model: provider.defaultModel
+      }));
     }
   };
 
-  const handleSave = async () => {
-    if (!editingPortfolio || !editingPortfolio.id) return;
-    
-    setLoading(true);
-    const { error } = await supabase
-      .from('student_portfolios')
-      .update({
-        student_name: editingPortfolio.student_name,
-        slug: editingPortfolio.slug,
-        access_password: editingPortfolio.access_password,
-        content_blocks: editingPortfolio.content_blocks,
-        theme_config: editingPortfolio.theme_config,
-        // Legacy fields for compatibility if needed, though we primarily use content_blocks now
-        student_title: editingPortfolio.content_blocks.find(b => b.type === 'profile_header')?.data.student_title,
-        summary_bio: editingPortfolio.content_blocks.find(b => b.type === 'profile_header')?.data.summary_bio,
-        avatar_url: editingPortfolio.content_blocks.find(b => b.type === 'profile_header')?.data.avatar_url,
-        hero_image_url: editingPortfolio.content_blocks.find(b => b.type === 'profile_header')?.data.hero_image_url,
-      })
-      .eq('id', editingPortfolio.id);
-
-    setLoading(false);
-    if (error) {
-      alert('保存失败: ' + error.message);
-    } else {
-      alert('保存成功');
-      fetchPortfolios(); // Refresh list
-    }
+  // --- Logic Helpers ---
+  const getCurrentList = () => {
+      switch (activeTab) {
+          case 'curriculum': return { items: curriculum, setter: setCurriculum, table: 'curriculum' };
+          case 'showcase': return { items: showcases, setter: setShowcases, table: 'showcases' };
+          case 'social': return { items: socialProjects, setter: setSocialProjects, table: 'social_projects' };
+          case 'philosophy': return { items: philosophy, setter: setPhilosophy, table: 'philosophy' };
+          case 'pages': return { items: pageSections, setter: setPageSections, table: 'page_sections' };
+          default: return null;
+      }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm('确定要删除这个档案吗？此操作无法撤销。')) return;
-    
-    const { error } = await supabase.from('student_portfolios').delete().eq('id', id);
-    if (error) {
-      alert('删除失败');
-    } else {
-      setPortfolios(portfolios.filter(p => p.id !== id));
-      if (editingPortfolio?.id === id) setEditingPortfolio(null);
-    }
-  };
+  // --- Drag and Drop Logic --- 
+  const handleDragStart = (index: number) => setDraggedItemIndex(index);
+  const handleDragOver = (e: React.DragEvent, index: number) => { e.preventDefault(); const current = getCurrentList(); if (!current || draggedItemIndex === null || draggedItemIndex === index) return; const newList = [...current.items]; const draggedItem = newList[draggedItemIndex]; newList.splice(draggedItemIndex, 1); newList.splice(index, 0, draggedItem); current.setter(newList); setDraggedItemIndex(index); };
+  const handleDrop = async (e: React.DragEvent) => { e.preventDefault(); setDraggedItemIndex(null); const current = getCurrentList(); if (!current) return; const updates = current.items.map((item, index) => ({ ...item, sort_order: index + 1 })); try { await supabase.from(current.table).upsert(updates, { onConflict: 'id' }); } catch (err: any) { alert("排序保存失败"); fetchData(); } };
 
-  // --- Content Block Management ---
-
+  // --- Student Editor Logic ---
   const addContentBlock = (type: ContentBlockType) => {
-    if (!editingPortfolio) return;
+    let initialData: any = { title: '', content: '', urls: [], layout: 'grid', star_situation: '', star_task: '', star_action: '', star_result: '', evidence_urls: [] };
+    
+    if (type === 'info_list') {
+        initialData = {
+            title: '个人信息',
+            info_items: [
+                { icon: 'School', label: '学校', value: '' },
+                { icon: 'MapPin', label: '坐标', value: '' },
+                { icon: 'Mail', label: '邮箱', value: '' }
+            ]
+        };
+    } else if (type === 'table') {
+        initialData = {
+            title: '表格数据',
+            table_columns: ['项目', '内容'],
+            table_rows: [['示例1', '数据1'], ['示例2', '数据2']]
+        };
+    } else if (type === 'profile_header') {
+        initialData = {
+            student_title: 'Future Innovator',
+            summary_bio: '在此输入个人简介...',
+            avatar_url: '',
+            hero_image_url: ''
+        };
+    } else if (type === 'skills_matrix') {
+        initialData = {
+            skills_categories: [
+                { name: '核心能力', layout: 'radar', items: [{ name: '编程', value: 80, unit: '%' }] }
+            ]
+        };
+    }
+
     const newBlock: ContentBlock = {
-      id: `block-${Date.now()}`,
+      id: Math.random().toString(36).substr(2, 9),
       type,
-      data: type === 'table' ? { table_columns: ['列1', '列2'], table_rows: [['数据1', '数据2']] } : {}
+      data: initialData
     };
-    setEditingPortfolio({
-      ...editingPortfolio,
-      content_blocks: [...editingPortfolio.content_blocks, newBlock]
-    });
-  };
-
-  const removeContentBlock = (id: string) => {
-    if (!editingPortfolio) return;
-    if (!window.confirm('确定删除此模块？')) return;
-    setEditingPortfolio({
-      ...editingPortfolio,
-      content_blocks: editingPortfolio.content_blocks.filter(b => b.id !== id)
-    });
-  };
-
-  const moveContentBlock = (index: number, direction: -1 | 1) => {
-    if (!editingPortfolio) return;
-    const newBlocks = [...editingPortfolio.content_blocks];
-    if (index + direction < 0 || index + direction >= newBlocks.length) return;
-    
-    const temp = newBlocks[index];
-    newBlocks[index] = newBlocks[index + direction];
-    newBlocks[index + direction] = temp;
-    
-    setEditingPortfolio({
-      ...editingPortfolio,
-      content_blocks: newBlocks
-    });
+    setEditingItem({ ...editingItem, content_blocks: [...(editingItem.content_blocks || []), newBlock] });
   };
 
   const updateContentBlock = (id: string, field: string, value: any) => {
-    if (!editingPortfolio) return;
-    setEditingPortfolio({
-      ...editingPortfolio,
-      content_blocks: editingPortfolio.content_blocks.map(b => 
-        b.id === id ? { ...b, data: { ...b.data, [field]: value } } : b
-      )
-    });
+    const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => b.id === id ? { ...b, data: { ...b.data, [field]: value } } : b);
+    setEditingItem({ ...editingItem, content_blocks: newBlocks });
   };
 
-  // Helper to update deeply nested data within a block
-  const updateBlockDataNested = (id: string, path: (string | number)[], value: any) => {
-    if (!editingPortfolio) return;
-    setEditingPortfolio({
-      ...editingPortfolio,
-      content_blocks: editingPortfolio.content_blocks.map(b => {
-        if (b.id !== id) return b;
-        
-        // Deep clone data
-        const newData = JSON.parse(JSON.stringify(b.data));
-        let current = newData;
-        
-        // Traverse to the parent of the target property
-        for (let i = 0; i < path.length - 1; i++) {
-          const key = path[i];
-          if (current[key] === undefined) {
-             // Basic inference: if next key is number, create array, else object
-             current[key] = typeof path[i+1] === 'number' ? [] : {};
+  const removeContentBlock = (id: string) => {
+    if(!confirm('确定删除此模块吗？')) return;
+    setEditingItem({ ...editingItem, content_blocks: editingItem.content_blocks.filter((b: ContentBlock) => b.id !== id) });
+  };
+  
+  const moveContentBlock = (index: number, direction: 'up' | 'down') => {
+    const blocks = [...editingItem.content_blocks];
+    if (direction === 'up' && index > 0) { [blocks[index], blocks[index - 1]] = [blocks[index - 1], blocks[index]]; } 
+    else if (direction === 'down' && index < blocks.length - 1) { [blocks[index], blocks[index + 1]] = [blocks[index + 1], blocks[index]]; }
+    setEditingItem({ ...editingItem, content_blocks: blocks });
+  };
+
+  // Helper for Deep Nested Data Updates
+  const updateBlockDataNested = (blockId: string, path: (string | number)[], value: any) => {
+      const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => {
+          if (b.id === blockId) {
+              const newData = JSON.parse(JSON.stringify(b.data)); // Deep clone
+              let current: any = newData;
+              for (let i = 0; i < path.length - 1; i++) {
+                  if (current[path[i]] === undefined) {
+                      // Basic inference: if next key is number, create array, else object
+                      current[path[i]] = typeof path[i+1] === 'number' ? [] : {};
+                  }
+                  current = current[path[i]];
+              }
+              current[path[path.length - 1]] = value;
+              return { ...b, data: newData };
           }
-          current = current[key];
-        }
-        
-        // Set value
-        current[path[path.length - 1]] = value;
-        return { ...b, data: newData };
-      })
-    });
+          return b;
+      });
+      setEditingItem({ ...editingItem, content_blocks: newBlocks });
   };
 
-  // --- RENDERERS ---
+  // --- CRUD ---
+  const handleCreateNew = () => {
+    setIsNewRecord(true);
+    let template: any = {};
+    if (activeTab === 'curriculum') template = { id: 'New', level: '', age: '', title: '', description: '', skills: [], icon_name: 'Box', image_urls: [], sort_order: 99 };
+    else if (activeTab === 'showcase') template = { title: '', category: '商业级产品', description: '', image_urls: [], sort_order: 99 };
+    else if (activeTab === 'social') template = { title: '商业化案例', subtitle: '', quote: '', footer_note: '', image_urls: [], sort_order: 99 };
+    else if (activeTab === 'philosophy') template = { title: '', content: '', icon_name: 'Star', sort_order: 99 };
+    else if (activeTab === 'students') {
+        template = { 
+            slug: '', 
+            student_name: '', 
+            access_password: '', 
+            content_blocks: [
+                {
+                    id: 'default-profile',
+                    type: 'profile_header',
+                    data: {
+                        student_title: '',
+                        summary_bio: '',
+                        avatar_url: '',
+                        hero_image_url: ''
+                    }
+                }
+            ],
+            theme_config: { theme: 'tech_dark' }
+        };
+    }
+    
+    setEditingItem(template);
+    setIsModalOpen(true);
+  };
 
-  if (!editingPortfolio) {
-    return (
-      <div className="min-h-screen bg-slate-50 p-6 md:p-12">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            <div className="flex items-center gap-4">
-               <Logo className="h-8 w-auto" />
-               <span className="text-slate-400">|</span>
-               <h1 className="text-2xl font-bold text-slate-800">后台管理系统</h1>
-            </div>
-            <div className="flex gap-4">
-              <button onClick={handleLogout} className="px-4 py-2 text-slate-600 hover:text-slate-900 font-medium">退出登录</button>
-              <button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2">
-                <Icons.Plus size={18} /> 新建档案
-              </button>
-            </div>
-          </div>
+  const openEditModal = (item: any) => {
+    setIsNewRecord(false);
+    
+    const preparedItem = JSON.parse(JSON.stringify(item));
+    
+    // MIGRATION LOGIC: If opening an old portfolio that has top-level skills/profile but no blocks
+    if (activeTab === 'students') {
+        if (!preparedItem.content_blocks) preparedItem.content_blocks = [];
+        
+        // 1. Check for Profile
+        const hasProfileBlock = preparedItem.content_blocks.some((b: any) => b.type === 'profile_header');
+        if (!hasProfileBlock && (preparedItem.student_title || preparedItem.summary_bio || preparedItem.avatar_url)) {
+            preparedItem.content_blocks.unshift({
+                id: 'migrated-profile',
+                type: 'profile_header',
+                data: {
+                    student_title: preparedItem.student_title,
+                    summary_bio: preparedItem.summary_bio,
+                    avatar_url: preparedItem.avatar_url,
+                    hero_image_url: preparedItem.hero_image_url
+                }
+            });
+        }
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {portfolios.map(p => (
-              <div key={p.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
-                 <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-900">{p.student_name}</h3>
-                      <p className="text-xs text-slate-500 font-mono mt-1">/s/{p.slug}</p>
-                    </div>
-                    <span className={`px-2 py-1 text-xs rounded font-bold ${p.theme_config?.theme === 'tech_dark' ? 'bg-slate-800 text-white' : 'bg-orange-100 text-orange-800'}`}>
-                      {p.theme_config?.theme || 'Default'}
-                    </span>
-                 </div>
-                 <div className="flex justify-between items-center pt-4 border-t border-slate-50 mt-4">
-                    <button onClick={() => window.open(`/#/s/${p.slug}`, '_blank')} className="text-slate-400 hover:text-blue-500" title="预览">
-                       <Icons.ExternalLink size={18} />
-                    </button>
-                    <div className="flex gap-3">
-                       <button onClick={() => handleDelete(p.id!)} className="text-red-400 hover:text-red-600 font-medium text-sm">删除</button>
-                       <button onClick={() => setEditingPortfolio(p)} className="bg-slate-900 text-white px-4 py-1.5 rounded-md text-sm font-bold hover:bg-slate-700">编辑</button>
-                    </div>
-                 </div>
-              </div>
-            ))}
-          </div>
-          {loading && <div className="text-center py-12 text-slate-400">加载中...</div>}
-        </div>
-      </div>
-    );
-  }
+        // 2. Check for Skills
+        const hasSkillsBlock = preparedItem.content_blocks.some((b: any) => b.type === 'skills_matrix');
+        if (!hasSkillsBlock && preparedItem.skills && preparedItem.skills.length > 0) {
+            // Find insertion point (after profile)
+            const insertIndex = preparedItem.content_blocks.length > 0 && preparedItem.content_blocks[0].type === 'profile_header' ? 1 : 0;
+            preparedItem.content_blocks.splice(insertIndex, 0, {
+                id: 'migrated-skills',
+                type: 'skills_matrix',
+                data: {
+                    skills_categories: preparedItem.skills
+                }
+            });
+        }
+    }
+
+    setEditingItem(preparedItem); 
+    setIsModalOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!editingItem) return;
+    setLoading(true);
+    try {
+      let table = '';
+      if (activeTab === 'students') table = 'student_portfolios';
+      else if (activeTab === 'bookings') table = 'bookings';
+      else { const cur = getCurrentList(); if (cur) table = cur.table; }
+
+      if (!table) return;
+
+      if (activeTab === 'students' && (!editingItem.slug || !editingItem.student_name)) throw new Error("请填写基本信息");
+
+      // For students, sync legacy top-level fields for DB compatibility if needed
+      if (activeTab === 'students') {
+          const profile = editingItem.content_blocks.find((b:any) => b.type === 'profile_header')?.data;
+          if (profile) {
+              editingItem.student_title = profile.student_title;
+              editingItem.summary_bio = profile.summary_bio;
+              editingItem.avatar_url = profile.avatar_url;
+              editingItem.hero_image_url = profile.hero_image_url;
+          }
+      }
+
+      if (isNewRecord) {
+        const { error } = await supabase.from(table).insert([editingItem]);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from(table).update(editingItem).eq('id', editingItem.id);
+        if (error) throw error;
+      }
+      await fetchData(); 
+      setIsModalOpen(false);
+      setEditingItem(null);
+    } catch (error: any) { alert('保存失败: ' + error.message); } finally { setLoading(false); }
+  };
+
+  const handleDelete = async (id: any) => {
+    if (!confirm('确定要删除吗？')) return;
+    setLoading(true);
+    try {
+        const cur = getCurrentList();
+        const table = activeTab === 'students' ? 'student_portfolios' : cur?.table;
+        if (table) {
+            await supabase.from(table).delete().eq('id', id);
+            await fetchData();
+        }
+    } catch (error: any) { alert('删除失败'); } finally { setLoading(false); }
+  };
+
+  // --- Image Upload ---
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, targetType: string = 'standard', blockId?: string) => {
+    if (!event.target.files?.length) return;
+    const file = event.target.files[0];
+    if (!file.type.startsWith('image/')) { alert("仅支持上传图片格式文件"); return; }
+
+    setUploading(true);
+    try {
+      const compressedFile = await imageCompression(file, COMPRESSION_OPTIONS);
+      const fileName = `${Math.random().toString(36).substr(2)}.${compressedFile.name.split('.').pop() || 'jpg'}`;
+      await supabase.storage.from('images').upload(fileName, compressedFile, { cacheControl: CACHE_CONTROL_MAX_AGE, upsert: false });
+      const { data } = supabase.storage.from('images').getPublicUrl(fileName);
+      const publicUrl = data.publicUrl;
+
+      if (activeTab === 'students' && blockId) {
+         // Specialized block image uploads
+         const block = editingItem.content_blocks.find((b: any) => b.id === blockId);
+         if (block) {
+             if (targetType === 'avatar') {
+                 updateContentBlock(blockId, 'avatar_url', publicUrl);
+             } else if (targetType === 'hero') {
+                 updateContentBlock(blockId, 'hero_image_url', publicUrl);
+             } else {
+                 // Array types
+                 const field = targetType === 'evidence' ? 'evidence_urls' : 'urls';
+                 updateContentBlock(blockId, field, [...(block.data[field] || []), publicUrl]);
+             }
+         }
+      } else if (activeTab !== 'students') {
+         if (['curriculum', 'showcase', 'social'].includes(activeTab)) {
+            setEditingItem({ ...editingItem, image_urls: [...(editingItem.image_urls || []), publicUrl] });
+         } else {
+            setEditingItem({ ...editingItem, icon_name: publicUrl });
+         }
+      }
+    } catch (error: any) { alert('上传失败: ' + error.message); } finally { setUploading(false); }
+  };
+
+  // --- AI Gen ---
+  const handleAIGenerate = async () => {
+    if (!aiConfig.apiKey || !aiPrompt.trim()) return alert("请配置 API Key 并输入资料");
+    setIsGenerating(true);
+    try {
+      const systemPrompt = `You are a Student Portfolio Architect. Convert raw notes into structured JSON.
+        LANGUAGE: Simplified Chinese.
+        OUTPUT SCHEMA: {
+          "content_blocks": [
+            {"type": "profile_header", "data": {"student_title": "...", "summary_bio": "..."}},
+            {"type": "skills_matrix", "data": {"skills_categories": [{"name": "Category", "layout": "bar", "items": [{"name": "Skill", "value": 80, "unit": "%"}]}]}},
+            {"type": "info_list", "data": {"title": "基本信息", "info_items": [{"icon": "User", "label": "Age", "value": "10"}]}},
+            {"type": "section_heading", "data": {"title": "Section Title"}},
+            {"type": "project_highlight", "data": {"title": "Project", "star_situation": "...", "star_task": "...", "star_action": "...", "star_result": "..."}},
+            {"type": "timeline_node", "data": {"date": "...", "title": "...", "content": "..."}}
+          ]
+        }`;
+      const response = await fetch(`${aiConfig.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${aiConfig.apiKey}` },
+        body: JSON.stringify({
+          model: aiConfig.model,
+          messages: [{ role: "system", content: systemPrompt }, { role: "user", content: aiPrompt }],
+          temperature: 0.7
+        })
+      });
+      const data = await response.json();
+      if (data.error) throw new Error(data.error.message);
+      let content = data.choices[0].message.content.replace(/```json/g, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(content);
+      const processedBlocks = (parsed.content_blocks || []).map((b: any) => ({ ...b, id: Math.random().toString(36).substr(2, 9), data: { ...b.data, urls: [], evidence_urls: [] } }));
+
+      setEditingItem((prev: any) => ({
+        ...prev,
+        content_blocks: [...(prev.content_blocks || []), ...processedBlocks]
+      }));
+      setAiPrompt('');
+      setIsAiPanelOpen(false);
+      alert("AI 生成成功！");
+    } catch (e: any) { alert("AI 生成失败: " + e.message); } finally { setIsGenerating(false); }
+  };
+
+  const handleAIPolish = async () => {
+    if (!aiConfig.apiKey) return alert("请先在系统设置中配置 API Key");
+    if (isPolishing) return;
+
+    setIsPolishing(true);
+
+    try {
+        const payload = {
+            content_blocks: (editingItem.content_blocks || []).map((b: any) => ({
+                id: b.id, 
+                type: b.type, 
+                data: b.data // Send full data for context
+            }))
+        };
+        const specificPrompt = `
+            Review the 'content_blocks'. Polish all text fields to be academic, professional, and impressive (Ivy League standard).
+            Standardize layouts. Fix typos.
+            Return the exact same structure with updated 'data' fields.
+            Do NOT change IDs or Types.
+        `;
+
+        const systemPrompt = `You are a professional Ivy League admissions editor. LANGUAGE: Simplified Chinese. ${specificPrompt} RETURN: Raw JSON.`;
+
+        const response = await fetch(`${aiConfig.baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${aiConfig.apiKey}` },
+            body: JSON.stringify({
+              model: aiConfig.model,
+              messages: [{ role: "system", content: systemPrompt }, { role: "user", content: JSON.stringify(payload) }],
+              temperature: 0.4
+            })
+        });
+
+        const data = await response.json();
+        if (data.error) throw new Error(data.error.message);
+        let content = data.choices[0].message.content.replace(/```json/g, '').replace(/```/g, '').trim();
+        const polishedData = JSON.parse(content);
+
+        // Merge logic
+        setEditingItem((prev: any) => {
+            const newItem = { ...prev };
+            newItem.content_blocks = (prev.content_blocks || []).map((oldBlock: ContentBlock) => {
+                const polishedBlock = polishedData.content_blocks.find((pb: any) => pb.id === oldBlock.id);
+                return polishedBlock ? { ...oldBlock, data: { ...oldBlock.data, ...polishedBlock.data } } : oldBlock;
+            });
+            return newItem;
+        });
+        alert("AI 润色完成！");
+    } catch (e: any) {
+        alert("AI 润色失败: " + e.message);
+    } finally {
+        setIsPolishing(false);
+    }
+  };
+
+  const getHeaderTitle = () => {
+      if (activeTab === 'students') return '学生成长档案管理';
+      if (activeTab === 'bookings') return '试听预约管理';
+      if (activeTab === 'settings') return '系统配置';
+      return '内容管理';
+  };
 
   return (
-    <div className="min-h-screen bg-slate-100 pb-20">
-      {/* Editor Header */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-50 px-6 py-4 flex justify-between items-center shadow-sm">
-         <div className="flex items-center gap-4">
-            <button onClick={() => setEditingPortfolio(null)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500">
-               <Icons.ArrowLeft size={20} />
+    <div className="min-h-screen bg-slate-100 flex font-sans">
+      <div className="w-64 bg-slate-900 text-white p-6 flex flex-col shrink-0">
+        <div className="mb-8"><Logo className="h-8 w-auto grayscale brightness-200" /></div>
+        <nav className="flex-1 space-y-2">
+          {[{ id: 'bookings', label: '预约管理', icon: Icons.PhoneCall }, { id: 'students', label: '学生档案', icon: Icons.Users }, { id: 'curriculum', label: '课程体系', icon: Icons.BookOpen }, { id: 'showcase', label: '学员成果', icon: Icons.Trophy }, { id: 'social', label: '社会实践', icon: Icons.TrendingUp }, { id: 'philosophy', label: '核心理念', icon: Icons.Lightbulb }, { id: 'pages', label: '页面设置', icon: Icons.Layout }].map((tab) => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id as AdminTab)} className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === tab.id ? 'bg-blue-600 shadow-lg' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}>
+              {React.createElement(tab.icon as React.ElementType, { size: 18 })}<span className="font-medium">{tab.label}</span>
+              {tab.id === 'bookings' && bookings.filter(b => b.status === 'pending').length > 0 && <span className="ml-auto bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">{bookings.filter(b => b.status === 'pending').length}</span>}
             </button>
-            <h2 className="font-bold text-lg text-slate-800">编辑: {editingPortfolio.student_name}</h2>
-         </div>
-         <div className="flex gap-3">
-            <button onClick={() => setShowJsonEditor(!showJsonEditor)} className="px-4 py-2 text-slate-500 hover:bg-slate-50 rounded-lg font-mono text-xs flex items-center gap-2">
-               <Icons.Code size={16} /> JSON
-            </button>
-            <button onClick={() => window.open(`/#/s/${editingPortfolio.slug}`, '_blank')} className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg font-bold text-sm">
-               预览
-            </button>
-            <button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold text-sm shadow-lg shadow-blue-600/20 flex items-center gap-2">
-               {loading ? <Icons.Loader2 className="animate-spin" size={16}/> : <Icons.Save size={16}/>} 保存
-            </button>
-         </div>
+          ))}
+          <div className="pt-4 mt-4 border-t border-slate-800">
+             <button onClick={() => setActiveTab('settings')} className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === 'settings' ? 'bg-blue-600' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}>
+                <Icons.Settings size={18} /><span className="font-medium">系统配置</span>
+             </button>
+          </div>
+        </nav>
+        <button onClick={handleLogout} className="text-slate-400 hover:text-white mt-auto flex items-center gap-2 px-4 py-2"><Icons.LogOut size={16} /> 退出登录</button>
       </div>
 
-      <div className="max-w-5xl mx-auto p-6 md:p-8 grid grid-cols-1 md:grid-cols-12 gap-8">
-         
-         {/* Sidebar: Settings */}
-         <div className="md:col-span-4 space-y-6">
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-               <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Icons.Settings size={18}/> 基础设置</h3>
-               <div className="space-y-4">
-                  <div>
-                     <label className="block text-xs font-bold text-slate-500 mb-1">学生姓名</label>
-                     <input 
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                        value={editingPortfolio.student_name}
-                        onChange={e => setEditingPortfolio({...editingPortfolio, student_name: e.target.value})}
-                     />
-                  </div>
-                  <div>
-                     <label className="block text-xs font-bold text-slate-500 mb-1">URL Slug (唯一)</label>
-                     <input 
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none"
-                        value={editingPortfolio.slug}
-                        onChange={e => setEditingPortfolio({...editingPortfolio, slug: e.target.value})}
-                     />
-                  </div>
-                  <div>
-                     <label className="block text-xs font-bold text-slate-500 mb-1">访问密码</label>
-                     <input 
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none"
-                        value={editingPortfolio.access_password}
-                        onChange={e => setEditingPortfolio({...editingPortfolio, access_password: e.target.value})}
-                     />
-                  </div>
-                  <div>
-                     <label className="block text-xs font-bold text-slate-500 mb-1">主题风格</label>
-                     <select 
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                        value={editingPortfolio.theme_config?.theme}
-                        onChange={e => setEditingPortfolio({
-                           ...editingPortfolio, 
-                           theme_config: { ...editingPortfolio.theme_config, theme: e.target.value as PortfolioTheme }
-                        })}
-                     >
-                        <option value="tech_dark">科技黑 (Tech Dark)</option>
-                        <option value="academic_light">学术白 (Academic Light)</option>
-                        <option value="creative_color">活力橙 (Creative Color)</option>
-                     </select>
-                  </div>
-               </div>
+      <div className="flex-1 h-screen overflow-y-auto">
+        <header className="bg-white border-b border-slate-200 px-8 py-5 flex justify-between items-center sticky top-0 z-10 shadow-sm">
+          <h1 className="text-2xl font-bold text-slate-800">{getHeaderTitle()}</h1>
+          <div className="flex items-center gap-3">
+             {!['pages', 'bookings', 'settings'].includes(activeTab) && (
+                <button onClick={handleCreateNew} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm text-sm font-bold">
+                  <Icons.Plus size={18} /> 添加记录
+                </button>
+             )}
+          </div>
+        </header>
+
+        <main className="p-8">
+           {loading ? <div className="flex justify-center items-center h-64 text-slate-400"><Icons.Loader2 className="animate-spin mr-2" /> 加载中...</div> : (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[200px]">
+                {activeTab === 'bookings' && (
+                  <div className="overflow-x-auto"><table className="w-full text-left text-sm text-slate-600"><thead className="bg-slate-50 text-slate-800 font-bold border-b border-slate-200"><tr><th className="px-6 py-4">状态</th><th className="px-6 py-4">家长姓名</th><th className="px-6 py-4">联系电话</th><th className="px-6 py-4">孩子年龄</th><th className="px-6 py-4 text-right">操作</th></tr></thead><tbody>{bookings.length > 0 ? bookings.map((b) => (<tr key={b.id} className="border-b border-slate-50 hover:bg-slate-50"><td className="px-6 py-4">{b.status === 'pending' ? <span className="text-red-500 font-bold bg-red-50 px-2 py-1 rounded">待处理</span> : <span className="text-green-600 bg-green-50 px-2 py-1 rounded">已联系</span>}</td><td className="px-6 py-4 font-medium text-slate-900">{b.parent_name}</td><td className="px-6 py-4">{b.phone}</td><td className="px-6 py-4">{b.child_age}</td><td className="px-6 py-4 text-right"><button onClick={async () => { await supabase.from('bookings').update({ status: b.status === 'contacted' ? 'pending' : 'contacted' }).eq('id', b.id); fetchData(); }} className="text-blue-600 hover:underline">切换状态</button></td></tr>)) : <tr><td colSpan={5} className="text-center py-12 text-slate-400 bg-slate-50/50">暂无预约数据</td></tr>}</tbody></table></div>
+                )}
+                {activeTab === 'students' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 p-6">
+                       {students.map((s) => (
+                          <div key={s.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow relative group">
+                             <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => openEditModal(s)} className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"><Icons.Edit2 size={16}/></button>
+                                <button onClick={() => window.open(`/#/s/${s.slug}`, '_blank')} className="p-2 bg-slate-50 text-slate-600 rounded-lg hover:bg-slate-100"><Icons.ExternalLink size={16}/></button>
+                                <button onClick={() => handleDelete(s.id)} className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100"><Icons.Trash2 size={16}/></button>
+                             </div>
+                             <div className="flex items-center gap-4 mb-4">
+                                <div className="w-16 h-16 rounded-full bg-slate-100 overflow-hidden border-2 border-slate-50 shadow-sm flex-shrink-0">
+                                   {s.avatar_url ? <img src={s.avatar_url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-300 font-bold text-2xl">{s.student_name[0]}</div>}
+                                </div>
+                                <div>
+                                   <h3 className="font-bold text-lg text-slate-900">{s.student_name}</h3>
+                                   <p className="text-xs text-slate-500 truncate max-w-[150px]">{s.slug}</p>
+                                </div>
+                             </div>
+                          </div>
+                       ))}
+                       {students.length === 0 && <div className="col-span-full text-center py-12 text-slate-400">暂无学生档案，请点击右上角添加</div>}
+                    </div>
+                )}
+                {activeTab === 'settings' && (
+                   <div className="max-w-2xl bg-white p-8">
+                      {/* ... settings content ... */}
+                      <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><Icons.Sparkles className="text-blue-500" /> AI 助手配置</h3>
+                      <div className="space-y-6">
+                         <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-2">快速预设</label>
+                            <div className="flex flex-wrap gap-2">
+                                {AI_PROVIDERS.map(p => (
+                                    <button 
+                                        key={p.name}
+                                        onClick={() => applyAiPreset(p.name)}
+                                        className="px-3 py-1 bg-white border border-slate-200 rounded-full text-xs font-medium text-slate-600 hover:border-blue-500 hover:text-blue-600 transition-colors shadow-sm"
+                                    >
+                                        {p.name}
+                                    </button>
+                                ))}
+                            </div>
+                         </div>
+                         <div><label className="block text-sm font-bold text-slate-700 mb-1">Base URL</label><input type="text" value={aiConfig.baseUrl} onChange={e => setAiConfig({...aiConfig, baseUrl: e.target.value})} className="w-full px-3 py-2 border rounded-lg" placeholder="https://api.openai.com/v1" /></div>
+                         <div><label className="block text-sm font-bold text-slate-700 mb-1">API Key</label><input type="password" value={aiConfig.apiKey} onChange={e => setAiConfig({...aiConfig, apiKey: e.target.value})} className="w-full px-3 py-2 border rounded-lg" placeholder="sk-..." /></div>
+                         <div><label className="block text-sm font-bold text-slate-700 mb-1">Model Name</label><input type="text" value={aiConfig.model} onChange={e => setAiConfig({...aiConfig, model: e.target.value})} className="w-full px-3 py-2 border rounded-lg" placeholder="gpt-4o" /></div>
+                         <button onClick={handleSaveSettings} className="bg-slate-900 text-white px-6 py-2 rounded-lg font-bold hover:bg-slate-700">保存配置</button>
+                      </div>
+                   </div>
+                )}
+                {/* ... other tabs ... */}
+                {['curriculum', 'showcase', 'social', 'philosophy', 'pages'].includes(activeTab) && (
+                   <div className="p-6 space-y-4">
+                      {(() => {
+                         const current = getCurrentList();
+                         if (!current) return null;
+                         const { items } = current;
+                         if (!items || items.length === 0) return <div className="flex flex-col items-center justify-center py-12 text-slate-400 border-2 border-dashed border-slate-100 rounded-xl"><Icons.Inbox size={48} className="mb-4 opacity-50" /><p>暂无数据</p>{activeTab !== 'pages' && <p className="text-xs mt-2">点击右上角“添加记录”开始创建</p>}</div>;
+                         return items.map((item, index) => (
+                            <div key={item.id || index} draggable={activeTab !== 'pages'} onDragStart={() => handleDragStart(index)} onDragOver={(e) => handleDragOver(e, index)} onDrop={handleDrop} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between group cursor-grab active:cursor-grabbing hover:border-blue-400 transition-colors">
+                               <div className="flex items-center gap-4 overflow-hidden"><div className="w-12 h-12 bg-slate-100 rounded-lg shrink-0 flex items-center justify-center overflow-hidden text-slate-400">{item.image_urls && item.image_urls[0] ? <img src={item.image_urls[0]} className="w-full h-full object-cover" /> : item.icon_name && !item.icon_name.includes('/') ? <Icons.Box size={20} /> : item.icon_name ? <img src={item.icon_name} className="w-full h-full object-contain" /> : <Icons.Image size={20} />}</div><div className="min-w-0"><h3 className="font-bold text-slate-800 truncate">{item.title}</h3><p className="text-sm text-slate-500 truncate">{item.description || item.content || item.subtitle || item.level}</p></div></div>
+                               <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => openEditModal(item)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><Icons.Edit2 size={18}/></button>{activeTab !== 'pages' && <button onClick={() => handleDelete(item.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Icons.Trash2 size={18}/></button>}</div>
+                            </div>
+                         ));
+                      })()}
+                   </div>
+                )}
             </div>
+          )}
+        </main>
+      </div>
 
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 sticky top-24">
-               <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Icons.PlusSquare size={18}/> 添加模块</h3>
-               <div className="grid grid-cols-2 gap-2">
-                  {BLOCK_TYPES.map(type => (
-                     <button
-                        key={type.type}
-                        onClick={() => addContentBlock(type.type)}
-                        className="flex flex-col items-center justify-center p-3 rounded-lg border border-slate-200 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all text-xs font-medium text-slate-600 gap-2"
-                     >
-                        {React.createElement(Icons[type.icon] as React.ElementType, { size: 20 })}
-                        {type.label}
-                     </button>
-                  ))}
-               </div>
-            </div>
-         </div>
-
-         {/* Main Content: Blocks */}
-         <div className="md:col-span-8 space-y-6">
-            {editingPortfolio.content_blocks.map((b, idx) => (
-               <div key={b.id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden group">
-                  {/* Block Header */}
-                  <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center">
-                     <div className="flex items-center gap-3">
-                        <span className="bg-slate-200 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded uppercase">{b.type}</span>
-                        <span className="text-xs text-slate-400 font-mono">#{idx + 1}</span>
+      {isModalOpen && editingItem && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className={`bg-white rounded-2xl shadow-2xl w-full ${activeTab === 'students' ? 'max-w-6xl h-[90vh]' : 'max-w-lg'} flex flex-col overflow-hidden`}>
+             <div className="px-6 py-4 border-b flex justify-between items-center bg-slate-50">
+                 <h3 className="font-bold text-lg">{isNewRecord ? '添加' : '编辑'} {getHeaderTitle()}</h3>
+                 <div className="flex gap-4">
+                    {activeTab === 'students' && (
+                        <>
+                            <button onClick={() => setShowJsonEditor(!showJsonEditor)} className="px-3 py-1.5 rounded-lg font-mono text-xs flex items-center gap-2 text-slate-500 hover:bg-slate-100"><Icons.Code size={16} /> JSON</button>
+                            <button 
+                                onClick={() => setIsAiPanelOpen(!isAiPanelOpen)} 
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${isAiPanelOpen ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                            >
+                                <Icons.Sparkles size={16} /> AI 助手
+                            </button>
+                        </>
+                    )}
+                    <button onClick={() => setIsModalOpen(false)}><Icons.X className="text-slate-400 hover:text-slate-600" /></button>
+                 </div>
+             </div>
+             
+             {/* AI Panel */}
+             {isAiPanelOpen && activeTab === 'students' && (
+                 <div className="bg-indigo-50 border-b border-indigo-100 p-4 animate-slide-down">
+                     <div className="flex gap-4">
+                         <div className="flex-1">
+                             <textarea 
+                                className="w-full h-24 p-3 border border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm" 
+                                placeholder="输入原始资料（简历、笔记），AI 将自动生成结构化档案..." 
+                                value={aiPrompt} 
+                                onChange={e => setAiPrompt(e.target.value)} 
+                             />
+                         </div>
+                         <div className="flex flex-col gap-2 w-48">
+                             <button onClick={handleAIGenerate} disabled={isGenerating} className="flex-1 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 flex items-center justify-center gap-2">
+                                 {isGenerating ? <Icons.Loader2 className="animate-spin" /> : <Icons.Wand2 />} 生成档案
+                             </button>
+                             <button onClick={handleAIPolish} disabled={isPolishing} className="flex-1 bg-white border border-indigo-200 text-indigo-700 rounded-lg font-bold text-sm hover:bg-indigo-50 flex items-center justify-center gap-2">
+                                 {isPolishing ? <Icons.Loader2 className="animate-spin" /> : <Icons.Feather />} 一键润色
+                             </button>
+                         </div>
                      </div>
-                     <div className="flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => moveContentBlock(idx, -1)} className="p-1.5 hover:bg-slate-200 rounded text-slate-500" disabled={idx === 0}><Icons.ArrowUp size={16}/></button>
-                        <button onClick={() => moveContentBlock(idx, 1)} className="p-1.5 hover:bg-slate-200 rounded text-slate-500" disabled={idx === editingPortfolio.content_blocks.length - 1}><Icons.ArrowDown size={16}/></button>
-                        <div className="w-px h-4 bg-slate-300 mx-1"></div>
-                        <button onClick={() => removeContentBlock(b.id)} className="p-1.5 hover:bg-red-100 hover:text-red-500 rounded text-slate-400"><Icons.Trash2 size={16}/></button>
-                     </div>
-                  </div>
+                 </div>
+             )}
 
-                  {/* Block Content Editor */}
-                  <div className="p-4 md:p-6 space-y-4">
-                     {/* JSON Fallback for complex types or if toggle is on */}
-                     {showJsonEditor ? (
+             <div className="flex-1 overflow-y-auto p-6 relative">
+                
+                {activeTab === 'students' ? (
+                   showJsonEditor ? (
                         <textarea 
-                           className="w-full h-40 font-mono text-xs bg-slate-900 text-green-400 p-4 rounded-lg outline-none"
-                           value={JSON.stringify(b.data, null, 2)}
+                           className="w-full h-full font-mono text-xs bg-slate-900 text-green-400 p-4 rounded-lg outline-none resize-none"
+                           value={JSON.stringify(editingItem, null, 2)}
                            onChange={(e) => {
                               try {
-                                 const parsed = JSON.parse(e.target.value);
-                                 setEditingPortfolio({
-                                    ...editingPortfolio,
-                                    content_blocks: editingPortfolio.content_blocks.map(block => block.id === b.id ? { ...block, data: parsed } : block)
-                                 });
-                              } catch(err) { /* ignore invalid json while typing */ }
+                                 setEditingItem(JSON.parse(e.target.value));
+                              } catch(err) { /* ignore */ }
                            }}
                         />
-                     ) : (
-                        <>
-                           {/* === PROFILE HEADER === */}
-                           {b.type === 'profile_header' && (
-                              <div className="space-y-4">
-                                 <div>
-                                    <label className="label-sm">Avatar URL</label>
-                                    <input className="input-std" value={b.data.avatar_url || ''} onChange={e => updateContentBlock(b.id, 'avatar_url', e.target.value)} placeholder="https://..." />
-                                 </div>
-                                 <div>
-                                    <label className="label-sm">Student Title / Role</label>
-                                    <input className="input-std font-bold" value={b.data.student_title || ''} onChange={e => updateContentBlock(b.id, 'student_title', e.target.value)} placeholder="e.g. Future AI Scientist" />
-                                 </div>
-                                 <div>
-                                    <label className="label-sm">Summary / Bio</label>
-                                    <textarea className="input-std h-24" value={b.data.summary_bio || ''} onChange={e => updateContentBlock(b.id, 'summary_bio', e.target.value)} placeholder="Introduction..." />
-                                 </div>
-                              </div>
-                           )}
+                   ) : (
+                   <div className="space-y-8">
+                      {/* 1. Basic Settings (Top Bar) */}
+                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-4 gap-4">
+                          <div className="col-span-1"><label className="block text-xs font-bold text-slate-500 mb-1">学生姓名</label><input className="w-full border p-2 rounded text-sm font-bold" value={editingItem.student_name} onChange={e => setEditingItem({...editingItem, student_name: e.target.value})} /></div>
+                          <div className="col-span-1"><label className="block text-xs font-bold text-slate-500 mb-1">URL Slug</label><input className="w-full border p-2 rounded text-sm font-mono text-slate-600" value={editingItem.slug} onChange={e => setEditingItem({...editingItem, slug: e.target.value})} /></div>
+                          <div className="col-span-1"><label className="block text-xs font-bold text-slate-500 mb-1">访问密码</label><input className="w-full border p-2 rounded text-sm font-mono" value={editingItem.access_password} onChange={e => setEditingItem({...editingItem, access_password: e.target.value})} /></div>
+                          <div className="col-span-1"><label className="block text-xs font-bold text-slate-500 mb-1">主题风格</label><select className="w-full border p-2 rounded text-sm" value={editingItem.theme_config?.theme || 'tech_dark'} onChange={e => setEditingItem({...editingItem, theme_config: { ...editingItem.theme_config, theme: e.target.value }})}><option value="tech_dark">科技深色</option><option value="academic_light">学术浅色</option><option value="creative_color">创意彩色</option></select></div>
+                      </div>
 
-                           {/* === TEXT / SECTION HEADING === */}
-                           {(b.type === 'text' || b.type === 'section_heading' || b.type === 'timeline_node') && (
-                              <div className="space-y-4">
-                                 <div>
-                                    <label className="label-sm">Title</label>
-                                    <input className="input-std font-bold" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="Title" />
-                                 </div>
-                                 {b.type === 'timeline_node' && (
-                                    <div>
-                                        <label className="label-sm">Date / Year</label>
-                                        <input className="input-std" value={b.data.date || ''} onChange={e => updateContentBlock(b.id, 'date', e.target.value)} placeholder="e.g. 2023 Dec" />
-                                    </div>
-                                 )}
-                                 {b.type !== 'section_heading' && (
-                                    <div>
-                                       <label className="label-sm">Content</label>
-                                       <textarea className="input-std h-32" value={b.data.content || ''} onChange={e => updateContentBlock(b.id, 'content', e.target.value)} placeholder="Markdown supported..." />
-                                    </div>
-                                 )}
+                      {/* 2. Content Blocks Stream */}
+                      <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                              <h4 className="font-bold text-slate-700 flex items-center gap-2"><Icons.Layers size={18}/> 页面内容流</h4>
+                              <div className="flex gap-2 flex-wrap justify-end">
+                                  {/* Quick Add Buttons */}
+                                  <button onClick={() => addContentBlock('profile_header')} className="text-xs bg-purple-100 text-purple-700 px-3 py-1.5 rounded-lg border border-purple-200 font-bold hover:bg-purple-200">+ 个人头图</button>
+                                  <button onClick={() => addContentBlock('skills_matrix')} className="text-xs bg-pink-100 text-pink-700 px-3 py-1.5 rounded-lg border border-pink-200 font-bold hover:bg-pink-200">+ 技能矩阵</button>
+                                  <button onClick={() => addContentBlock('timeline_node')} className="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-200 font-bold hover:bg-blue-200">+ 时间节点</button>
+                                  <button onClick={() => addContentBlock('project_highlight')} className="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-200 font-bold hover:bg-blue-200">+ STAR项目</button>
+                                  <button onClick={() => addContentBlock('section_heading')} className="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-200 font-bold hover:bg-blue-200">+ 章节标题</button>
+                                  <button onClick={() => addContentBlock('image_grid')} className="text-xs bg-slate-100 px-3 py-1.5 rounded-lg border hover:bg-slate-200">+ 图集</button>
+                                  <button onClick={() => addContentBlock('info_list')} className="text-xs bg-orange-100 text-orange-700 px-3 py-1.5 rounded-lg border border-orange-200 font-bold hover:bg-orange-200">+ 个人信息</button>
+                                  <button onClick={() => addContentBlock('table')} className="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-lg border border-green-200 font-bold hover:bg-green-200">+ 表格</button>
                               </div>
-                           )}
+                          </div>
 
-                           {/* === IMAGE GRID / VIDEO / TIMELINE (URLs) === */}
-                           {(b.type === 'image_grid' || b.type === 'video' || b.type === 'timeline_node') && (
-                              <div className="mt-4">
-                                 <label className="label-sm">Media URLs (One per line)</label>
-                                 <textarea 
-                                    className="input-std h-24 font-mono text-xs" 
-                                    value={b.data.urls?.join('\n') || ''} 
-                                    onChange={e => updateContentBlock(b.id, 'urls', e.target.value.split('\n'))} 
-                                    placeholder="https://image1.jpg&#10;https://image2.jpg" 
-                                 />
-                                 <p className="text-[10px] text-slate-400 mt-1">Supports image URLs or &lt;iframe&gt; codes for videos.</p>
-                              </div>
-                           )}
+                          <div className="space-y-4 pb-20">
+                            {editingItem.content_blocks?.map((b: any, i: number) => (
+                               <div key={b.id} className={`border rounded-xl relative group transition-all ${b.type === 'profile_header' ? 'bg-purple-50 border-purple-200 ring-2 ring-purple-100' : b.type === 'skills_matrix' ? 'bg-pink-50 border-pink-200' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                  {/* Block Controls */}
+                                  <div className="absolute right-4 top-4 flex gap-1 opacity-20 group-hover:opacity-100 transition-opacity z-10">
+                                      <button onClick={() => moveContentBlock(i, 'up')} className="p-1 hover:bg-slate-200 rounded"><Icons.ArrowUp size={14}/></button>
+                                      <button onClick={() => moveContentBlock(i, 'down')} className="p-1 hover:bg-slate-200 rounded"><Icons.ArrowDown size={14}/></button>
+                                      <button onClick={() => removeContentBlock(b.id)} className="p-1 text-red-500 hover:bg-red-100 rounded ml-2"><Icons.Trash2 size={14}/></button>
+                                  </div>
+                                  
+                                  {/* Label */}
+                                  <div className="absolute left-4 top-4 text-[10px] font-black uppercase tracking-widest opacity-30 select-none pointer-events-none">
+                                      {b.type.replace('_', ' ')}
+                                  </div>
 
-                           {/* === INFO LIST & TABLE (Simplified View) === */}
-                           {(b.type === 'info_list' || b.type === 'table') && (
+                                  <div className="p-6 pt-10">
+                                      {/* === PROFILE HEADER EDITOR === */}
+                                      {b.type === 'profile_header' && (
+                                          <div className="space-y-4">
+                                              <div className="flex gap-6">
+                                                  <div className="w-24 shrink-0">
+                                                      <label className="block text-xs font-bold text-purple-700 mb-2 text-center">头像</label>
+                                                      <div className="relative w-24 h-24 rounded-full bg-slate-200 overflow-hidden group/avatar cursor-pointer border-2 border-white shadow-md">
+                                                          {b.data.avatar_url ? <img src={b.data.avatar_url} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-slate-400"><Icons.User size={32}/></div>}
+                                                          <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={e => handleImageUpload(e, 'avatar', b.id)} />
+                                                          <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 text-white text-xs font-bold">更换</div>
+                                                      </div>
+                                                  </div>
+                                                  <div className="flex-1 space-y-3">
+                                                      <input className="w-full text-xl font-bold bg-transparent border-b border-purple-200 focus:border-purple-500 outline-none px-1 py-1" placeholder="头衔 / Slogan (e.g. Future Innovator)" value={b.data.student_title || ''} onChange={e => updateContentBlock(b.id, 'student_title', e.target.value)} />
+                                                      <textarea className="w-full h-20 text-sm bg-white/50 border border-purple-100 rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none resize-none" placeholder="个人简介 (Summary Bio)..." value={b.data.summary_bio || ''} onChange={e => updateContentBlock(b.id, 'summary_bio', e.target.value)} />
+                                                  </div>
+                                              </div>
+                                              <div className="pt-2 border-t border-purple-100">
+                                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-500 cursor-pointer hover:text-purple-600 transition-colors w-fit">
+                                                      <Icons.Image size={14} /> 
+                                                      {b.data.hero_image_url ? '点击更换背景大图' : '上传背景大图 (Hero Image)'}
+                                                      <input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(e, 'hero', b.id)} />
+                                                  </label>
+                                                  {b.data.hero_image_url && <div className="mt-2 h-20 w-full rounded-lg bg-slate-100 overflow-hidden relative"><img src={b.data.hero_image_url} className="w-full h-full object-cover opacity-50" /></div>}
+                                              </div>
+                                          </div>
+                                      )}
+
+                                      {/* === SKILLS MATRIX EDITOR === */}
+                                      {b.type === 'skills_matrix' && (
+                                          <div className="space-y-4">
+                                              {(b.data.skills_categories || []).map((cat: SkillCategory, catIdx: number) => (
+                                                  <div key={catIdx} className="bg-white border border-pink-100 rounded-lg p-3">
+                                                      <div className="flex justify-between items-center mb-3">
+                                                          <div className="flex gap-2 items-center flex-1">
+                                                              <input className="font-bold text-sm border-b border-transparent focus:border-pink-500 outline-none" value={cat.name} onChange={e => updateBlockDataNested(b.id, ['skills_categories', catIdx, 'name'], e.target.value)} placeholder="分类名称" />
+                                                              <select className="text-xs bg-slate-50 border rounded px-1" value={cat.layout} onChange={e => updateBlockDataNested(b.id, ['skills_categories', catIdx, 'layout'], e.target.value)}>
+                                                                  <option value="bar">条形图</option><option value="radar">雷达图</option><option value="circle">环形图</option><option value="stat_grid">数字卡片</option>
+                                                              </select>
+                                                          </div>
+                                                          <button onClick={() => {
+                                                              const newCats = [...b.data.skills_categories]; newCats.splice(catIdx, 1);
+                                                              updateContentBlock(b.id, 'skills_categories', newCats);
+                                                          }} className="text-slate-300 hover:text-red-500"><Icons.X size={14}/></button>
+                                                      </div>
+                                                      <div className="grid grid-cols-2 gap-2">
+                                                          {cat.items.map((skill, skIdx) => (
+                                                              <div key={skIdx} className="flex gap-1 items-center bg-slate-50 p-1 rounded">
+                                                                  <input className="text-xs bg-transparent w-full outline-none" value={skill.name} onChange={e => {
+                                                                      const newCats = [...b.data.skills_categories]; newCats[catIdx].items[skIdx].name = e.target.value;
+                                                                      updateContentBlock(b.id, 'skills_categories', newCats);
+                                                                  }} />
+                                                                  <input className="text-xs bg-transparent w-8 text-right font-mono" type="number" value={skill.value} onChange={e => {
+                                                                      const newCats = [...b.data.skills_categories]; newCats[catIdx].items[skIdx].value = parseFloat(e.target.value);
+                                                                      updateContentBlock(b.id, 'skills_categories', newCats);
+                                                                  }} />
+                                                                  <span className="text-[10px] text-slate-400">{skill.unit || '%'}</span>
+                                                              </div>
+                                                          ))}
+                                                          <button onClick={() => {
+                                                              const newCats = [...b.data.skills_categories]; newCats[catIdx].items.push({ name: '新技能', value: 80, unit: '%' });
+                                                              updateContentBlock(b.id, 'skills_categories', newCats);
+                                                          }} className="text-xs text-pink-500 font-bold bg-pink-50 p-1 rounded hover:bg-pink-100">+ 加项</button>
+                                                      </div>
+                                                  </div>
+                                              ))}
+                                              <button onClick={() => updateContentBlock(b.id, 'skills_categories', [...(b.data.skills_categories || []), { name: '新分类', layout: 'bar', items: [] }])} className="w-full py-2 text-xs font-bold text-pink-600 border border-dashed border-pink-300 rounded hover:bg-pink-50">添加技能分类</button>
+                                          </div>
+                                      )}
+
+                                      {/* === SECTION HEADING === */}
+                                      {b.type === 'section_heading' && (
+                                          <div className="text-center">
+                                              <input className="w-full text-center text-xl font-bold bg-transparent border-b-2 border-blue-100 focus:border-blue-500 outline-none py-2 placeholder-slate-300" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="输入章节标题" />
+                                          </div>
+                                      )}
+
+                                      {/* === TIMELINE NODE === */}
+                                      {b.type === 'timeline_node' && (
+                                          <div className="space-y-3">
+                                              <div className="flex gap-3">
+                                                  <input className="w-32 text-sm font-mono border rounded p-2 bg-slate-50" value={b.data.date || ''} onChange={e => updateContentBlock(b.id, 'date', e.target.value)} placeholder="时间 (e.g. 2023)" />
+                                                  <input className="flex-1 font-bold border rounded p-2" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="事件标题" />
+                                              </div>
+                                              <textarea className="w-full h-20 text-sm border rounded p-2 resize-none" value={b.data.content || ''} onChange={e => updateContentBlock(b.id, 'content', e.target.value)} placeholder="详细描述..." />
+                                              <div className="flex flex-wrap gap-2">
+                                                  {b.data.urls?.map((url: string, i: number) => (
+                                                      <div key={i} className="w-12 h-12 bg-black rounded relative overflow-hidden group/img">
+                                                          <img src={url} className="w-full h-full object-cover" />
+                                                          <button onClick={() => { const u = [...b.data.urls]; u.splice(i, 1); updateContentBlock(b.id, 'urls', u); }} className="absolute inset-0 bg-red-500/50 hidden group-hover/img:flex items-center justify-center text-white"><Icons.X size={12}/></button>
+                                                      </div>
+                                                  ))}
+                                                  <label className="w-12 h-12 border-2 border-dashed rounded flex items-center justify-center cursor-pointer hover:border-blue-500 text-slate-400 hover:text-blue-500"><Icons.Image size={16} /><input type="file" className="hidden" accept="image/*" onChange={e => handleImageUpload(e, 'standard', b.id)} /></label>
+                                              </div>
+                                          </div>
+                                      )}
+
+                                      {/* === STAR PROJECT === */}
+                                      {b.type === 'project_highlight' && (
+                                          <div className="space-y-3">
+                                              <input className="w-full font-bold text-lg border-b p-1 mb-2" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="项目名称" />
+                                              <div className="grid grid-cols-2 gap-3">
+                                                  <textarea className="text-xs border p-2 rounded h-20" placeholder="Situation (背景)" value={b.data.star_situation || ''} onChange={e => updateContentBlock(b.id, 'star_situation', e.target.value)} />
+                                                  <textarea className="text-xs border p-2 rounded h-20" placeholder="Task (任务)" value={b.data.star_task || ''} onChange={e => updateContentBlock(b.id, 'star_task', e.target.value)} />
+                                                  <textarea className="text-xs border p-2 rounded h-20" placeholder="Action (行动)" value={b.data.star_action || ''} onChange={e => updateContentBlock(b.id, 'star_action', e.target.value)} />
+                                                  <textarea className="text-xs border p-2 rounded h-20" placeholder="Result (结果)" value={b.data.star_result || ''} onChange={e => updateContentBlock(b.id, 'star_result', e.target.value)} />
+                                              </div>
+                                              <div className="pt-2 border-t flex gap-2 overflow-x-auto">
+                                                  <label className="shrink-0 px-3 py-1 bg-slate-100 rounded text-xs font-bold cursor-pointer hover:bg-slate-200">+ 佐证图</label>
+                                                  <input type="file" className="hidden" accept="image/*" onChange={e => handleImageUpload(e, 'evidence', b.id)} />
+                                                  {b.data.evidence_urls?.map((url: string, i: number) => <img key={i} src={url} className="h-8 w-8 rounded object-cover" />)}
+                                              </div>
+                                          </div>
+                                      )}
+
+                                      {/* === INFO LIST & TABLE (Simplified View) === */}
+                                      {(b.type === 'info_list' || b.type === 'table') && (
                                           <div>
                                               <input className="font-bold border-b mb-4 w-full py-1 focus:border-blue-500 outline-none" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder={b.type === 'table' ? '表格标题' : '信息栏标题'} />
                                               
@@ -587,81 +951,37 @@ export const AdminPage: React.FC = () => {
                                                   </div>
                                               )}
                                           </div>
-                           )}
+                                      )}
 
-                           {/* === STAR PROJECT HIGHLIGHT === */}
-                           {b.type === 'project_highlight' && (
-                              <div className="space-y-4">
-                                 <input className="input-std font-bold text-lg" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="Project Name" />
-                                 <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                       <label className="label-sm text-blue-500">Situation</label>
-                                       <textarea className="input-std h-24" value={b.data.star_situation || ''} onChange={e => updateContentBlock(b.id, 'star_situation', e.target.value)} />
-                                    </div>
-                                    <div>
-                                       <label className="label-sm text-purple-500">Task</label>
-                                       <textarea className="input-std h-24" value={b.data.star_task || ''} onChange={e => updateContentBlock(b.id, 'star_task', e.target.value)} />
-                                    </div>
-                                    <div>
-                                       <label className="label-sm text-orange-500">Action</label>
-                                       <textarea className="input-std h-24" value={b.data.star_action || ''} onChange={e => updateContentBlock(b.id, 'star_action', e.target.value)} />
-                                    </div>
-                                    <div>
-                                       <label className="label-sm text-green-500">Result</label>
-                                       <textarea className="input-std h-24" value={b.data.star_result || ''} onChange={e => updateContentBlock(b.id, 'star_result', e.target.value)} />
-                                    </div>
-                                 </div>
-                                 <div>
-                                    <label className="label-sm">Evidence Image URLs</label>
-                                    <textarea className="input-std h-16 font-mono text-xs" value={b.data.evidence_urls?.join('\n') || ''} onChange={e => updateContentBlock(b.id, 'evidence_urls', e.target.value.split('\n'))} placeholder="One URL per line" />
-                                 </div>
-                              </div>
-                           )}
-
-                           {/* === SKILLS MATRIX === */}
-                           {b.type === 'skills_matrix' && (
-                              <div className="p-4 bg-slate-50 rounded border border-dashed border-slate-300 text-center">
-                                 <p className="text-sm text-slate-500 mb-2">Skill Matrix editor is complex.</p>
-                                 <button onClick={() => setShowJsonEditor(true)} className="text-blue-600 hover:underline text-xs font-bold">Switch to JSON Editor to modify skills</button>
-                              </div>
-                           )}
-                        </>
-                     )}
-                  </div>
-               </div>
-            ))}
-            
-            {editingPortfolio.content_blocks.length === 0 && (
-               <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-xl">
-                  <p className="text-slate-400">还没有内容模块，从左侧添加一个吧！</p>
-               </div>
-            )}
-         </div>
-      </div>
-
-      <style>{`
-         .input-std {
-            width: 100%;
-            border: 1px solid #cbd5e1;
-            border-radius: 0.5rem;
-            padding: 0.5rem 0.75rem;
-            font-size: 0.875rem;
-            outline: none;
-            transition: all 0.2s;
-         }
-         .input-std:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-         }
-         .label-sm {
-            display: block;
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: #64748b;
-            text-transform: uppercase;
-            margin-bottom: 0.25rem;
-         }
-      `}</style>
+                                      {/* === TEXT / IMAGE GRID === */}
+                                      {(b.type === 'text' || b.type === 'image_grid') && (
+                                          <div className="space-y-2">
+                                              <input className="font-bold border-b w-full" value={b.data.title || ''} onChange={e => updateContentBlock(b.id, 'title', e.target.value)} placeholder="标题" />
+                                              {b.type === 'text' && <textarea className="w-full h-24 text-sm border p-2 rounded" value={b.data.content} onChange={e => updateContentBlock(b.id, 'content', e.target.value)} placeholder="文本内容..." />}
+                                              {b.type === 'image_grid' && (
+                                                  <div className="flex gap-2 flex-wrap">
+                                                      {b.data.urls?.map((url: string) => <img src={url} className="w-10 h-10 object-cover rounded" />)}
+                                                      <label className="w-10 h-10 border border-dashed flex items-center justify-center cursor-pointer hover:bg-slate-100"><Icons.Plus size={16}/><input type="file" className="hidden" onChange={e => handleImageUpload(e, 'standard', b.id)} /></label>
+                                                  </div>
+                                              )}
+                                          </div>
+                                      )}
+                                  </div>
+                               </div>
+                            ))}
+                          </div>
+                      </div>
+                   </div>
+                   )
+                ) : (
+                   /* Fallback for other tabs (Curriculum etc) */
+                   <div className="space-y-4"><div><label className="block text-sm font-bold text-slate-700">标题</label><input className="w-full border p-2 rounded" value={editingItem.title || ''} onChange={e => setEditingItem({...editingItem, title: e.target.value})} /></div>{(editingItem.description !== undefined || editingItem.content !== undefined) && <div><label className="block text-sm font-bold text-slate-700">内容</label><textarea className="w-full border p-2 rounded h-24" value={editingItem.description || editingItem.content || ''} onChange={e => { if(editingItem.description!==undefined) setEditingItem({...editingItem, description: e.target.value}); else setEditingItem({...editingItem, content: e.target.value}) }} /></div>}{activeTab !== 'pages' && <div><label className="block text-sm font-bold text-slate-700">图片</label><input type="file" accept="image/*" onChange={e => handleImageUpload(e)} /></div>}</div>
+                )}
+             </div>
+             <div className="p-4 border-t bg-slate-50 flex justify-end gap-3"><button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-500">取消</button><button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">保存</button></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

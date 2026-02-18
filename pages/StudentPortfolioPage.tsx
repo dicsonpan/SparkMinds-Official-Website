@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabaseClient';
 import { StudentPortfolio, ContentBlock, SkillItem } from '../types';
 import * as Icons from 'lucide-react';
 import { Logo } from '../components/Logo';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import { PortfolioPDF } from '../components/PortfolioPDF';
 
 // Theme Configuration
 const THEMES: Record<string, any> = {
@@ -478,11 +480,26 @@ export const StudentPortfolioPage: React.FC = () => {
     <div className={`min-h-screen ${styles.bg} ${styles.text} transition-colors duration-500 font-sans selection:bg-blue-500/30 pb-20`}>
       {/* Navbar */}
       <nav className={`fixed top-0 w-full z-50 px-6 py-4 flex justify-between items-center backdrop-blur-xl border-b ${styles.border} bg-slate-950/80 supports-[backdrop-filter]:bg-slate-950/50`}>
-         <div className="flex items-center gap-2">
+         <div className="flex items-center gap-4">
              <Logo className={`h-8 w-auto ${themeKey === 'tech_dark' ? 'brightness-0 invert' : ''}`} />
+             <div className="text-[10px] font-mono opacity-50 uppercase tracking-widest border px-2 py-1 rounded border-slate-800 hidden md:block">
+                 Student Portfolio
+             </div>
          </div>
-         <div className="text-[10px] font-mono opacity-50 uppercase tracking-widest border px-2 py-1 rounded border-slate-800 hidden md:block">
-             Student Portfolio
+         
+         {/* Export PDF Button */}
+         <div>
+            <PDFDownloadLink document={<PortfolioPDF portfolio={portfolio} />} fileName={`${portfolio.student_name}_Portfolio.pdf`}>
+              {({ loading }) => (
+                <button 
+                  disabled={loading}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'} ${styles.button}`}
+                >
+                  {loading ? <Icons.Loader2 size={14} className="animate-spin" /> : <Icons.Download size={14} />}
+                  {loading ? 'Generating...' : 'Export PDF'}
+                </button>
+              )}
+            </PDFDownloadLink>
          </div>
       </nav>
       

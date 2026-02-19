@@ -147,22 +147,6 @@ const createStyles = (theme: PdfTheme) =>
     },
     coverRight: {
       width: '64%',
-      paddingTop: 4,
-    },
-    coverBadge: {
-      alignSelf: 'flex-start',
-      fontSize: 9,
-      fontWeight: 700,
-      textTransform: 'uppercase',
-      letterSpacing: 1.2,
-      color: theme.accent,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.cardSoftBackground,
-      borderRadius: 999,
-      paddingVertical: 4,
-      paddingHorizontal: 10,
-      marginBottom: 14,
     },
     coverAvatarWrap: {
       width: 170,
@@ -1211,7 +1195,6 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
             </View>
 
             <View style={styles.coverRight}>
-              <Text style={styles.coverBadge}>SparkMinds Portfolio</Text>
               <Text style={styles.coverName}>{portfolio.student_name}</Text>
               <Text style={styles.coverTitle}>{profileData.title || 'Future Innovator & Builder'}</Text>
               {renderParagraphsWithIndent(profileData.summary, styles.coverBio)}

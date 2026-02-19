@@ -8,16 +8,13 @@ Font.register({
   src: 'https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.12/files/noto-sans-sc-chinese-simplified-400-normal.woff'
 });
 
-// 禁用正常的 hyphenation 回调
-Font.registerHyphenationCallback((word) => {
-  return [word];
-});
+// 禁用自动断词（避免行尾自动加 "-"）
+Font.registerHyphenationCallback((word) => [word]);
 
-// 【终极杀手锏】：在所有字符之间插入零宽空格
-// 让排版引擎认为每个字/字母都是独立的单词，从而在任意位置自然换行，彻底扼杀“-”号
+// 不再插入零宽空格，避免触发异常断词；顺带清理软连字符
 const processText = (text: string | undefined | null) => {
-  if (!text) return '';
-  return Array.from(String(text)).join('\u200B');
+  if (text == null) return '';
+  return String(text).replace(/[\u00AD\u2010\u2011]/g, '');
 };
 
 const styles = StyleSheet.create({
@@ -25,50 +22,49 @@ const styles = StyleSheet.create({
     padding: 40,
     fontFamily: 'Noto Sans SC',
     backgroundColor: '#ffffff',
-    color: '#334155', // Slate 700
+    color: '#334155',
     fontSize: 10,
     lineHeight: 1.6
   },
-  // === Header ===
   header: {
     flexDirection: 'row',
     marginBottom: 30,
     borderBottomWidth: 1,
-    borderBottomColor: '#2563eb', // Blue 600
+    borderBottomColor: '#2563eb',
     paddingBottom: 20,
-    alignItems: 'flex-start' 
+    alignItems: 'flex-start'
   },
   headerAvatarContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
     marginRight: 20,
-    overflow: 'hidden', 
+    overflow: 'hidden',
     backgroundColor: '#f1f5f9'
   },
   headerAvatarImage: {
     width: '100%',
     height: '100%',
-    objectFit: 'cover' 
+    objectFit: 'cover'
   },
   headerContent: {
     flex: 1,
     flexDirection: 'column',
-    justifyContent: 'center' 
+    justifyContent: 'center'
   },
   studentName: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#0f172a', 
-    marginBottom: 10, 
+    color: '#0f172a',
+    marginBottom: 10,
     lineHeight: 1.2
   },
   studentTitle: {
     fontSize: 12,
-    color: '#2563eb', 
+    color: '#2563eb',
     fontWeight: 'bold',
     marginBottom: 8,
-    marginTop: 0, 
+    marginTop: 0,
     textTransform: 'uppercase'
   },
   studentBio: {
@@ -78,14 +74,10 @@ const styles = StyleSheet.create({
     textAlign: 'justify',
     marginTop: 4
   },
-
-  // === Section Defaults ===
   section: {
     marginBottom: 15,
     width: '100%'
   },
-  
-  // === Section Heading ===
   sectionHeadingContainer: {
     marginTop: 15,
     marginBottom: 10,
@@ -99,8 +91,6 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     textTransform: 'uppercase'
   },
-
-  // === Info List (Grid) ===
   infoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -108,7 +98,7 @@ const styles = StyleSheet.create({
     marginTop: 5
   },
   infoItem: {
-    width: '32%', 
+    width: '32%',
     backgroundColor: '#f8fafc',
     padding: 10,
     borderRadius: 6,
@@ -127,8 +117,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#0f172a'
   },
-
-  // === Skills ===
   skillCategory: {
     marginBottom: 10,
     width: '100%'
@@ -148,7 +136,7 @@ const styles = StyleSheet.create({
     gap: 12
   },
   skillItem: {
-    width: '48%', 
+    width: '48%',
     marginBottom: 6
   },
   skillHeader: {
@@ -214,8 +202,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10
   },
-
-  // === Timeline ===
   timelineRow: {
     flexDirection: 'row',
     marginBottom: 15,
@@ -256,14 +242,12 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap'
   },
   timelineImg: {
-    width: 140,  
+    width: 140,
     height: 90,
     borderRadius: 4,
     objectFit: 'cover',
     backgroundColor: '#f1f5f9'
   },
-
-  // === STAR Project ===
   starContainer: {
     marginTop: 5,
     borderRadius: 6,
@@ -287,7 +271,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap'
   },
   starBox: {
-    width: '50%', 
+    width: '50%',
     padding: 10,
     borderRightWidth: 1,
     borderRightColor: '#f1f5f9',
@@ -312,31 +296,25 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#f1f5f9'
   },
-
-  // === Image Grid ===
   imageGridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8
   },
   imageGridItem: {
-    width: '31%', 
+    width: '31%',
     height: 120,
     borderRadius: 4,
     objectFit: 'cover',
     backgroundColor: '#f1f5f9',
     marginBottom: 8
   },
-
-  // === Text Block ===
   textBlock: {
     fontSize: 10,
     lineHeight: 1.6,
     color: '#334155',
     textAlign: 'justify'
   },
-
-  // === Table ===
   table: {
     width: '100%',
     borderWidth: 1,
@@ -376,8 +354,6 @@ const styles = StyleSheet.create({
     borderRightColor: '#e2e8f0',
     textAlign: 'left'
   },
-
-  // === Footer ===
   footer: {
     position: 'absolute',
     bottom: 30,
@@ -396,131 +372,129 @@ interface PortfolioPDFProps {
   portfolio: StudentPortfolio;
 }
 
-// === Chart Helpers ===
 const RadarChart = ({ items }: { items: SkillItem[] }) => {
-    const size = 180;
-    const center = size / 2;
-    const radius = 60;
-    const angleStep = (Math.PI * 2) / items.length;
+  const size = 180;
+  const center = size / 2;
+  const radius = 60;
+  const angleStep = (Math.PI * 2) / items.length;
 
-    const getPoint = (value: number, index: number, rScale = radius) => {
-        const angle = index * angleStep - Math.PI / 2;
-        const r = (value / 100) * rScale;
-        return `${center + r * Math.cos(angle)},${center + r * Math.sin(angle)}`;
-    };
+  const getPoint = (value: number, index: number, rScale = radius) => {
+    const angle = index * angleStep - Math.PI / 2;
+    const r = (value / 100) * rScale;
+    return `${center + r * Math.cos(angle)},${center + r * Math.sin(angle)}`;
+  };
 
-    const dataPoints = items.map((item, i) => getPoint(item.value, i)).join(' ');
+  const dataPoints = items.map((item, i) => getPoint(item.value, i)).join(' ');
 
-    return (
-        <View style={{ alignItems: 'center', marginBottom: 10 }}>
-            <Svg width={size} height={size}>
-                {[0.25, 0.5, 0.75, 1].map((scale, i) => (
-                    <Polygon
-                        key={i}
-                        points={items.map((_, idx) => getPoint(100 * scale, idx)).join(' ')}
-                        stroke="#cbd5e1"
-                        strokeWidth={1}
-                        fill="none"
-                    />
-                ))}
-                {items.map((_, i) => (
-                    <Line
-                        key={i}
-                        x1={center}
-                        y1={center}
-                        x2={getPoint(100, i).split(',')[0]}
-                        y2={getPoint(100, i).split(',')[1]}
-                        stroke="#cbd5e1"
-                        strokeWidth={1}
-                    />
-                ))}
-                <Polygon
-                    points={dataPoints}
-                    fill="rgba(37, 99, 235, 0.1)"
-                    stroke="#2563eb"
-                    strokeWidth={2}
-                />
-                {items.map((item, i) => {
-                    const [x, y] = getPoint(100, i, radius + 15).split(',').map(Number);
-                    const adjX = x > center ? 0 : x < center ? -20 : -10;
-                    const adjY = y > center ? 5 : -5;
-                    return (
-                        <Text
-                            key={i}
-                            x={x + adjX}
-                            y={y + adjY}
-                            style={{ fontSize: 8, fill: '#334155', fontFamily: 'Noto Sans SC' }}
-                        >
-                            {processText(item.name)}
-                        </Text>
-                    );
-                })}
-            </Svg>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginTop: -20 }}>
-                {items.map((item, i) => (
-                    <Text key={i} style={{ fontSize: 8, color: '#64748b' }}>
-                        {processText(item.name)}: <Text style={{ color: '#2563eb', fontWeight: 'bold' }}>{item.value}%</Text>
-                    </Text>
-                ))}
-            </View>
-        </View>
-    );
+  return (
+    <View style={{ alignItems: 'center', marginBottom: 10 }}>
+      <Svg width={size} height={size}>
+        {[0.25, 0.5, 0.75, 1].map((scale, i) => (
+          <Polygon
+            key={i}
+            points={items.map((_, idx) => getPoint(100 * scale, idx)).join(' ')}
+            stroke="#cbd5e1"
+            strokeWidth={1}
+            fill="none"
+          />
+        ))}
+        {items.map((_, i) => (
+          <Line
+            key={i}
+            x1={center}
+            y1={center}
+            x2={getPoint(100, i).split(',')[0]}
+            y2={getPoint(100, i).split(',')[1]}
+            stroke="#cbd5e1"
+            strokeWidth={1}
+          />
+        ))}
+        <Polygon
+          points={dataPoints}
+          fill="rgba(37, 99, 235, 0.1)"
+          stroke="#2563eb"
+          strokeWidth={2}
+        />
+        {items.map((item, i) => {
+          const [x, y] = getPoint(100, i, radius + 15).split(',').map(Number);
+          const adjX = x > center ? 0 : x < center ? -20 : -10;
+          const adjY = y > center ? 5 : -5;
+          return (
+            <Text
+              key={i}
+              x={x + adjX}
+              y={y + adjY}
+              style={{ fontSize: 8, fill: '#334155', fontFamily: 'Noto Sans SC' }}
+            >
+              {processText(item.name)}
+            </Text>
+          );
+        })}
+      </Svg>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginTop: -20 }}>
+        {items.map((item, i) => (
+          <Text key={i} style={{ fontSize: 8, color: '#64748b' }}>
+            {processText(item.name)}: <Text style={{ color: '#2563eb', fontWeight: 'bold' }}>{item.value}%</Text>
+          </Text>
+        ))}
+      </View>
+    </View>
+  );
 };
 
 const CircleChart = ({ item }: { item: SkillItem }) => {
-    const size = 50;
-    const r = 20;
-    const c = 2 * Math.PI * r;
-    const offset = c - (Math.min(100, Math.max(0, item.value)) / 100) * c;
+  const size = 50;
+  const r = 20;
+  const c = 2 * Math.PI * r;
+  const offset = c - (Math.min(100, Math.max(0, item.value)) / 100) * c;
 
-    return (
-        <View style={styles.circleItem}>
-            <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                <Svg width={size} height={size}>
-                    <Circle cx={size/2} cy={size/2} r={r} stroke="#e2e8f0" strokeWidth={4} fill="none" />
-                    <Circle 
-                        cx={size/2} 
-                        cy={size/2} 
-                        r={r} 
-                        stroke="#2563eb" 
-                        strokeWidth={4} 
-                        fill="none" 
-                        strokeDasharray={`${c} ${c}`}
-                        {...({ strokeDashoffset: offset } as any)}
-                        transform={`rotate(-90 ${size/2} ${size/2})`}
-                    />
-                </Svg>
-                <Text style={{ position: 'absolute', fontSize: 10, fontWeight: 'bold', color: '#2563eb', top: 19, left: 0, right: 0, textAlign: 'center' }}>
-                    {item.value}%
-                </Text>
-            </View>
-            <Text style={{ fontSize: 8, fontWeight: 'bold', marginTop: 4, textAlign: 'center', color: '#334155' }}>
-                {processText(item.name)}
-            </Text>
-        </View>
-    );
+  return (
+    <View style={styles.circleItem}>
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+        <Svg width={size} height={size}>
+          <Circle cx={size / 2} cy={size / 2} r={r} stroke="#e2e8f0" strokeWidth={4} fill="none" />
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            stroke="#2563eb"
+            strokeWidth={4}
+            fill="none"
+            strokeDasharray={`${c} ${c}`}
+            {...({ strokeDashoffset: offset } as any)}
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          />
+        </Svg>
+        <Text style={{ position: 'absolute', fontSize: 10, fontWeight: 'bold', color: '#2563eb', top: 19, left: 0, right: 0, textAlign: 'center' }}>
+          {item.value}%
+        </Text>
+      </View>
+      <Text style={{ fontSize: 8, fontWeight: 'bold', marginTop: 4, textAlign: 'center', color: '#334155' }}>
+        {processText(item.name)}
+      </Text>
+    </View>
+  );
 };
 
 const StatBox = ({ item }: { item: SkillItem }) => (
-    <View style={styles.statItem}>
-        <Text style={styles.statValue}>
-            {item.value}<Text style={{ fontSize: 10, color: '#64748b', fontWeight: 'normal' }}>{item.unit}</Text>
-        </Text>
-        <Text style={styles.statLabel}>{processText(item.name)}</Text>
-    </View>
+  <View style={styles.statItem}>
+    <Text style={styles.statValue}>
+      {item.value}
+      <Text style={{ fontSize: 10, color: '#64748b', fontWeight: 'normal' }}>{item.unit}</Text>
+    </Text>
+    <Text style={styles.statLabel}>{processText(item.name)}</Text>
+  </View>
 );
 
 export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        
-        {/* === 1. Profile Header === */}
         <View style={styles.header}>
           {portfolio.avatar_url && (
-             <View style={styles.headerAvatarContainer}>
-                <Image src={portfolio.avatar_url} style={styles.headerAvatarImage} />
-             </View>
+            <View style={styles.headerAvatarContainer}>
+              <Image src={portfolio.avatar_url} style={styles.headerAvatarImage} />
+            </View>
           )}
           <View style={styles.headerContent}>
             <Text style={styles.studentName}>{processText(portfolio.student_name)}</Text>
@@ -529,10 +503,8 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
           </View>
         </View>
 
-        {/* Content Blocks Loop */}
         {portfolio.content_blocks.map((block, index) => {
-          
-          if (block.type === 'profile_header') return null; 
+          if (block.type === 'profile_header') return null;
 
           if (block.type === 'section_heading') {
             return (
@@ -545,7 +517,7 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
           if (block.type === 'info_list') {
             return (
               <View key={block.id} style={styles.section} wrap={false}>
-                {block.data.title && <Text style={{fontSize: 12, fontWeight: 'bold', marginBottom: 8}}>{processText(block.data.title)}</Text>}
+                {block.data.title && <Text style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 8 }}>{processText(block.data.title)}</Text>}
                 <View style={styles.infoGrid}>
                   {block.data.info_items?.map((item, idx) => (
                     <View key={idx} style={styles.infoItem}>
@@ -564,35 +536,38 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
                 {block.data.skills_categories?.map((cat: SkillCategory, idx: number) => (
                   <View key={idx} style={styles.skillCategory}>
                     <Text style={styles.skillCategoryTitle}>{processText(cat.name)}</Text>
-                    
+
                     {cat.layout === 'radar' ? (
-                        <RadarChart items={cat.items} />
+                      <RadarChart items={cat.items} />
                     ) : cat.layout === 'circle' ? (
-                        <View style={styles.circleGrid}>
-                            {cat.items.map((skill, sIdx) => (
-                                <CircleChart key={sIdx} item={skill} />
-                            ))}
-                        </View>
+                      <View style={styles.circleGrid}>
+                        {cat.items.map((skill, sIdx) => (
+                          <CircleChart key={sIdx} item={skill} />
+                        ))}
+                      </View>
                     ) : cat.layout === 'stat_grid' ? (
-                        <View style={styles.statGrid}>
-                            {cat.items.map((skill, sIdx) => (
-                                <StatBox key={sIdx} item={skill} />
-                            ))}
-                        </View>
+                      <View style={styles.statGrid}>
+                        {cat.items.map((skill, sIdx) => (
+                          <StatBox key={sIdx} item={skill} />
+                        ))}
+                      </View>
                     ) : (
-                        <View style={styles.skillRow}>
-                            {cat.items.map((skill: SkillItem, sIdx: number) => (
-                                <View key={sIdx} style={styles.skillItem}>
-                                    <View style={styles.skillHeader}>
-                                        <Text style={styles.skillName}>{processText(skill.name)}</Text>
-                                        <Text style={styles.skillScore}>{skill.value}{skill.unit || '%'}</Text>
-                                    </View>
-                                    <View style={styles.skillTrack}>
-                                        <View style={[styles.skillFill, { width: `${Math.min(100, Math.max(0, skill.value))}%` }]} />
-                                    </View>
-                                </View>
-                            ))}
-                        </View>
+                      <View style={styles.skillRow}>
+                        {cat.items.map((skill: SkillItem, sIdx: number) => (
+                          <View key={sIdx} style={styles.skillItem}>
+                            <View style={styles.skillHeader}>
+                              <Text style={styles.skillName}>{processText(skill.name)}</Text>
+                              <Text style={styles.skillScore}>
+                                {skill.value}
+                                {skill.unit || '%'}
+                              </Text>
+                            </View>
+                            <View style={styles.skillTrack}>
+                              <View style={[styles.skillFill, { width: `${Math.min(100, Math.max(0, skill.value))}%` }]} />
+                            </View>
+                          </View>
+                        ))}
+                      </View>
                     )}
                   </View>
                 ))}
@@ -601,24 +576,24 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
           }
 
           if (block.type === 'timeline_node') {
-             return (
-               <View key={block.id} style={[styles.section, styles.timelineRow]} wrap={false}>
-                  <View style={styles.timelineContent}>
-                     <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4}}>
-                        <Text style={styles.timelineDate}>{processText(block.data.date)}</Text>
-                        <Text style={styles.timelineTitle}>{processText(block.data.title)}</Text>
-                     </View>
-                     <Text style={styles.timelineDesc}>{processText(block.data.content)}</Text>
-                     {block.data.urls && block.data.urls.length > 0 && (
-                        <View style={styles.timelineImages}>
-                           {block.data.urls.map((url, i) => (
-                              <Image key={i} src={url} style={styles.timelineImg} />
-                           ))}
-                        </View>
-                     )}
+            return (
+              <View key={block.id} style={[styles.section, styles.timelineRow]} wrap={false}>
+                <View style={styles.timelineContent}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <Text style={styles.timelineDate}>{processText(block.data.date)}</Text>
+                    <Text style={styles.timelineTitle}>{processText(block.data.title)}</Text>
                   </View>
-               </View>
-             )
+                  <Text style={styles.timelineDesc}>{processText(block.data.content)}</Text>
+                  {block.data.urls && block.data.urls.length > 0 && (
+                    <View style={styles.timelineImages}>
+                      {block.data.urls.map((url, i) => (
+                        <Image key={i} src={url} style={styles.timelineImg} />
+                      ))}
+                    </View>
+                  )}
+                </View>
+              </View>
+            );
           }
 
           if (block.type === 'project_highlight') {
@@ -648,12 +623,12 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
                   </View>
                   {block.data.evidence_urls && block.data.evidence_urls.length > 0 && (
                     <View style={styles.starEvidence}>
-                        <Text style={{fontSize: 8, fontWeight: 'bold', marginBottom: 6, color: '#64748b'}}>EVIDENCE</Text>
-                        <View style={{flexDirection: 'row', gap: 8, flexWrap: 'wrap'}}>
-                           {block.data.evidence_urls.map((url, i) => (
-                              <Image key={i} src={url} style={{width: 100, height: 60, borderRadius: 4, objectFit: 'cover'}} />
-                           ))}
-                        </View>
+                      <Text style={{ fontSize: 8, fontWeight: 'bold', marginBottom: 6, color: '#64748b' }}>EVIDENCE</Text>
+                      <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                        {block.data.evidence_urls.map((url, i) => (
+                          <Image key={i} src={url} style={{ width: 100, height: 60, borderRadius: 4, objectFit: 'cover' }} />
+                        ))}
+                      </View>
                     </View>
                   )}
                 </View>
@@ -662,61 +637,70 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
           }
 
           if (block.type === 'table') {
-             const colCount = block.data.table_columns?.length || 1;
-             const colWidth = `${100 / colCount}%`;
-             
-             return (
-               <View key={block.id} style={styles.section} wrap={false}>
-                  {block.data.title && <Text style={{fontSize: 12, fontWeight: 'bold', marginBottom: 5}}>{processText(block.data.title)}</Text>}
-                  <View style={styles.table}>
-                     <View style={styles.tableHeaderRow}>
-                        {block.data.table_columns?.map((col, i) => (
-                           <View key={i} style={[styles.tableHeaderCell, { width: colWidth, borderRightWidth: i === colCount - 1 ? 0 : 1 }]}>
-                              <Text>{processText(col)}</Text>
-                           </View>
-                        ))}
-                     </View>
-                     {block.data.table_rows?.map((row, rIdx) => (
-                        <View key={rIdx} style={[styles.tableRow, { backgroundColor: rIdx % 2 === 0 ? '#ffffff' : '#f8fafc', borderBottomWidth: rIdx === (block.data.table_rows?.length || 0) - 1 ? 0 : 1 }]}>
-                           {row.map((cell, cIdx) => (
-                              <View key={cIdx} style={[styles.tableCell, { width: colWidth, borderRightWidth: cIdx === colCount - 1 ? 0 : 1 }]}>
-                                 <Text>{processText(cell)}</Text>
-                              </View>
-                           ))}
-                        </View>
-                     ))}
+            const colCount = block.data.table_columns?.length || 1;
+            const colWidth = `${100 / colCount}%`;
+
+            return (
+              <View key={block.id} style={styles.section} wrap={false}>
+                {block.data.title && <Text style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 5 }}>{processText(block.data.title)}</Text>}
+                <View style={styles.table}>
+                  <View style={styles.tableHeaderRow}>
+                    {block.data.table_columns?.map((col, i) => (
+                      <View key={i} style={[styles.tableHeaderCell, { width: colWidth, borderRightWidth: i === colCount - 1 ? 0 : 1 }]}>
+                        <Text>{processText(col)}</Text>
+                      </View>
+                    ))}
                   </View>
-               </View>
-             )
+                  {block.data.table_rows?.map((row, rIdx) => (
+                    <View
+                      key={rIdx}
+                      style={[
+                        styles.tableRow,
+                        {
+                          backgroundColor: rIdx % 2 === 0 ? '#ffffff' : '#f8fafc',
+                          borderBottomWidth: rIdx === (block.data.table_rows?.length || 0) - 1 ? 0 : 1
+                        }
+                      ]}
+                    >
+                      {row.map((cell, cIdx) => (
+                        <View key={cIdx} style={[styles.tableCell, { width: colWidth, borderRightWidth: cIdx === colCount - 1 ? 0 : 1 }]}>
+                          <Text>{processText(cell)}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  ))}
+                </View>
+              </View>
+            );
           }
 
           if (block.type === 'image_grid' && block.data.urls && block.data.urls.length > 0) {
-             const urls = block.data.urls;
-             let dynamicStyle = {};
-             if (urls.length === 1) {
-                 dynamicStyle = { width: '100%', height: 300 };
-             } else if (urls.length === 2) {
-                 dynamicStyle = { width: '48%', height: 200 };
-             } else {
-                 dynamicStyle = styles.imageGridItem; 
-             }
+            const urls = block.data.urls;
+            let dynamicStyle = {};
+            if (urls.length === 1) {
+              dynamicStyle = { width: '100%', height: 300 };
+            } else if (urls.length === 2) {
+              dynamicStyle = { width: '48%', height: 200 };
+            } else {
+              dynamicStyle = styles.imageGridItem;
+            }
 
-             return (
-               <View key={block.id} style={styles.section} wrap={false}>
-                  {block.data.title && <Text style={{fontSize: 12, fontWeight: 'bold', marginBottom: 8}}>{processText(block.data.title)}</Text>}
-                  <View style={styles.imageGridContainer}>
-                     {urls.map((url, idx) => (
-                        <Image key={idx} src={url} style={[styles.imageGridItem, dynamicStyle]} />
-                     ))}
-                  </View>
-               </View>
-             )
+            return (
+              <View key={block.id} style={styles.section} wrap={false}>
+                {block.data.title && <Text style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 8 }}>{processText(block.data.title)}</Text>}
+                <View style={styles.imageGridContainer}>
+                  {urls.map((url, idx) => (
+                    <Image key={idx} src={url} style={[styles.imageGridItem, dynamicStyle]} />
+                  ))}
+                </View>
+              </View>
+            );
           }
 
           if (block.type === 'text') {
             return (
               <View key={block.id} style={styles.section}>
-                {block.data.title && <Text style={{fontSize: 12, fontWeight: 'bold', marginBottom: 6}}>{processText(block.data.title)}</Text>}
+                {block.data.title && <Text style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 6 }}>{processText(block.data.title)}</Text>}
                 <Text style={styles.textBlock}>{processText(block.data.content)}</Text>
               </View>
             );
@@ -725,9 +709,7 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
           return null;
         })}
 
-        <Text style={styles.footer}>
-          Generated by SparkMinds Lab | {new Date().toLocaleDateString()} | sparkminds.edu
-        </Text>
+        <Text style={styles.footer}>Generated by SparkMinds Lab | {new Date().toLocaleDateString()} | sparkminds.edu</Text>
       </Page>
     </Document>
   );

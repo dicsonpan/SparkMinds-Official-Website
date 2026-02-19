@@ -948,7 +948,20 @@ const renderSkillsCategory = (
     return (
       <View key={key} style={composeStyles(styles.skillCategory, layoutStyle)} wrap={false}>
         <Text style={styles.skillCategoryTitle}>{category.name}</Text>
-        <RadarChart items={category.items} theme={theme} />
+        {category.items.map((item, index) => (
+          <View key={`${category.name}-${item.name}-${index}`} style={styles.skillRow}>
+            <View style={styles.skillHeader}>
+              <Text style={styles.skillName}>{item.name}</Text>
+              <Text style={styles.skillValue}>
+                {item.value}
+                {item.unit || '%'}
+              </Text>
+            </View>
+            <View style={styles.skillTrack}>
+              <View style={[styles.skillFill, { width: `${clampPercent(item.value)}%` }]} />
+            </View>
+          </View>
+        ))}
       </View>
     );
   }

@@ -58,16 +58,16 @@ interface PdfTheme {
 
 const PDF_THEMES: Record<ThemeKey, PdfTheme> = {
   tech_dark: {
-    pageBackground: '#020617',
-    cardBackground: '#0f172a',
-    cardSoftBackground: '#111c33',
-    text: '#e2e8f0',
-    muted: '#94a3b8',
-    accent: '#60a5fa',
-    border: '#1e293b',
-    barTrack: '#1e293b',
-    barFill: '#3b82f6',
-    tableHeader: '#13213b',
+    pageBackground: '#01092b',
+    cardBackground: '#101b3a',
+    cardSoftBackground: '#15254a',
+    text: '#e8efff',
+    muted: '#96a7c7',
+    accent: '#64b2ff',
+    border: '#2a4068',
+    barTrack: '#1a2b52',
+    barFill: '#4fa8ff',
+    tableHeader: '#17284c',
   },
   academic_light: {
     pageBackground: '#f8fafc',
@@ -121,6 +121,88 @@ const createStyles = (theme: PdfTheme) =>
       paddingVertical: 3,
       paddingHorizontal: 8,
       marginBottom: 10,
+    },
+    coverSection: {
+      marginBottom: 16,
+    },
+    coverColumns: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+    },
+    coverLeft: {
+      width: '36%',
+      paddingRight: 14,
+    },
+    coverRight: {
+      width: '64%',
+      paddingTop: 4,
+    },
+    coverBadge: {
+      alignSelf: 'flex-start',
+      fontSize: 9,
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      letterSpacing: 1.2,
+      color: theme.accent,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.cardSoftBackground,
+      borderRadius: 999,
+      paddingVertical: 4,
+      paddingHorizontal: 10,
+      marginBottom: 14,
+    },
+    coverAvatarWrap: {
+      width: 170,
+      height: 170,
+      borderRadius: 85,
+      overflow: 'hidden',
+      borderWidth: 3,
+      borderColor: theme.border,
+      backgroundColor: theme.cardSoftBackground,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 12,
+      alignSelf: 'center',
+    },
+    coverAvatarImage: {
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+    },
+    coverAvatarFallback: {
+      fontSize: 56,
+      fontWeight: 700,
+      color: theme.accent,
+    },
+    coverHeroImage: {
+      width: '100%',
+      height: 142,
+      borderRadius: 14,
+      objectFit: 'cover',
+      backgroundColor: theme.cardSoftBackground,
+      borderWidth: 1,
+      borderColor: theme.border,
+      marginBottom: 10,
+    },
+    coverName: {
+      fontSize: 52,
+      fontWeight: 700,
+      color: theme.text,
+      marginBottom: 2,
+      lineHeight: 1.05,
+    },
+    coverTitle: {
+      fontSize: 30,
+      color: theme.text,
+      marginBottom: 14,
+      fontWeight: 700,
+      lineHeight: 1.22,
+    },
+    coverBio: {
+      fontSize: 12,
+      color: theme.muted,
+      lineHeight: 1.82,
     },
     header: {
       borderWidth: 1,
@@ -576,6 +658,28 @@ const renderParagraphs = (text: string | undefined, style: any) => {
   ));
 };
 
+const renderParagraphsWithIndent = (text: string | undefined, style: any) => {
+  if (!text) {
+    return null;
+  }
+
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (!lines.length) {
+    return null;
+  }
+
+  return lines.map((line, index) => (
+    <Text key={`${line}-${index}`} style={composeStyles(style, index > 0 && { marginTop: 4 })}>
+      {'\u3000\u3000'}
+      {line}
+    </Text>
+  ));
+};
+
 const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, theme }) => {
   if (items.length < 3) {
     return null;
@@ -945,40 +1049,37 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
 
   const blocks = Array.isArray(portfolio.content_blocks) ? portfolio.content_blocks : [];
   const profileData = pickProfileData(portfolio, blocks);
+  const coverImages = profileData.heroImages.slice(0, 2);
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        <Text style={styles.badge}>SparkMinds Portfolio</Text>
-
-        <View style={styles.header}>
-          <View style={styles.headerMain}>
-            <View style={styles.avatarWrap}>
-              {profileData.avatarUrl ? (
-                <Image src={profileData.avatarUrl} style={styles.avatarImage} />
-              ) : (
-                <Text style={styles.avatarFallback}>{portfolio.student_name[0] || 'S'}</Text>
-              )}
-            </View>
-
-            <View style={styles.headerContent}>
-              <Text style={styles.studentName}>{portfolio.student_name}</Text>
-              <Text style={styles.studentTitle}>{profileData.title || 'Future Innovator & Builder'}</Text>
-              {renderParagraphs(profileData.summary, styles.studentBio)}
-            </View>
-          </View>
-
-          {profileData.heroImages.length > 0 ? (
-            <View style={styles.heroRow}>
-              {profileData.heroImages.slice(0, 6).map((url, index) => (
+        <View style={styles.coverSection} wrap={false}>
+          <View style={styles.coverColumns}>
+            <View style={styles.coverLeft}>
+              <View style={styles.coverAvatarWrap}>
+                {profileData.avatarUrl ? (
+                  <Image src={profileData.avatarUrl} style={styles.coverAvatarImage} />
+                ) : (
+                  <Text style={styles.coverAvatarFallback}>{portfolio.student_name[0] || 'S'}</Text>
+                )}
+              </View>
+              {coverImages.map((url, index) => (
                 <Image
                   key={`${url}-${index}`}
                   src={url}
-                  style={composeStyles(styles.heroImage, index % 3 === 2 && styles.heroImageLastInRow)}
+                  style={composeStyles(styles.coverHeroImage, index === coverImages.length - 1 && { marginBottom: 0 })}
                 />
               ))}
             </View>
-          ) : null}
+
+            <View style={styles.coverRight}>
+              <Text style={styles.coverBadge}>SparkMinds Portfolio</Text>
+              <Text style={styles.coverName}>{portfolio.student_name}</Text>
+              <Text style={styles.coverTitle}>{profileData.title || 'Future Innovator & Builder'}</Text>
+              {renderParagraphsWithIndent(profileData.summary, styles.coverBio)}
+            </View>
+          </View>
         </View>
 
         {blocks.map((block) => renderBlock(block, theme, styles))}

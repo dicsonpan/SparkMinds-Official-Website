@@ -678,6 +678,7 @@ const composeStyles = (...styleItems: Array<any | undefined | false>) =>
   styleItems.filter(Boolean) as any;
 const FIRST_LINE_INDENT = 24;
 const LONG_IMAGE_RATIO_THRESHOLD = 2.8;
+const JPEG_URL_PATTERN = /\.jpe?g(?:$|[?#])/i;
 
 interface ImageRowItem {
   url: string;
@@ -1038,6 +1039,7 @@ const renderBlock = (
   theme: PdfTheme,
   styles: ReturnType<typeof createStyles>,
   shouldUseFullRowForImage: (url: string) => boolean,
+  resolvePdfImageSrc: (url: string) => string,
 ): React.ReactNode => {
   if (block.type === 'profile_header') {
     return null;
@@ -1155,7 +1157,7 @@ const renderBlock = (
                         )}
                       >
                         <Image
-                          src={item.url}
+                          src={resolvePdfImageSrc(item.url)}
                           style={composeStyles(
                             styles.timelineImage,
                             fullRow ? styles.timelineImageFullRow : styles.timelineImageTwoColumn,
@@ -1221,7 +1223,7 @@ const renderBlock = (
                         )}
                       >
                         <Image
-                          src={item.url}
+                          src={resolvePdfImageSrc(item.url)}
                           style={composeStyles(
                             styles.evidenceImage,
                             fullRow ? styles.evidenceImageFullRow : styles.evidenceImageTwoColumn,
@@ -1326,7 +1328,7 @@ const renderBlock = (
                     )}
                   >
                     <Image
-                      src={item.url}
+                      src={resolvePdfImageSrc(item.url)}
                       style={composeStyles(
                         styles.imageGridItem,
                         fullRow ? styles.imageGridItemFullRow : styles.imageGridItemTwoColumn,
@@ -1354,8 +1356,15 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
   const blocks = Array.isArray(portfolio.content_blocks) ? portfolio.content_blocks : [];
   const profileData = pickProfileData(portfolio, blocks);
   const coverImages = profileData.heroImages.slice(0, 2);
-  const allBlockImageUrls = React.useMemo(() => {
+  const coverImage0 = coverImages[0] || '';
+  const coverImage1 = coverImages[1] || '';
+  const allPdfImageUrls = React.useMemo(() => {
     const collectedUrls: string[] = [];
+
+    if (profileData.avatarUrl) {
+      collectedUrls.push(profileData.avatarUrl);
+    }
+    collectedUrls.push(...coverImages);
 
     blocks.forEach((block) => {
       collectedUrls.push(...sanitizeImageUrls(block.data.urls));
@@ -1365,15 +1374,21 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
     return Array.from(
       new Set(collectedUrls.filter((url) => typeof url === 'string' && url.trim().length > 0)),
     );
-  }, [blocks]);
+  }, [blocks, profileData.avatarUrl, coverImage0, coverImage1]);
   const [measuredAspectRatios, setMeasuredAspectRatios] = React.useState<Record<string, number>>({});
+  const [pdfImageSources, setPdfImageSources] = React.useState<Record<string, string>>({});
+  const inFlightImageUrlsRef = React.useRef<Set<string>>(new Set());
 
   React.useEffect(() => {
     if (typeof window === 'undefined') {
       return;
     }
 
-    const pendingUrls = allBlockImageUrls.filter((url) => typeof measuredAspectRatios[url] !== 'number');
+    const pendingUrls = allPdfImageUrls.filter(
+      (url) =>
+        typeof measuredAspectRatios[url] !== 'number' ||
+        typeof pdfImageSources[url] !== 'string',
+    );
     if (pendingUrls.length === 0) {
       return;
     }
@@ -1381,9 +1396,22 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
     let cancelled = false;
 
     pendingUrls.forEach((url) => {
+      if (inFlightImageUrlsRef.current.has(url)) {
+        return;
+      }
+
+      inFlightImageUrlsRef.current.add(url);
       const probe = new window.Image();
+      probe.crossOrigin = 'anonymous';
       probe.onload = () => {
-        if (cancelled || probe.naturalWidth <= 0 || probe.naturalHeight <= 0) {
+        inFlightImageUrlsRef.current.delete(url);
+        if (cancelled) {
+          return;
+        }
+
+        if (probe.naturalWidth <= 0 || probe.naturalHeight <= 0) {
+          setMeasuredAspectRatios((prev) => (typeof prev[url] === 'number' ? prev : { ...prev, [url]: -1 }));
+          setPdfImageSources((prev) => (typeof prev[url] === 'string' ? prev : { ...prev, [url]: url }));
           return;
         }
 
@@ -1394,19 +1422,63 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
           }
           return { ...prev, [url]: ratio };
         });
+
+        if (!JPEG_URL_PATTERN.test(url)) {
+          setPdfImageSources((prev) => (prev[url] === url ? prev : { ...prev, [url]: url }));
+          return;
+        }
+
+        try {
+          const maxSide = 2200;
+          const scale = Math.min(1, maxSide / Math.max(probe.naturalWidth, probe.naturalHeight));
+          const targetWidth = Math.max(1, Math.round(probe.naturalWidth * scale));
+          const targetHeight = Math.max(1, Math.round(probe.naturalHeight * scale));
+          const canvas = document.createElement('canvas');
+          canvas.width = targetWidth;
+          canvas.height = targetHeight;
+          const context = canvas.getContext('2d');
+          if (!context) {
+            throw new Error('Canvas context is unavailable.');
+          }
+          context.drawImage(probe, 0, 0, targetWidth, targetHeight);
+          const pngDataUrl = canvas.toDataURL('image/png');
+          setPdfImageSources((prev) => ({
+            ...prev,
+            [url]: pngDataUrl || url,
+          }));
+        } catch {
+          setPdfImageSources((prev) => (prev[url] === url ? prev : { ...prev, [url]: url }));
+        }
       };
-      probe.onerror = () => undefined;
+      probe.onerror = () => {
+        inFlightImageUrlsRef.current.delete(url);
+        if (cancelled) {
+          return;
+        }
+        setMeasuredAspectRatios((prev) => (typeof prev[url] === 'number' ? prev : { ...prev, [url]: -1 }));
+        setPdfImageSources((prev) => (typeof prev[url] === 'string' ? prev : { ...prev, [url]: url }));
+      };
       probe.src = url;
     });
 
     return () => {
       cancelled = true;
     };
-  }, [allBlockImageUrls, measuredAspectRatios]);
+  }, [allPdfImageUrls, measuredAspectRatios, pdfImageSources]);
 
   const shouldUseFullRowForImage = React.useCallback(
     (url: string) => isUltraWideImage(url, measuredAspectRatios),
     [measuredAspectRatios],
+  );
+  const resolvePdfImageSrc = React.useCallback(
+    (url: string) => {
+      const normalized = sanitizeImageUrl(url);
+      if (!normalized) {
+        return '';
+      }
+      return pdfImageSources[normalized] || normalized;
+    },
+    [pdfImageSources],
   );
 
   return (
@@ -1417,7 +1489,7 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
             <View style={styles.coverLeft}>
               <View style={styles.coverAvatarWrap}>
                 {profileData.avatarUrl ? (
-                  <Image src={profileData.avatarUrl} style={styles.coverAvatarImage} />
+                  <Image src={resolvePdfImageSrc(profileData.avatarUrl)} style={styles.coverAvatarImage} />
                 ) : (
                   <Text style={styles.coverAvatarFallback}>{portfolio.student_name[0] || 'S'}</Text>
                 )}
@@ -1425,7 +1497,7 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
               {coverImages.map((url, index) => (
                 <Image
                   key={`${url}-${index}`}
-                  src={url}
+                  src={resolvePdfImageSrc(url)}
                   style={composeStyles(styles.coverHeroImage, index === coverImages.length - 1 && { marginBottom: 0 })}
                 />
               ))}
@@ -1439,7 +1511,9 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
           </View>
         </View>
 
-        {blocks.map((block) => renderBlock(block, theme, styles, shouldUseFullRowForImage))}
+        {blocks.map((block) =>
+          renderBlock(block, theme, styles, shouldUseFullRowForImage, resolvePdfImageSrc),
+        )}
 
         <Text
           style={styles.footer}

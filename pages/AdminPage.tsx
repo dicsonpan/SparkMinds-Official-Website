@@ -78,7 +78,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
   
   // AI Polish State
   const [prePolishState, setPrePolishState] = useState<any | null>(null);
-  const [isPolishing, setIsPolishing] = useState(false);
+  const [polishingBlockId, setPolishingBlockId] = useState<string | null>(null);
 
   // Check auth & Load AI Config
   useEffect(() => {
@@ -562,6 +562,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
   const handleCreateNew = () => {
     setIsNewRecord(true);
     setPrePolishState(null);
+    setPolishingBlockId(null);
     let template: any = {};
     if (activeTab === 'curriculum') template = { id: 'New', level: '', age: '', title: '', description: '', skills: [], icon_name: 'Box', image_urls: [], sort_order: 99 };
     else if (activeTab === 'showcase') template = { title: '', category: '商业级产品', description: '', image_urls: [], sort_order: 99 };
@@ -595,6 +596,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
   const openEditModal = (item: any) => {
     setIsNewRecord(false);
     setPrePolishState(null);
+    setPolishingBlockId(null);
     
     const preparedItem = JSON.parse(JSON.stringify(item));
     
@@ -680,6 +682,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
       setIsModalOpen(false);
       setEditingItem(null);
       setPrePolishState(null);
+      setPolishingBlockId(null);
     } catch (error: any) { alert('保存失败: ' + error.message); } finally { setLoading(false); }
   };
 
@@ -869,6 +872,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
         return block.data;
     }
   };
+
+  const hasTextContent = (value: any): boolean => {
+    if (typeof value === 'string') return value.trim().length > 0;
+    if (Array.isArray(value)) return value.some((item) => hasTextContent(item));
+    if (value && typeof value === 'object') return Object.values(value).some((item) => hasTextContent(item));
+    return false;
+  };
+
+  const canPolishBlock = (block: ContentBlock): boolean => hasTextContent(getPolishPayloadData(block));
 
   const mergePolishedBlockData = (originalBlock: ContentBlock, polishedData: any): ContentBlock => {
     if (!polishedData || typeof polishedData !== 'object') return originalBlock;
@@ -1066,58 +1078,56 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
     alert('已恢复到润色前版本');
   };
 
-  const handleAIPolish = async () => {
+  const handleAIPolishBlock = async (blockId: string) => {
     if (!aiConfig.apiKey) return alert('请先在系统设置中配置 API Key');
-    if (isPolishing || !editingItem) return;
-    if (!editingItem.content_blocks?.length) return alert('当前没有可润色的内容模块');
+    if (polishingBlockId || !editingItem) return;
+
+    const targetBlock = (editingItem.content_blocks || []).find((block: ContentBlock) => block.id === blockId);
+    if (!targetBlock) return;
+    if (!canPolishBlock(targetBlock)) return alert('该模块暂无可润色的已输入文字');
 
     setPrePolishState(JSON.parse(JSON.stringify(editingItem)));
-    setIsPolishing(true);
+    setPolishingBlockId(blockId);
 
     try {
       const payload = {
-        content_blocks: (editingItem.content_blocks || []).map((block: ContentBlock) => ({
-          id: block.id,
-          type: block.type,
-          data: getPolishPayloadData(block)
-        }))
+        block: {
+          id: targetBlock.id,
+          type: targetBlock.type,
+          data: getPolishPayloadData(targetBlock)
+        }
       };
 
       const systemPrompt = `你是 SparkMinds 学生成长档案文字编辑。
-任务：润色输入 JSON 中每个内容模块的文字，使其更清晰、专业、有说服力（中文）。
+任务：只润色单个内容模块里的已有文字，使表达更清晰、专业、有说服力（中文）。
 硬性约束：
-1. 必须保留每个模块的 id 与 type，且顺序不变。
-2. 仅优化文字，不得新增/删除模块，不得修改数值、布局、图片链接、数组长度。
-3. 输出必须是纯 JSON，格式为 { "content_blocks": [...] }。`;
+1. 只处理输入中的这个 block，必须保留 id、type 和整体字段结构。
+2. 仅优化文字，不得新增/删除字段，不得修改数值、布局、图片链接、数组长度。
+3. 输出必须是纯 JSON，格式为 { "block": { "id": "...", "type": "...", "data": { ... } } }。`;
 
       const polishedResult = await requestAiJson(systemPrompt, JSON.stringify(payload), 0.35);
-      const polishedBlocks: any[] = Array.isArray(polishedResult?.content_blocks) ? polishedResult.content_blocks : [];
-
-      if (!polishedBlocks.length) {
-        throw new Error('AI 未返回可用的润色结果');
+      const polishedBlock = polishedResult?.block;
+      if (!polishedBlock || polishedBlock.id !== targetBlock.id || polishedBlock.type !== targetBlock.type) {
+        throw new Error('AI 返回结构不匹配，已取消应用');
       }
-
-      const polishedMap = new Map(polishedBlocks.map((block: any) => [block.id, block]));
 
       setEditingItem((prev: any) => {
         const nextBlocks = (prev.content_blocks || []).map((oldBlock: ContentBlock) => {
-          const polishedBlock = polishedMap.get(oldBlock.id);
-          if (!polishedBlock || polishedBlock.type !== oldBlock.type) return oldBlock;
+          if (oldBlock.id !== blockId) return oldBlock;
           return mergePolishedBlockData(oldBlock, polishedBlock.data);
         });
-
         return {
           ...prev,
           content_blocks: sanitizeSkillsMatrixBlocks(nextBlocks)
         };
       });
 
-      alert('AI 润色完成');
+      alert('AI 已润色当前模块');
     } catch (e: any) {
       alert('AI 润色失败: ' + e.message);
       setPrePolishState(null);
     } finally {
-      setIsPolishing(false);
+      setPolishingBlockId(null);
     }
   };
 
@@ -1308,22 +1318,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                              </div>
                              <button
                                onClick={handleAIGenerate}
-                               disabled={isGenerating || isPolishing || !aiPrompt.trim()}
+                               disabled={isGenerating || Boolean(polishingBlockId) || !aiPrompt.trim()}
                                className="h-10 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                              >
                                  {isGenerating ? <Icons.Loader2 className="animate-spin" /> : <Icons.Wand2 />} 生成档案
                              </button>
-                             <button
-                               onClick={handleAIPolish}
-                               disabled={isPolishing || isGenerating}
-                               className="h-10 bg-white border border-indigo-200 text-indigo-700 rounded-lg font-bold text-sm hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                             >
-                                 {isPolishing ? <Icons.Loader2 className="animate-spin" /> : <Icons.Feather />} 一键润色
-                             </button>
+                             <div className="h-10 bg-white border border-indigo-200 text-indigo-700 rounded-lg font-bold text-xs flex items-center justify-center px-2 text-center">
+                               润色请在每个模块右上角点击羽毛按钮
+                             </div>
                              {prePolishState && (
                                <button
                                  onClick={handleUndoPolish}
-                                 disabled={isPolishing}
+                                 disabled={Boolean(polishingBlockId)}
                                  className="h-9 bg-slate-100 border border-slate-200 text-slate-700 rounded-lg font-semibold text-xs hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                >
                                  <Icons.RotateCcw size={14} /> 撤销润色
@@ -1364,12 +1370,23 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                           </div>
 
                           <div className="space-y-4 pb-20">
-                            {editingItem.content_blocks?.map((b: any, i: number) => (
+                            {editingItem.content_blocks?.map((b: any, i: number) => {
+                               const blockIsPolishing = polishingBlockId === b.id;
+                               const blockCanPolish = canPolishBlock(b as ContentBlock);
+                               return (
                                <div key={b.id} className={`border rounded-xl relative group transition-all ${b.type === 'profile_header' ? 'bg-purple-50 border-purple-200 ring-2 ring-purple-100' : b.type === 'skills_matrix' ? 'bg-pink-50 border-pink-200' : 'bg-white border-slate-200 shadow-sm'}`}>
                                   {/* Block Controls */}
                                   <div className="absolute right-4 top-4 flex gap-1 opacity-20 group-hover:opacity-100 transition-opacity z-10">
                                       <button onClick={() => moveContentBlock(i, 'up')} className="p-1 hover:bg-slate-200 rounded"><Icons.ArrowUp size={14}/></button>
                                       <button onClick={() => moveContentBlock(i, 'down')} className="p-1 hover:bg-slate-200 rounded"><Icons.ArrowDown size={14}/></button>
+                                      <button
+                                        onClick={() => handleAIPolishBlock(b.id)}
+                                        title="润色当前内容项"
+                                        disabled={!blockCanPolish || Boolean(polishingBlockId)}
+                                        className="p-1 text-indigo-600 hover:bg-indigo-100 rounded disabled:opacity-40 disabled:cursor-not-allowed"
+                                      >
+                                        {blockIsPolishing ? <Icons.Loader2 size={14} className="animate-spin" /> : <Icons.Feather size={14}/>}
+                                      </button>
                                       <button onClick={() => removeContentBlock(b.id)} className="p-1 text-red-500 hover:bg-red-100 rounded ml-2"><Icons.Trash2 size={14}/></button>
                                   </div>
                                   
@@ -1712,7 +1729,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                       )}
                                   </div>
                                </div>
-                            ))}
+                               );
+                            })}
                           </div>
                       </div>
                    </div>

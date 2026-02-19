@@ -352,17 +352,39 @@ export const StudentPortfolioPage: React.FC = () => {
                      ))}
                  </div>
 
-                 {/* Evidence Footer (Optional) */}
+                 {/* Evidence Footer (Dynamic Layout) */}
                  {block.data.evidence_urls && block.data.evidence_urls.length > 0 && (
                      <div className="mt-8 pt-8 border-t border-slate-800/50">
                          <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Project Evidence</h4>
-                         <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-                             {block.data.evidence_urls.map((url, i) => (
-                                 <div key={i} className="h-24 w-36 md:h-32 md:w-48 shrink-0 rounded-xl overflow-hidden border border-slate-800 relative group cursor-pointer" onClick={() => window.open(url, '_blank')}>
-                                     <img src={url} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                                     <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-colors"></div>
-                                 </div>
-                             ))}
+                         
+                         <div className={`grid gap-4 ${
+                             block.data.evidence_urls.length === 1 ? 'grid-cols-1' : 
+                             block.data.evidence_urls.length === 2 ? 'grid-cols-1 md:grid-cols-2' :
+                             'grid-cols-2 md:grid-cols-3'
+                         }`}>
+                             {block.data.evidence_urls.map((url, i) => {
+                                 const isSingle = block.data.evidence_urls?.length === 1;
+                                 return (
+                                     <div 
+                                        key={i} 
+                                        className={`relative rounded-xl overflow-hidden border border-slate-800 group cursor-pointer bg-slate-900/50 ${
+                                            isSingle ? 'w-full' : 'aspect-[4/3]'
+                                        }`} 
+                                        onClick={() => window.open(url, '_blank')}
+                                     >
+                                         <img 
+                                            src={url} 
+                                            className={`w-full h-full transition-transform duration-500 group-hover:scale-105 ${
+                                                isSingle ? 'object-contain max-h-[600px] bg-black/20' : 'object-cover'
+                                            }`} 
+                                         />
+                                         <div className="absolute inset-0 bg-white/0 group-hover:bg-white/5 transition-colors"></div>
+                                         <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm p-1.5 rounded-full text-white/70 opacity-0 group-hover:opacity-100 transition-opacity">
+                                             <Icons.Maximize2 size={16} />
+                                         </div>
+                                     </div>
+                                 );
+                             })}
                          </div>
                      </div>
                  )}
@@ -397,11 +419,6 @@ export const StudentPortfolioPage: React.FC = () => {
       case 'section_heading':
          return (
              <div key={block.id} className="max-w-4xl mx-auto px-4 mb-8 md:mb-10 mt-16 md:mt-24 text-center">
-                 <div className="flex items-center justify-center gap-4 mb-4 opacity-50">
-                    <div className={`h-px w-8 md:w-12 ${styles.muted} bg-current`}></div>
-                    <Icons.Hash size={16} className={styles.accent} />
-                    <div className={`h-px w-8 md:w-12 ${styles.muted} bg-current`}></div>
-                 </div>
                  <h2 className={`text-2xl md:text-4xl font-bold ${styles.text}`}>{block.data.title}</h2>
              </div>
          );

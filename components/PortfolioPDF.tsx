@@ -1,5 +1,5 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet, Image, Font, Svg, Polygon, Line, Circle } from '@react-pdf/renderer';
+import { Page, Text as PdfText, View, Document, StyleSheet, Image, Font, Svg, Polygon, Line, Circle } from '@react-pdf/renderer';
 import { StudentPortfolio, ContentBlock, SkillCategory, SkillItem } from '../types';
 
 // Register a Chinese font from a reliable CDN
@@ -8,8 +8,15 @@ Font.register({
   src: 'https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.12/files/noto-sans-sc-chinese-simplified-400-normal.woff'
 });
 
-// 禁用自动断词（避免行尾自动加 "-"）
-Font.registerHyphenationCallback((word) => [word]);
+const noHyphenationCallback = (word: string) => [word];
+
+// 全局禁用自动断词（避免行尾自动加 "-"）
+Font.registerHyphenationCallback(noHyphenationCallback);
+
+// 文本级兜底：即使全局配置被其它模块覆盖，也强制不使用连字符断词
+const Text: React.FC<React.ComponentProps<typeof PdfText>> = ({ hyphenationCallback, ...props }) => (
+  <PdfText hyphenationCallback={hyphenationCallback ?? noHyphenationCallback} {...props} />
+);
 
 const ZWSP = '\u200B';
 const CJK_BOUNDARY_REGEX = /([\u3400-\u9fff\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af])(?=[\u3400-\u9fff\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af])/g;

@@ -55,8 +55,9 @@ interface PdfTheme {
   barFill: string;
   tableHeader: string;
   radarStroke: string;
-  radarFill: string;
+  radarFillOpacity: number;
   radarGrid: string;
+  radarGridOpacity: number;
 }
 
 const PDF_THEMES: Record<ThemeKey, PdfTheme> = {
@@ -72,8 +73,9 @@ const PDF_THEMES: Record<ThemeKey, PdfTheme> = {
     barFill: '#22d3ee',
     tableHeader: '#12333f',
     radarStroke: '#67e8f9',
-    radarFill: 'rgba(103,232,249,0.2)',
+    radarFillOpacity: 0.2,
     radarGrid: 'rgba(207,250,254,0.4)',
+    radarGridOpacity: 0.25,
   },
   academic_light: {
     pageBackground: '#f4f1ea',
@@ -87,8 +89,9 @@ const PDF_THEMES: Record<ThemeKey, PdfTheme> = {
     barFill: '#4338ca',
     tableHeader: '#ece7de',
     radarStroke: '#4338ca',
-    radarFill: 'rgba(67,56,202,0.15)',
+    radarFillOpacity: 0.15,
     radarGrid: '#a8a29e',
+    radarGridOpacity: 0.25,
   },
   creative_color: {
     pageBackground: '#fff7e8',
@@ -102,8 +105,9 @@ const PDF_THEMES: Record<ThemeKey, PdfTheme> = {
     barFill: '#14b8a6',
     tableHeader: '#ffedd5',
     radarStroke: '#0d9488',
-    radarFill: 'rgba(20,184,166,0.18)',
+    radarFillOpacity: 0.18,
     radarGrid: '#fdba74',
+    radarGridOpacity: 0.25,
   },
 };
 
@@ -482,10 +486,11 @@ const createStyles = (theme: PdfTheme) =>
     mediaTwoColumnRow: {
       flexDirection: 'row',
       width: '100%',
+      justifyContent: 'space-between',
     },
     mediaImageFrameHalf: {
       width: '49%',
-      marginRight: '2%',
+      marginRight: 0,
     },
     mediaImageFrameFull: {
       width: '100%',
@@ -667,63 +672,25 @@ interface ProfileData {
   heroImages: string[];
 }
 
-const clampPercent = (value: number): number => Math.min(100, Math.max(0, value));
+const toFiniteNumber = (value: unknown, fallback = 0): number => {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const clampPercent = (value: unknown): number => Math.min(100, Math.max(0, toFiniteNumber(value, 0)));
 const composeStyles = (...styleItems: Array<any | undefined | false>) =>
   styleItems.filter(Boolean) as any;
 const FIRST_LINE_INDENT = 24;
 const LONG_IMAGE_RATIO_THRESHOLD = 2.8;
-const LONG_IMAGE_HINT_PATTERN = /(panorama|pano|banner|wide|long|strip|collage|长图|拼图)/i;
 
 interface ImageRowItem {
   url: string;
   fullRow: boolean;
 }
 
-const safeDecodeUrl = (value: string): string => {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
-};
-
-const parseAspectRatioFromUrl = (url: string): number | undefined => {
-  try {
-    const parsed = new URL(url);
-    const width =
-      Number(parsed.searchParams.get('width')) ||
-      Number(parsed.searchParams.get('w')) ||
-      Number(parsed.searchParams.get('img-width'));
-    const height =
-      Number(parsed.searchParams.get('height')) ||
-      Number(parsed.searchParams.get('h')) ||
-      Number(parsed.searchParams.get('img-height'));
-    if (width > 0 && height > 0) {
-      return width / height;
-    }
-  } catch {
-    // Ignore invalid URLs and continue with filename heuristics.
-  }
-  const normalized = safeDecodeUrl(url);
-  const match = normalized.match(/(?:^|[^0-9])(\d{3,5})[xX](\d{2,5})(?:[^0-9]|$)/);
-  if (!match) {
-    return undefined;
-  }
-  const width = Number(match[1]);
-  const height = Number(match[2]);
-  return width > 0 && height > 0 ? width / height : undefined;
-};
-
 const isUltraWideImage = (url: string, measuredAspectRatios: Record<string, number>): boolean => {
   const measuredRatio = measuredAspectRatios[url];
-  if (typeof measuredRatio === 'number') {
-    return measuredRatio >= LONG_IMAGE_RATIO_THRESHOLD;
-  }
-  const parsedRatio = parseAspectRatioFromUrl(url);
-  if (typeof parsedRatio === 'number') {
-    return parsedRatio >= LONG_IMAGE_RATIO_THRESHOLD;
-  }
-  return LONG_IMAGE_HINT_PATTERN.test(safeDecodeUrl(url).toLowerCase());
+  return Number.isFinite(measuredRatio) && measuredRatio >= LONG_IMAGE_RATIO_THRESHOLD;
 };
 
 const splitImagesIntoRows = (
@@ -841,18 +808,26 @@ const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, 
     return null;
   }
 
-  const size = 152;
+  const size = 176;
   const center = size / 2;
-  const radius = 48;
+  const radius = 58;
   const angleStep = (Math.PI * 2) / items.length;
 
   const getPoint = (value: number, index: number, scale = radius) => {
     const angle = index * angleStep - Math.PI / 2;
     const r = (clampPercent(value) / 100) * scale;
-    return `${center + r * Math.cos(angle)},${center + r * Math.sin(angle)}`;
+    return {
+      x: center + r * Math.cos(angle),
+      y: center + r * Math.sin(angle),
+    };
   };
 
-  const points = items.map((item, index) => getPoint(item.value, index)).join(' ');
+  const points = items
+    .map((item, index) => {
+      const point = getPoint(item.value, index);
+      return `${point.x},${point.y}`;
+    })
+    .join(' ');
 
   return (
     <View>
@@ -861,8 +836,14 @@ const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, 
           {[25, 50, 75, 100].map((level) => (
             <Polygon
               key={level}
-              points={items.map((_, index) => getPoint(level, index)).join(' ')}
+              points={items
+                .map((_, index) => {
+                  const point = getPoint(level, index);
+                  return `${point.x},${point.y}`;
+                })
+                .join(' ')}
               stroke={theme.radarGrid}
+              strokeOpacity={theme.radarGridOpacity}
               strokeWidth={1}
               fill="none"
             />
@@ -872,18 +853,49 @@ const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, 
               key={index}
               x1={center}
               y1={center}
-              x2={getPoint(100, index).split(',')[0]}
-              y2={getPoint(100, index).split(',')[1]}
+              x2={getPoint(100, index).x}
+              y2={getPoint(100, index).y}
               stroke={theme.radarGrid}
+              strokeOpacity={theme.radarGridOpacity}
               strokeWidth={1}
             />
           ))}
-          <Polygon points={points} fill={theme.radarFill} stroke={theme.radarStroke} strokeWidth={2} />
+          <Polygon
+            points={points}
+            fill={theme.radarStroke}
+            fillOpacity={theme.radarFillOpacity}
+            stroke={theme.radarStroke}
+            strokeWidth={2}
+          />
+          {items.map((item, index) => {
+            const point = getPoint(item.value, index);
+            return (
+              <Circle
+                key={`${item.name}-${index}`}
+                cx={point.x}
+                cy={point.y}
+                r={2.2}
+                fill={theme.radarStroke}
+              />
+            );
+          })}
         </Svg>
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginRight: -8 }}>
         {items.map((item, index) => (
-          <View key={`${item.name}-${index}`} style={{ width: '48%', marginRight: '2%', marginBottom: 4 }}>
+          <View
+            key={`${item.name}-${index}`}
+            style={{ width: '48%', marginRight: '2%', marginBottom: 4, flexDirection: 'row', alignItems: 'center' }}
+          >
+            <View
+              style={{
+                width: 5,
+                height: 5,
+                borderRadius: 999,
+                backgroundColor: theme.radarStroke,
+                marginRight: 4,
+              }}
+            />
             <Text style={{ fontSize: 8, color: theme.muted }}>
               {item.name}: <Text style={{ color: theme.radarStroke, fontWeight: 700 }}>{item.value}{item.unit || '%'}</Text>
             </Text>
@@ -945,23 +957,29 @@ const renderSkillsCategory = (
   layoutStyle?: any,
 ) => {
   if (category.layout === 'radar') {
+    const canRenderRadar = category.items.length >= 3;
+
     return (
       <View key={key} style={composeStyles(styles.skillCategory, layoutStyle)} wrap={false}>
         <Text style={styles.skillCategoryTitle}>{category.name}</Text>
-        {category.items.map((item, index) => (
-          <View key={`${category.name}-${item.name}-${index}`} style={styles.skillRow}>
-            <View style={styles.skillHeader}>
-              <Text style={styles.skillName}>{item.name}</Text>
-              <Text style={styles.skillValue}>
-                {item.value}
-                {item.unit || '%'}
-              </Text>
+        {canRenderRadar ? (
+          <RadarChart items={category.items} theme={theme} />
+        ) : (
+          category.items.map((item, index) => (
+            <View key={`${category.name}-${item.name}-${index}`} style={styles.skillRow}>
+              <View style={styles.skillHeader}>
+                <Text style={styles.skillName}>{item.name}</Text>
+                <Text style={styles.skillValue}>
+                  {item.value}
+                  {item.unit || '%'}
+                </Text>
+              </View>
+              <View style={styles.skillTrack}>
+                <View style={[styles.skillFill, { width: `${clampPercent(item.value)}%` }]} />
+              </View>
             </View>
-            <View style={styles.skillTrack}>
-              <View style={[styles.skillFill, { width: `${clampPercent(item.value)}%` }]} />
-            </View>
-          </View>
-        ))}
+          ))
+        )}
       </View>
     );
   }
@@ -970,20 +988,11 @@ const renderSkillsCategory = (
     return (
       <View key={key} style={composeStyles(styles.skillCategory, layoutStyle)} wrap={false}>
         <Text style={styles.skillCategoryTitle}>{category.name}</Text>
-        {category.items.map((item, index) => (
-          <View key={`${category.name}-${item.name}-${index}`} style={styles.skillRow}>
-            <View style={styles.skillHeader}>
-              <Text style={styles.skillName}>{item.name}</Text>
-              <Text style={styles.skillValue}>
-                {item.value}
-                {item.unit || '%'}
-              </Text>
-            </View>
-            <View style={styles.skillTrack}>
-              <View style={[styles.skillFill, { width: `${clampPercent(item.value)}%` }]} />
-            </View>
-          </View>
-        ))}
+        <View style={styles.circleGrid}>
+          {category.items.map((item, index) => (
+            <CircleSkill key={`${category.name}-${item.name}-${index}`} item={item} theme={theme} styles={styles} />
+          ))}
+        </View>
       </View>
     );
   }
@@ -1128,7 +1137,12 @@ const renderBlock = (
           {timelineUrls.length > 0 ? (
             <View style={styles.timelineImageRow}>
               {timelineRows.map((row, rowIndex) => (
-                <View key={`${block.id}-timeline-row-${rowIndex}`} style={styles.mediaTwoColumnRow}>
+                <View
+                  key={`${block.id}-timeline-row-${rowIndex}`}
+                  style={styles.mediaTwoColumnRow}
+                  wrap={row.length !== 2}
+                  minPresenceAhead={rowIndex < timelineRows.length - 1 ? 210 : undefined}
+                >
                   {row.map((item, index) => {
                     const isSingleImage = timelineUrls.length === 1;
                     const fullRow = item.fullRow || isSingleImage;
@@ -1171,6 +1185,7 @@ const renderBlock = (
       { label: 'Action / 行动', content: block.data.star_action },
       { label: 'Result / 结果', content: block.data.star_result },
     ];
+    const evidenceRows = splitImagesIntoRows(block.data.evidence_urls || [], shouldUseFullRowForImage);
 
     return (
       <View key={block.id} style={styles.section}>
@@ -1185,9 +1200,14 @@ const renderBlock = (
         </View>
         {block.data.evidence_urls && block.data.evidence_urls.length > 0 ? (
           <View style={styles.evidenceRow}>
-            {splitImagesIntoRows(block.data.evidence_urls, shouldUseFullRowForImage).map(
+            {evidenceRows.map(
               (row, rowIndex) => (
-                <View key={`${block.id}-evidence-row-${rowIndex}`} style={styles.mediaTwoColumnRow}>
+                <View
+                  key={`${block.id}-evidence-row-${rowIndex}`}
+                  style={styles.mediaTwoColumnRow}
+                  wrap={row.length !== 2}
+                  minPresenceAhead={rowIndex < evidenceRows.length - 1 ? 210 : undefined}
+                >
                   {row.map((item, index) => {
                     const isSingleImage = block.data.evidence_urls?.length === 1;
                     const fullRow = item.fullRow || isSingleImage;
@@ -1283,7 +1303,12 @@ const renderBlock = (
         {block.data.title ? <Text style={styles.sectionTitle}>{block.data.title}</Text> : null}
         <View style={styles.imageGrid}>
           {imageRows.map((row, rowIndex) => (
-            <View key={`${block.id}-image-grid-row-${rowIndex}`} style={styles.mediaTwoColumnRow}>
+            <View
+              key={`${block.id}-image-grid-row-${rowIndex}`}
+              style={styles.mediaTwoColumnRow}
+              wrap={row.length !== 2}
+              minPresenceAhead={rowIndex < imageRows.length - 1 ? 210 : undefined}
+            >
               {row.map((item, index) => {
                 const isSingleImage = urls.length === 1;
                 const fullRow = item.fullRow || isSingleImage;
@@ -1328,7 +1353,6 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
   const blocks = Array.isArray(portfolio.content_blocks) ? portfolio.content_blocks : [];
   const profileData = pickProfileData(portfolio, blocks);
   const coverImages = profileData.heroImages.slice(0, 2);
-
   const allBlockImageUrls = React.useMemo(() => {
     const collectedUrls: string[] = [];
 
@@ -1345,7 +1369,6 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
       new Set(collectedUrls.filter((url) => typeof url === 'string' && url.trim().length > 0)),
     );
   }, [blocks]);
-
   const [measuredAspectRatios, setMeasuredAspectRatios] = React.useState<Record<string, number>>({});
 
   React.useEffect(() => {

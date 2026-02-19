@@ -130,6 +130,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
     }
   };
 
+  const sanitizeSkillsMatrixBlocks = (blocks: ContentBlock[] = []): ContentBlock[] =>
+    blocks.map((block) => {
+      if (block.type !== 'skills_matrix' || !block.data) return block;
+      if (!Object.prototype.hasOwnProperty.call(block.data, 'title')) return block;
+
+      const { title: _legacyTitle, ...restData } = block.data;
+      return {
+        ...block,
+        data: restData
+      };
+    });
+
   // --- Logic Helpers ---
   const getCurrentList = () => {
       switch (activeTab) {
@@ -302,6 +314,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                 }
             });
         }
+
+        preparedItem.content_blocks = sanitizeSkillsMatrixBlocks(preparedItem.content_blocks);
     }
 
     setEditingItem(preparedItem); 
@@ -323,6 +337,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
 
       if (activeTab === 'students') {
         if (!dataToSave.slug || !dataToSave.student_name) throw new Error("请填写基本信息");
+        dataToSave.content_blocks = sanitizeSkillsMatrixBlocks(dataToSave.content_blocks || []);
 
         // SYNC LOGIC: Sync 'profile_header' block data to top-level legacy fields for metadata consistency (List view, Lock screen)
         const profileBlock = dataToSave.content_blocks?.find((b: any) => b.type === 'profile_header');

@@ -957,7 +957,6 @@ const renderBlock = (
 
     return (
       <View key={block.id} style={styles.section}>
-        <Text style={styles.sectionTitle}>{block.data.title || '技能矩阵'}</Text>
         {categoryRows.map((row, rowIndex) => (
           <View
             key={`${block.id}-skills-row-${rowIndex}`}

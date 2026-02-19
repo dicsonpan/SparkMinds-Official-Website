@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@react-pdf/renderer": "^4.1.6",
+    "@react-pdf/renderer": "^4.4.0",
     "@supabase/supabase-js": "^2.39.8",
     "@vercel/analytics": "^1.6.1",
     "@vercel/speed-insights": "^1.0.10",

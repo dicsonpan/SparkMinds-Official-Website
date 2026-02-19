@@ -247,11 +247,27 @@ export const StudentPortfolioPage: React.FC = () => {
 
          return (
             <header key={block.id} className="relative w-full pt-24 md:pt-32 pb-8 md:pb-12 px-6 md:px-12 max-w-6xl mx-auto mb-10 md:mb-16">
-                <div className="flex flex-col md:flex-row items-center gap-6 md:gap-12 text-center md:text-left">
-                    <div className={`w-32 h-32 md:w-72 md:h-72 rounded-full ${styles.cardBg} border-4 ${styles.border} flex items-center justify-center text-5xl md:text-8xl font-bold shadow-2xl overflow-hidden relative backdrop-blur-md shrink-0`}>
-                        {block.data.avatar_url ? <img src={block.data.avatar_url} className="w-full h-full object-cover" /> : portfolio.student_name[0]}
+                <div className="flex flex-col md:flex-row items-start gap-8 md:gap-12 text-center md:text-left">
+                    
+                    {/* Left Column: Avatar + Hero Images Stack */}
+                    <div className="flex flex-col gap-6 w-full md:w-auto md:min-w-[280px] md:max-w-[320px] shrink-0 items-center">
+                        
+                        {/* Avatar */}
+                        <div className={`w-40 h-40 md:w-64 md:h-64 rounded-full ${styles.cardBg} border-4 ${styles.border} flex items-center justify-center text-5xl md:text-8xl font-bold shadow-2xl overflow-hidden relative backdrop-blur-md z-10`}>
+                            {block.data.avatar_url ? <img src={block.data.avatar_url} className="w-full h-full object-cover" /> : portfolio.student_name[0]}
+                        </div>
+
+                        {/* Hero Images Stack (Masonry-like) */}
+                        {heroImages.map((url, idx) => (
+                            <div key={idx} className={`w-full aspect-[4/3] rounded-2xl overflow-hidden shadow-lg border-2 ${styles.border} relative group ${idx % 2 === 0 ? 'md:rotate-2' : 'md:-rotate-2'} hover:rotate-0 transition-all duration-500 bg-white/5`}>
+                                <img src={url} className="w-full h-full object-cover" />
+                            </div>
+                        ))}
+                        
                     </div>
-                    <div className="flex-1 mb-2">
+
+                    {/* Right Column: Text Info */}
+                    <div className="flex-1 pt-4 md:pt-8">
                         <div className={`inline-block px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-widest mb-3 md:mb-4 ${styles.cardBg} ${styles.accent} border ${styles.border}`}>SparkMinds Portfolio</div>
                         <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2 opacity-80">{portfolio.student_name}</h1>
                         <p className={`text-xl md:text-5xl font-extrabold leading-tight ${styles.font} max-w-4xl mb-4 md:mb-6 drop-shadow-sm`}>{block.data.student_title || 'Future Innovator & Builder'}</p>
@@ -262,18 +278,6 @@ export const StudentPortfolioPage: React.FC = () => {
                         )}
                     </div>
                 </div>
-                {/* Hero Background Images - Stacked Vertically */}
-                {heroImages.length > 0 && (
-                    <div className="absolute top-0 left-0 w-full h-full -z-10 flex flex-col opacity-20">
-                         {heroImages.map((url, idx) => (
-                             <div key={idx} className="relative w-full flex-1 overflow-hidden">
-                                <img src={url} className="w-full h-full object-cover blur-sm" />
-                             </div>
-                         ))}
-                         {/* Overlay Gradient */}
-                         <div className={`absolute inset-0 bg-gradient-to-b ${styles.gradient}`}></div>
-                    </div>
-                )}
             </header>
          );
 

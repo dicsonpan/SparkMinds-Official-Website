@@ -684,6 +684,32 @@ interface ImageRowItem {
   fullRow: boolean;
 }
 
+const sanitizeImageUrl = (value: unknown): string => {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  let cleaned = value.trim();
+
+  while (
+    cleaned.length >= 2 &&
+    ((cleaned.startsWith('"') && cleaned.endsWith('"')) ||
+      (cleaned.startsWith("'") && cleaned.endsWith("'")))
+  ) {
+    cleaned = cleaned.slice(1, -1).trim();
+  }
+
+  return cleaned;
+};
+
+const sanitizeImageUrls = (values: unknown): string[] => {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  return values.map((item) => sanitizeImageUrl(item)).filter(Boolean);
+};
+
 const isUltraWideImage = (url: string, measuredAspectRatios: Record<string, number>): boolean => {
   const measuredRatio = measuredAspectRatios[url];
   return Number.isFinite(measuredRatio) && measuredRatio >= LONG_IMAGE_RATIO_THRESHOLD;
@@ -725,17 +751,21 @@ const splitImagesIntoRows = (
 const pickProfileData = (portfolio: StudentPortfolio, blocks: ContentBlock[]): ProfileData => {
   const profileBlock = blocks.find((item) => item.type === 'profile_header');
 
+  const heroImageUrls = sanitizeImageUrls(profileBlock?.data.hero_image_urls);
+  const heroImageUrl = sanitizeImageUrl(profileBlock?.data.hero_image_url);
+  const portfolioHeroImageUrl = sanitizeImageUrl(portfolio.hero_image_url);
+
   const heroImages =
-    profileBlock?.data.hero_image_urls && profileBlock.data.hero_image_urls.length > 0
-      ? profileBlock.data.hero_image_urls
-      : profileBlock?.data.hero_image_url
-        ? [profileBlock.data.hero_image_url]
-        : portfolio.hero_image_url
-          ? [portfolio.hero_image_url]
+    heroImageUrls.length > 0
+      ? heroImageUrls
+      : heroImageUrl
+        ? [heroImageUrl]
+        : portfolioHeroImageUrl
+          ? [portfolioHeroImageUrl]
           : [];
 
   return {
-    avatarUrl: profileBlock?.data.avatar_url || portfolio.avatar_url,
+    avatarUrl: sanitizeImageUrl(profileBlock?.data.avatar_url) || sanitizeImageUrl(portfolio.avatar_url) || undefined,
     title: profileBlock?.data.student_title || portfolio.student_title,
     summary: profileBlock?.data.summary_bio || portfolio.summary_bio,
     heroImages,
@@ -1091,7 +1121,7 @@ const renderBlock = (
   }
 
   if (block.type === 'timeline_node') {
-    const timelineUrls = block.data.urls || [];
+    const timelineUrls = sanitizeImageUrls(block.data.urls);
     const timelineRows = splitImagesIntoRows(timelineUrls, shouldUseFullRowForImage);
 
     return (
@@ -1151,7 +1181,8 @@ const renderBlock = (
       { label: 'Action / 行动', content: block.data.star_action },
       { label: 'Result / 结果', content: block.data.star_result },
     ];
-    const evidenceRows = splitImagesIntoRows(block.data.evidence_urls || [], shouldUseFullRowForImage);
+    const evidenceUrls = sanitizeImageUrls(block.data.evidence_urls);
+    const evidenceRows = splitImagesIntoRows(evidenceUrls, shouldUseFullRowForImage);
 
     return (
       <View key={block.id} style={styles.section}>
@@ -1164,7 +1195,7 @@ const renderBlock = (
             </View>
           ))}
         </View>
-        {block.data.evidence_urls && block.data.evidence_urls.length > 0 ? (
+        {evidenceUrls.length > 0 ? (
           <View style={styles.evidenceRow}>
             {evidenceRows.map(
               (row, rowIndex) => (
@@ -1175,7 +1206,7 @@ const renderBlock = (
                   minPresenceAhead={rowIndex < evidenceRows.length - 1 ? 210 : undefined}
                 >
                   {row.map((item, index) => {
-                    const isSingleImage = block.data.evidence_urls?.length === 1;
+                    const isSingleImage = evidenceUrls.length === 1;
                     const fullRow = item.fullRow || isSingleImage;
 
                     return (
@@ -1260,8 +1291,12 @@ const renderBlock = (
     );
   }
 
-  if (block.type === 'image_grid' && block.data.urls && block.data.urls.length > 0) {
-    const urls = block.data.urls;
+  if (block.type === 'image_grid') {
+    const urls = sanitizeImageUrls(block.data.urls);
+    if (urls.length === 0) {
+      return null;
+    }
+
     const imageRows = splitImagesIntoRows(urls, shouldUseFullRowForImage);
 
     return (
@@ -1323,12 +1358,8 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
     const collectedUrls: string[] = [];
 
     blocks.forEach((block) => {
-      if (Array.isArray(block.data.urls)) {
-        collectedUrls.push(...block.data.urls);
-      }
-      if (Array.isArray(block.data.evidence_urls)) {
-        collectedUrls.push(...block.data.evidence_urls);
-      }
+      collectedUrls.push(...sanitizeImageUrls(block.data.urls));
+      collectedUrls.push(...sanitizeImageUrls(block.data.evidence_urls));
     });
 
     return Array.from(

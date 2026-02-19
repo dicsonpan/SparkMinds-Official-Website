@@ -541,6 +541,16 @@ const StatBox = ({ item }: { item: SkillItem }) => (
     </View>
 );
 
+// Helper function to render text with paragraph indentation
+// Adds full-width spaces at the beginning of each paragraph to ensure consistent indentation
+const renderParagraphs = (text: string | undefined, style: any) => {
+  if (!text) return null;
+  return text.split(/\r?\n/).filter(p => p.trim()).map((para, index) => (
+    <Text key={index} style={style}>
+      {`\u3000\u3000${para.trim()}`}
+    </Text>
+  ));
+};
 
 export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
   return (
@@ -558,7 +568,11 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
           <View style={styles.headerContent}>
             <Text style={styles.studentName}>{portfolio.student_name}</Text>
             {portfolio.student_title && <Text style={styles.studentTitle}>{portfolio.student_title}</Text>}
-            {portfolio.summary_bio && <Text style={styles.studentBio}>{portfolio.summary_bio}</Text>}
+            {portfolio.summary_bio && (
+              <View style={{ marginTop: 4 }}>
+                {renderParagraphs(portfolio.summary_bio, { ...styles.studentBio, marginTop: 0 })}
+              </View>
+            )}
           </View>
         </View>
 
@@ -647,7 +661,9 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
                         <Text style={styles.timelineDate}>{block.data.date}</Text>
                         <Text style={styles.timelineTitle}>{block.data.title}</Text>
                      </View>
-                     <Text style={styles.timelineDesc}>{block.data.content}</Text>
+                     <View style={styles.timelineDesc}>
+                        {renderParagraphs(block.data.content, {})}
+                     </View>
                      {block.data.urls && block.data.urls.length > 0 && (
                         <View style={styles.timelineImages}>
                            {block.data.urls.map((url, i) => (
@@ -764,7 +780,7 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
             return (
               <View key={block.id} style={styles.section}>
                 {block.data.title && <Text style={{fontSize: 12, fontWeight: 'bold', marginBottom: 6}}>{block.data.title}</Text>}
-                <Text style={styles.textBlock}>{block.data.content}</Text>
+                {renderParagraphs(block.data.content, styles.textBlock)}
               </View>
             );
           }

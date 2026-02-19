@@ -532,6 +532,8 @@ interface ProfileData {
 }
 
 const clampPercent = (value: number): number => Math.min(100, Math.max(0, value));
+const composeStyles = (...styleItems: Array<any | undefined | false>) =>
+  styleItems.filter(Boolean) as any;
 
 const pickProfileData = (portfolio: StudentPortfolio, blocks: ContentBlock[]): ProfileData => {
   const profileBlock = blocks.find((item) => item.type === 'profile_header');
@@ -568,7 +570,7 @@ const renderParagraphs = (text: string | undefined, style: any) => {
   }
 
   return lines.map((line, index) => (
-    <Text key={`${line}-${index}`} style={[style, index > 0 ? { marginTop: 3 } : undefined]}>
+    <Text key={`${line}-${index}`} style={composeStyles(style, index > 0 && { marginTop: 3 })}>
       {line}
     </Text>
   ));
@@ -878,11 +880,11 @@ const renderBlock = (
           {rows.map((row, rowIndex) => (
             <View
               key={`${block.id}-row-${rowIndex}`}
-              style={[
+              style={composeStyles(
                 styles.tableRow,
-                rowIndex % 2 === 1 ? styles.tableAltRow : undefined,
-                rowIndex === rows.length - 1 ? { borderBottomWidth: 0 } : undefined,
-              ]}
+                rowIndex % 2 === 1 && styles.tableAltRow,
+                rowIndex === rows.length - 1 && { borderBottomWidth: 0 },
+              )}
             >
               {row.map((cell, cellIndex) => (
                 <View
@@ -905,12 +907,12 @@ const renderBlock = (
   if (block.type === 'image_grid' && block.data.urls && block.data.urls.length > 0) {
     const urls = block.data.urls;
 
-    let dynamicStyle: object = styles.imageGridItem;
-    if (urls.length === 1) {
-      dynamicStyle = { width: '100%', height: 180, marginRight: 0 };
-    } else if (urls.length === 2) {
-      dynamicStyle = { width: '49%', height: 130, marginRight: '1%' };
-    }
+    const dynamicStyle =
+      urls.length === 1
+        ? { width: '100%', height: 180, marginRight: 0 }
+        : urls.length === 2
+          ? { width: '49%', height: 130, marginRight: '1%' }
+          : undefined;
 
     return (
       <View key={block.id} style={styles.section}>
@@ -920,12 +922,12 @@ const renderBlock = (
             <Image
               key={`${url}-${index}`}
               src={url}
-              style={[
+              style={composeStyles(
                 styles.imageGridItem,
                 dynamicStyle,
-                urls.length > 2 && index % 3 === 2 ? { marginRight: 0 } : undefined,
-                urls.length === 2 && index === 1 ? { marginRight: 0 } : undefined,
-              ]}
+                urls.length > 2 && index % 3 === 2 && { marginRight: 0 },
+                urls.length === 2 && index === 1 && { marginRight: 0 },
+              )}
             />
           ))}
         </View>
@@ -972,7 +974,7 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
                 <Image
                   key={`${url}-${index}`}
                   src={url}
-                  style={[styles.heroImage, index % 3 === 2 ? styles.heroImageLastInRow : undefined]}
+                  style={composeStyles(styles.heroImage, index % 3 === 2 && styles.heroImageLastInRow)}
                 />
               ))}
             </View>

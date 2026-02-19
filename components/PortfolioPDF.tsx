@@ -2,25 +2,22 @@ import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image, Font, Svg, Polygon, Line, Circle } from '@react-pdf/renderer';
 import { StudentPortfolio, ContentBlock, SkillCategory, SkillItem } from '../types';
 
-// Register a Chinese font from a reliable CDN since the local file is missing.
-// Using Noto Sans SC which provides good coverage for Simplified Chinese.
+// Register a Chinese font from a reliable CDN
 Font.register({
   family: 'Noto Sans SC',
   src: 'https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.12/files/noto-sans-sc-chinese-simplified-400-normal.woff'
 });
 
-// 【关键修复】：禁用 react-pdf 默认的连字符（hyphen）行为
-// 配合下方的 \u200B 零宽空格，可以实现中文自动换行且行尾不带“-”号
+// 禁用正常的 hyphenation 回调
 Font.registerHyphenationCallback((word) => {
   return [word];
 });
 
-// Helper to insert Zero-Width Space (\u200B) after Chinese characters
-// This tricks the PDF engine into treating Chinese characters as breakable words without adding hyphens
+// 【终极杀手锏】：在所有字符之间插入零宽空格
+// 让排版引擎认为每个字/字母都是独立的单词，从而在任意位置自然换行，彻底扼杀“-”号
 const processText = (text: string | undefined | null) => {
   if (!text) return '';
-  // Add ZWS after every Chinese character
-  return text.replace(/([\u4e00-\u9fa5])/g, '$1\u200B');
+  return Array.from(String(text)).join('\u200B');
 };
 
 const styles = StyleSheet.create({
@@ -41,35 +38,34 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     alignItems: 'flex-start' 
   },
-  // Updated Avatar Styles
   headerAvatarContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
     marginRight: 20,
-    overflow: 'hidden', // Clip content to circle
+    overflow: 'hidden', 
     backgroundColor: '#f1f5f9'
   },
   headerAvatarImage: {
     width: '100%',
     height: '100%',
-    objectFit: 'cover' // Simulates background-size: cover
+    objectFit: 'cover' 
   },
   headerContent: {
     flex: 1,
     flexDirection: 'column',
-    justifyContent: 'center' // Center vertically if content is short
+    justifyContent: 'center' 
   },
   studentName: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#0f172a', // Slate 900
-    marginBottom: 10, // Increased spacing
+    color: '#0f172a', 
+    marginBottom: 10, 
     lineHeight: 1.2
   },
   studentTitle: {
     fontSize: 12,
-    color: '#2563eb', // Blue 600
+    color: '#2563eb', 
     fontWeight: 'bold',
     marginBottom: 8,
     marginTop: 0, 
@@ -112,7 +108,7 @@ const styles = StyleSheet.create({
     marginTop: 5
   },
   infoItem: {
-    width: '32%', // 3 columns with gap
+    width: '32%', 
     backgroundColor: '#f8fafc',
     padding: 10,
     borderRadius: 6,
@@ -132,7 +128,7 @@ const styles = StyleSheet.create({
     color: '#0f172a'
   },
 
-  // === Skills (Progress Bars) ===
+  // === Skills ===
   skillCategory: {
     marginBottom: 10,
     width: '100%'
@@ -146,14 +142,13 @@ const styles = StyleSheet.create({
     padding: '4 8',
     borderRadius: 4
   },
-  // -- Bar Layout --
   skillRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12
   },
   skillItem: {
-    width: '48%', // 2 columns
+    width: '48%', 
     marginBottom: 6
   },
   skillHeader: {
@@ -181,7 +176,6 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#2563eb'
   },
-  // -- Stat Grid Layout --
   statGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -209,7 +203,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textTransform: 'uppercase'
   },
-  // -- Circle Layout --
   circleGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -263,7 +256,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap'
   },
   timelineImg: {
-    width: 140,  // Increased size
+    width: 140,  
     height: 90,
     borderRadius: 4,
     objectFit: 'cover',
@@ -294,7 +287,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap'
   },
   starBox: {
-    width: '50%', // 2x2 Grid
+    width: '50%', 
     padding: 10,
     borderRightWidth: 1,
     borderRightColor: '#f1f5f9',
@@ -326,7 +319,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8
   },
-  // Default Style (3 cols)
   imageGridItem: {
     width: '31%', 
     height: 120,
@@ -405,8 +397,6 @@ interface PortfolioPDFProps {
 }
 
 // === Chart Helpers ===
-
-// Helper: Radar Chart
 const RadarChart = ({ items }: { items: SkillItem[] }) => {
     const size = 180;
     const center = size / 2;
@@ -424,7 +414,6 @@ const RadarChart = ({ items }: { items: SkillItem[] }) => {
     return (
         <View style={{ alignItems: 'center', marginBottom: 10 }}>
             <Svg width={size} height={size}>
-                {/* Grid Background */}
                 {[0.25, 0.5, 0.75, 1].map((scale, i) => (
                     <Polygon
                         key={i}
@@ -434,7 +423,6 @@ const RadarChart = ({ items }: { items: SkillItem[] }) => {
                         fill="none"
                     />
                 ))}
-                {/* Axes */}
                 {items.map((_, i) => (
                     <Line
                         key={i}
@@ -446,18 +434,14 @@ const RadarChart = ({ items }: { items: SkillItem[] }) => {
                         strokeWidth={1}
                     />
                 ))}
-                {/* Data Shape */}
                 <Polygon
                     points={dataPoints}
                     fill="rgba(37, 99, 235, 0.1)"
                     stroke="#2563eb"
                     strokeWidth={2}
                 />
-                {/* Labels at vertices */}
                 {items.map((item, i) => {
-                    // Position label slightly outside the last grid ring
                     const [x, y] = getPoint(100, i, radius + 15).split(',').map(Number);
-                    // Simple offset adjustment to center text approximately
                     const adjX = x > center ? 0 : x < center ? -20 : -10;
                     const adjY = y > center ? 5 : -5;
                     return (
@@ -472,7 +456,6 @@ const RadarChart = ({ items }: { items: SkillItem[] }) => {
                     );
                 })}
             </Svg>
-            {/* Legend for exact values */}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginTop: -20 }}>
                 {items.map((item, i) => (
                     <Text key={i} style={{ fontSize: 8, color: '#64748b' }}>
@@ -484,7 +467,6 @@ const RadarChart = ({ items }: { items: SkillItem[] }) => {
     );
 };
 
-// Helper: Circle Chart
 const CircleChart = ({ item }: { item: SkillItem }) => {
     const size = 50;
     const r = 20;
@@ -519,7 +501,6 @@ const CircleChart = ({ item }: { item: SkillItem }) => {
     );
 };
 
-// Helper: Stat Grid
 const StatBox = ({ item }: { item: SkillItem }) => (
     <View style={styles.statItem}>
         <Text style={styles.statValue}>
@@ -529,16 +510,14 @@ const StatBox = ({ item }: { item: SkillItem }) => (
     </View>
 );
 
-
 export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         
-        {/* === 1. Profile Header (Main) === */}
+        {/* === 1. Profile Header === */}
         <View style={styles.header}>
           {portfolio.avatar_url && (
-             // Wrap Image in a View with overflow: hidden to create a clean circle (background simulation)
              <View style={styles.headerAvatarContainer}>
                 <Image src={portfolio.avatar_url} style={styles.headerAvatarImage} />
              </View>
@@ -555,7 +534,6 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
           
           if (block.type === 'profile_header') return null; 
 
-          // === 5. Section Heading ===
           if (block.type === 'section_heading') {
             return (
               <View key={block.id} style={styles.sectionHeadingContainer} wrap={false}>
@@ -564,7 +542,6 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
             );
           }
 
-          // === 7. Info List ===
           if (block.type === 'info_list') {
             return (
               <View key={block.id} style={styles.section} wrap={false}>
@@ -581,7 +558,6 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
             );
           }
 
-          // === 2. Skills Matrix (UPDATED) ===
           if (block.type === 'skills_matrix') {
             return (
               <View key={block.id} style={styles.section} wrap={false}>
@@ -589,7 +565,6 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
                   <View key={idx} style={styles.skillCategory}>
                     <Text style={styles.skillCategoryTitle}>{processText(cat.name)}</Text>
                     
-                    {/* Render based on layout type */}
                     {cat.layout === 'radar' ? (
                         <RadarChart items={cat.items} />
                     ) : cat.layout === 'circle' ? (
@@ -605,7 +580,6 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
                             ))}
                         </View>
                     ) : (
-                        // Default 'bar' layout
                         <View style={styles.skillRow}>
                             {cat.items.map((skill: SkillItem, sIdx: number) => (
                                 <View key={sIdx} style={styles.skillItem}>
@@ -626,7 +600,6 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
             );
           }
 
-          // === 3. Timeline Node ===
           if (block.type === 'timeline_node') {
              return (
                <View key={block.id} style={[styles.section, styles.timelineRow]} wrap={false}>
@@ -648,7 +621,6 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
              )
           }
 
-          // === 4. STAR Project ===
           if (block.type === 'project_highlight') {
             return (
               <View key={block.id} style={styles.section} wrap={false}>
@@ -689,7 +661,6 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
             );
           }
 
-          // === 8. Table ===
           if (block.type === 'table') {
              const colCount = block.data.table_columns?.length || 1;
              const colWidth = `${100 / colCount}%`;
@@ -698,7 +669,6 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
                <View key={block.id} style={styles.section} wrap={false}>
                   {block.data.title && <Text style={{fontSize: 12, fontWeight: 'bold', marginBottom: 5}}>{processText(block.data.title)}</Text>}
                   <View style={styles.table}>
-                     {/* Header */}
                      <View style={styles.tableHeaderRow}>
                         {block.data.table_columns?.map((col, i) => (
                            <View key={i} style={[styles.tableHeaderCell, { width: colWidth, borderRightWidth: i === colCount - 1 ? 0 : 1 }]}>
@@ -706,7 +676,6 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
                            </View>
                         ))}
                      </View>
-                     {/* Rows */}
                      {block.data.table_rows?.map((row, rIdx) => (
                         <View key={rIdx} style={[styles.tableRow, { backgroundColor: rIdx % 2 === 0 ? '#ffffff' : '#f8fafc', borderBottomWidth: rIdx === (block.data.table_rows?.length || 0) - 1 ? 0 : 1 }]}>
                            {row.map((cell, cIdx) => (
@@ -721,18 +690,15 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
              )
           }
 
-          // === 6. Image Grid ===
           if (block.type === 'image_grid' && block.data.urls && block.data.urls.length > 0) {
              const urls = block.data.urls;
-             
-             // Dynamic styling based on count
              let dynamicStyle = {};
              if (urls.length === 1) {
-                 dynamicStyle = { width: '100%', height: 300 }; // Full width for 1 image
+                 dynamicStyle = { width: '100%', height: 300 };
              } else if (urls.length === 2) {
-                 dynamicStyle = { width: '48%', height: 200 }; // Half width for 2 images
+                 dynamicStyle = { width: '48%', height: 200 };
              } else {
-                 dynamicStyle = styles.imageGridItem; // Default 31% for 3+
+                 dynamicStyle = styles.imageGridItem; 
              }
 
              return (
@@ -747,7 +713,6 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
              )
           }
 
-          // === Text (Default) ===
           if (block.type === 'text') {
             return (
               <View key={block.id} style={styles.section}>

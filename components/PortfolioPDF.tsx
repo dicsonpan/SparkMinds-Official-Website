@@ -6,6 +6,7 @@ import {
   Image,
   Line,
   Page,
+  Path,
   Polygon,
   StyleSheet,
   Svg,
@@ -676,6 +677,13 @@ const toFiniteNumber = (value: unknown, fallback = 0): number => {
 const clampPercent = (value: unknown): number => Math.min(100, Math.max(0, toFiniteNumber(value, 0)));
 const composeStyles = (...styleItems: Array<any | undefined | false>) =>
   styleItems.filter(Boolean) as any;
+
+/** Strip stray quote characters that may wrap image URLs stored in the database. */
+const sanitizeImageUrl = (url: string | undefined | null): string => {
+  if (!url || typeof url !== 'string') return '';
+  return url.replace(/^["']+|["']+$/g, '').trim();
+};
+
 const FIRST_LINE_INDENT = 24;
 const LONG_IMAGE_RATIO_THRESHOLD = 2.8;
 
@@ -857,28 +865,47 @@ const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, 
   );
 };
 
+const describeArc = (cx: number, cy: number, r: number, startAngle: number, endAngle: number): string => {
+  const start = {
+    x: cx + r * Math.cos(startAngle),
+    y: cy + r * Math.sin(startAngle),
+  };
+  const end = {
+    x: cx + r * Math.cos(endAngle),
+    y: cy + r * Math.sin(endAngle),
+  };
+  const largeArc = Math.abs(endAngle - startAngle) > Math.PI ? 1 : 0;
+  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}`;
+};
+
 const CircleSkill: React.FC<{ item: SkillItem; theme: PdfTheme; styles: ReturnType<typeof createStyles> }> = ({ item, theme, styles }) => {
   const size = 44;
+  const cx = size / 2;
+  const cy = size / 2;
   const radius = 16;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (clampPercent(item.value) / 100) * circumference;
+  const pct = clampPercent(item.value);
+
+  // Arc from 12-o'clock position (−π/2) clockwise
+  const startAngle = -Math.PI / 2;
+  // Clamp to just under 100% to avoid a degenerate full-circle arc
+  const sweep = (Math.min(pct, 99.99) / 100) * 2 * Math.PI;
+  const endAngle = startAngle + sweep;
 
   return (
     <View style={styles.circleItem}>
       <View style={{ width: size, height: size, position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
-        <Svg width={size} height={size}>
-          <Circle cx={size / 2} cy={size / 2} r={radius} stroke={theme.border} strokeWidth={4} fill="none" />
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke={theme.accent}
-            strokeWidth={4}
-            fill="none"
-            strokeDasharray={`${circumference} ${circumference}`}
-            {...({ strokeDashoffset: offset } as any)}
-            transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          />
+        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          {/* Background track circle */}
+          <Circle cx={cx} cy={cy} r={radius} stroke={theme.border} strokeWidth={4} fill="none" />
+          {/* Foreground arc — uses Path to avoid unsupported strokeDashoffset */}
+          {pct > 0 && (
+            <Path
+              d={describeArc(cx, cy, radius, startAngle, endAngle)}
+              stroke={theme.accent}
+              strokeWidth={4}
+              fill="none"
+            />
+          )}
         </Svg>
         <Text
           style={{
@@ -1113,7 +1140,7 @@ const renderBlock = (
                         )}
                       >
                         <Image
-                          src={item.url}
+                          src={sanitizeImageUrl(item.url)}
                           style={composeStyles(
                             styles.timelineImage,
                             fullRow ? styles.timelineImageFullRow : styles.timelineImageTwoColumn,
@@ -1178,7 +1205,7 @@ const renderBlock = (
                         )}
                       >
                         <Image
-                          src={item.url}
+                          src={sanitizeImageUrl(item.url)}
                           style={composeStyles(
                             styles.evidenceImage,
                             fullRow ? styles.evidenceImageFullRow : styles.evidenceImageTwoColumn,
@@ -1279,7 +1306,7 @@ const renderBlock = (
                     )}
                   >
                     <Image
-                      src={item.url}
+                      src={sanitizeImageUrl(item.url)}
                       style={composeStyles(
                         styles.imageGridItem,
                         fullRow ? styles.imageGridItemFullRow : styles.imageGridItemTwoColumn,
@@ -1374,7 +1401,7 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
             <View style={styles.coverLeft}>
               <View style={styles.coverAvatarWrap}>
                 {profileData.avatarUrl ? (
-                  <Image src={profileData.avatarUrl} style={styles.coverAvatarImage} />
+                  <Image src={sanitizeImageUrl(profileData.avatarUrl)} style={styles.coverAvatarImage} />
                 ) : (
                   <Text style={styles.coverAvatarFallback}>{portfolio.student_name[0] || 'S'}</Text>
                 )}
@@ -1382,7 +1409,7 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
               {coverImages.map((url, index) => (
                 <Image
                   key={`${url}-${index}`}
-                  src={url}
+                  src={sanitizeImageUrl(url)}
                   style={composeStyles(styles.coverHeroImage, index === coverImages.length - 1 && { marginBottom: 0 })}
                 />
               ))}

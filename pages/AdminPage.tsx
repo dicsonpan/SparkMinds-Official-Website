@@ -25,6 +25,7 @@ const AI_PROVIDERS = [
 
 type AdminTab = 'curriculum' | 'showcase' | 'social' | 'philosophy' | 'pages' | 'bookings' | 'students' | 'settings';
 type PolishScope = 'content'; // Simplified scope
+type BlockImageField = 'hero_image_urls' | 'urls' | 'evidence_urls';
 
 interface AdminPageProps {
   defaultTab?: AdminTab;
@@ -50,6 +51,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
   const [isNewRecord, setIsNewRecord] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
+  const [draggedBlockImage, setDraggedBlockImage] = useState<{ blockId: string; field: BlockImageField; index: number } | null>(null);
   
   // AI States
   const [aiConfig, setAiConfig] = useState({
@@ -222,6 +224,102 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
     if (direction === 'up' && index > 0) { [blocks[index], blocks[index - 1]] = [blocks[index - 1], blocks[index]]; } 
     else if (direction === 'down' && index < blocks.length - 1) { [blocks[index], blocks[index + 1]] = [blocks[index + 1], blocks[index]]; }
     setEditingItem({ ...editingItem, content_blocks: blocks });
+  };
+
+  const getBlockImageUrls = (block: ContentBlock, field: BlockImageField): string[] => {
+    if (field === 'hero_image_urls') {
+      return block.data.hero_image_urls || (block.data.hero_image_url ? [block.data.hero_image_url] : []);
+    }
+    return block.data[field] || [];
+  };
+
+  const updateBlockImageUrls = (blockId: string, field: BlockImageField, nextUrls: string[]) => {
+    setEditingItem((prev: any) => {
+      if (!prev) return prev;
+      const nextBlocks = (prev.content_blocks || []).map((block: ContentBlock) => {
+        if (block.id !== blockId) return block;
+        if (field === 'hero_image_urls') {
+          return {
+            ...block,
+            data: {
+              ...block.data,
+              hero_image_urls: nextUrls,
+              hero_image_url: nextUrls[0] || ''
+            }
+          };
+        }
+        return {
+          ...block,
+          data: {
+            ...block.data,
+            [field]: nextUrls
+          }
+        };
+      });
+      return { ...prev, content_blocks: nextBlocks };
+    });
+  };
+
+  const handleBlockImageDragStart = (blockId: string, field: BlockImageField, index: number) => {
+    setDraggedBlockImage({ blockId, field, index });
+  };
+
+  const handleBlockImageDragOver = (e: React.DragEvent, blockId: string, field: BlockImageField, targetIndex: number) => {
+    e.preventDefault();
+    if (!draggedBlockImage) return;
+    if (draggedBlockImage.blockId !== blockId || draggedBlockImage.field !== field || draggedBlockImage.index === targetIndex) return;
+
+    setEditingItem((prev: any) => {
+      if (!prev) return prev;
+      const nextBlocks = (prev.content_blocks || []).map((block: ContentBlock) => {
+        if (block.id !== blockId) return block;
+        const currentUrls = getBlockImageUrls(block, field);
+        if (
+          draggedBlockImage.index < 0 ||
+          draggedBlockImage.index >= currentUrls.length ||
+          targetIndex < 0 ||
+          targetIndex >= currentUrls.length
+        ) {
+          return block;
+        }
+
+        const reordered = [...currentUrls];
+        const [draggedUrl] = reordered.splice(draggedBlockImage.index, 1);
+        reordered.splice(targetIndex, 0, draggedUrl);
+
+        if (field === 'hero_image_urls') {
+          return {
+            ...block,
+            data: {
+              ...block.data,
+              hero_image_urls: reordered,
+              hero_image_url: reordered[0] || ''
+            }
+          };
+        }
+
+        return {
+          ...block,
+          data: {
+            ...block.data,
+            [field]: reordered
+          }
+        };
+      });
+
+      return { ...prev, content_blocks: nextBlocks };
+    });
+
+    setDraggedBlockImage((prev) => (prev ? { ...prev, index: targetIndex } : prev));
+  };
+
+  const handleBlockImageDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDraggedBlockImage(null);
+  };
+
+  const handleBlockImageDragEnd = () => {
+    setDraggedBlockImage(null);
   };
 
   // Helper for Info List / Table / Skills modification inside a block
@@ -417,12 +515,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                  // Init array from existing array OR legacy string
                  const currentUrls = block.data.hero_image_urls || (block.data.hero_image_url ? [block.data.hero_image_url] : []);
                  const newUrls = [...currentUrls, ...uploadedUrls];
-                 
-                 // Update the block using a cleaner state update
-                 const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => 
-                    b.id === blockId ? { ...b, data: { ...b.data, hero_image_urls: newUrls, hero_image_url: newUrls[0] } } : b
-                 );
-                 setEditingItem({ ...editingItem, content_blocks: newBlocks });
+                 updateBlockImageUrls(blockId, 'hero_image_urls', newUrls);
 
              } else {
                  // Array types
@@ -783,18 +876,29 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                                   <div className="flex flex-wrap gap-2">
                                                       {/* Show existing array or legacy single url */}
                                                       {(b.data.hero_image_urls || (b.data.hero_image_url ? [b.data.hero_image_url] : [])).map((url: string, imgIdx: number) => (
-                                                          <div key={imgIdx} className="h-20 w-32 rounded-lg bg-slate-100 overflow-hidden relative group/heroimg border border-purple-200">
+                                                          <div
+                                                              key={`${url}-${imgIdx}`}
+                                                              draggable
+                                                              onDragStart={() => handleBlockImageDragStart(b.id, 'hero_image_urls', imgIdx)}
+                                                              onDragOver={(e) => handleBlockImageDragOver(e, b.id, 'hero_image_urls', imgIdx)}
+                                                              onDrop={handleBlockImageDrop}
+                                                              onDragEnd={handleBlockImageDragEnd}
+                                                              className={`h-20 w-32 rounded-lg bg-slate-100 overflow-hidden relative group/heroimg border transition-colors cursor-move ${
+                                                                  draggedBlockImage?.blockId === b.id && draggedBlockImage.field === 'hero_image_urls' && draggedBlockImage.index === imgIdx
+                                                                      ? 'border-purple-500'
+                                                                      : 'border-purple-200'
+                                                              }`}
+                                                          >
                                                               <img src={url} className="w-full h-full object-cover" />
                                                               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/heroimg:opacity-100 flex items-center justify-center transition-opacity">
                                                                   <button 
                                                                     onClick={() => {
-                                                                        // Remove specific image
-                                                                        const currentUrls = b.data.hero_image_urls || (b.data.hero_image_url ? [b.data.hero_image_url] : []);
-                                                                        const newUrls = currentUrls.filter((_: string, idx: number) => idx !== imgIdx);
-                                                                        const newBlocks = editingItem.content_blocks.map((block: ContentBlock) => 
-                                                                            block.id === b.id ? { ...block, data: { ...block.data, hero_image_urls: newUrls, hero_image_url: newUrls[0] } } : block
+                                                                        const currentUrls = getBlockImageUrls(b, 'hero_image_urls');
+                                                                        updateBlockImageUrls(
+                                                                            b.id,
+                                                                            'hero_image_urls',
+                                                                            currentUrls.filter((_: string, idx: number) => idx !== imgIdx)
                                                                         );
-                                                                        setEditingItem({ ...editingItem, content_blocks: newBlocks });
                                                                     }}
                                                                     className="text-white hover:text-red-400"
                                                                   >
@@ -879,7 +983,19 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                               <textarea className="w-full h-20 text-sm border rounded p-2 resize-none" value={b.data.content || ''} onChange={e => updateContentBlock(b.id, 'content', e.target.value)} placeholder="详细描述..." />
                                               <div className="flex flex-wrap gap-2">
                                                   {b.data.urls?.map((url: string, i: number) => (
-                                                      <div key={i} className="w-12 h-12 bg-black rounded relative overflow-hidden group/img">
+                                                      <div
+                                                          key={`${url}-${i}`}
+                                                          draggable
+                                                          onDragStart={() => handleBlockImageDragStart(b.id, 'urls', i)}
+                                                          onDragOver={(e) => handleBlockImageDragOver(e, b.id, 'urls', i)}
+                                                          onDrop={handleBlockImageDrop}
+                                                          onDragEnd={handleBlockImageDragEnd}
+                                                          className={`w-12 h-12 bg-black rounded relative overflow-hidden group/img border transition-colors cursor-move ${
+                                                              draggedBlockImage?.blockId === b.id && draggedBlockImage.field === 'urls' && draggedBlockImage.index === i
+                                                                  ? 'border-blue-500'
+                                                                  : 'border-transparent'
+                                                          }`}
+                                                      >
                                                           <img src={url} className="w-full h-full object-cover" />
                                                           <button onClick={() => { const u = [...b.data.urls]; u.splice(i, 1); updateContentBlock(b.id, 'urls', u); }} className="absolute inset-0 bg-red-500/50 hidden group-hover/img:flex items-center justify-center text-white"><Icons.X size={12}/></button>
                                                       </div>
@@ -906,7 +1022,19 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                                   </label>
                                                   <div className="flex flex-wrap gap-2">
                                                       {b.data.evidence_urls?.map((url: string, i: number) => (
-                                                          <div key={i} className="h-12 w-12 rounded overflow-hidden relative group/evidence border border-slate-200 bg-slate-100">
+                                                          <div
+                                                              key={`${url}-${i}`}
+                                                              draggable
+                                                              onDragStart={() => handleBlockImageDragStart(b.id, 'evidence_urls', i)}
+                                                              onDragOver={(e) => handleBlockImageDragOver(e, b.id, 'evidence_urls', i)}
+                                                              onDrop={handleBlockImageDrop}
+                                                              onDragEnd={handleBlockImageDragEnd}
+                                                              className={`h-12 w-12 rounded overflow-hidden relative group/evidence border bg-slate-100 transition-colors cursor-move ${
+                                                                  draggedBlockImage?.blockId === b.id && draggedBlockImage.field === 'evidence_urls' && draggedBlockImage.index === i
+                                                                      ? 'border-blue-500'
+                                                                      : 'border-slate-200'
+                                                              }`}
+                                                          >
                                                               <img src={url} className="w-full h-full object-cover" />
                                                               <button
                                                                   onClick={() => {
@@ -1029,7 +1157,23 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                               {b.type === 'text' && <textarea className="w-full h-24 text-sm border p-2 rounded" value={b.data.content} onChange={e => updateContentBlock(b.id, 'content', e.target.value)} placeholder="文本内容..." />}
                                               {b.type === 'image_grid' && (
                                                   <div className="flex gap-2 flex-wrap">
-                                                      {b.data.urls?.map((url: string) => <img src={url} className="w-10 h-10 object-cover rounded" />)}
+                                                      {b.data.urls?.map((url: string, i: number) => (
+                                                          <div
+                                                              key={`${url}-${i}`}
+                                                              draggable
+                                                              onDragStart={() => handleBlockImageDragStart(b.id, 'urls', i)}
+                                                              onDragOver={(e) => handleBlockImageDragOver(e, b.id, 'urls', i)}
+                                                              onDrop={handleBlockImageDrop}
+                                                              onDragEnd={handleBlockImageDragEnd}
+                                                              className={`w-10 h-10 rounded overflow-hidden border cursor-move ${
+                                                                  draggedBlockImage?.blockId === b.id && draggedBlockImage.field === 'urls' && draggedBlockImage.index === i
+                                                                      ? 'border-blue-500'
+                                                                      : 'border-slate-200'
+                                                              }`}
+                                                          >
+                                                              <img src={url} className="w-full h-full object-cover" />
+                                                          </div>
+                                                      ))}
                                                       <label className="w-10 h-10 border border-dashed flex items-center justify-center cursor-pointer hover:bg-slate-100"><Icons.Plus size={16}/><input type="file" className="hidden" onChange={e => handleImageUpload(e, 'standard', b.id)} /></label>
                                                   </div>
                                               )}

@@ -86,7 +86,7 @@ const THEMES: Record<PortfolioTheme, PortfolioThemeStyles> = {
     tableHeader: 'bg-cyan-500/10',
     tableBodyDivider: 'divide-cyan-500/10',
     tableRowHover: 'hover:bg-cyan-500/5',
-    prose: 'prose prose-invert prose-slate max-w-none prose-lg leading-loose prose-p:text-slate-300 prose-headings:text-slate-100',
+    prose: 'prose prose-sm sm:prose-base md:prose-lg prose-invert prose-slate max-w-none leading-loose prose-p:text-slate-300 prose-headings:text-slate-100',
     imageGridOverlay: 'group-hover:bg-cyan-500/10',
     projectBadge: 'bg-cyan-500/12 text-cyan-200 border border-cyan-300/25',
     projectTitle: 'text-slate-100',
@@ -133,7 +133,7 @@ const THEMES: Record<PortfolioTheme, PortfolioThemeStyles> = {
     tableHeader: 'bg-stone-100/85',
     tableBodyDivider: 'divide-stone-200',
     tableRowHover: 'hover:bg-indigo-50/60',
-    prose: 'prose max-w-none prose-lg leading-loose prose-p:text-stone-700 prose-headings:text-slate-800',
+    prose: 'prose prose-sm sm:prose-base md:prose-lg max-w-none leading-loose prose-p:text-stone-700 prose-headings:text-slate-800',
     imageGridOverlay: 'group-hover:bg-indigo-100/25',
     projectBadge: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
     projectTitle: 'text-slate-800',
@@ -180,7 +180,7 @@ const THEMES: Record<PortfolioTheme, PortfolioThemeStyles> = {
     tableHeader: 'bg-orange-100/80',
     tableBodyDivider: 'divide-orange-200/70',
     tableRowHover: 'hover:bg-orange-50/70',
-    prose: 'prose max-w-none prose-lg leading-loose prose-p:text-amber-900/80 prose-headings:text-slate-900',
+    prose: 'prose prose-sm sm:prose-base md:prose-lg max-w-none leading-loose prose-p:text-amber-900/80 prose-headings:text-slate-900',
     imageGridOverlay: 'group-hover:bg-orange-300/20',
     projectBadge: 'bg-orange-100 text-orange-700 border border-orange-300/70',
     projectTitle: 'text-slate-900',
@@ -274,7 +274,7 @@ export const StudentPortfolioPage: React.FC = () => {
       <div className={`portfolio-theme min-h-screen ${styles.bg} ${styles.text} ${styles.fontBody}`}>
         {renderAmbientLayers()}
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-4">
-          <div className={`w-full max-w-md p-8 rounded-3xl ${styles.cardBg} border ${styles.border} shadow-2xl text-center`}>
+          <div className={`w-full max-w-md p-6 sm:p-8 rounded-3xl ${styles.cardBg} border ${styles.border} shadow-2xl text-center`}>
             <div className="mb-6 flex justify-center">
               <div className={`w-20 h-20 rounded-full ${styles.cardSubtle} flex items-center justify-center overflow-hidden border-4 ${styles.border} shadow-lg`}>
                 {portfolio.avatar_url ? (
@@ -297,7 +297,7 @@ export const StudentPortfolioPage: React.FC = () => {
                 autoFocus
               />
               {error && <div className="text-red-500 text-sm font-medium">{error}</div>}
-              <button type="submit" className={`w-full py-3 rounded-xl font-bold transition-all ${styles.button}`}>
+              <button type="submit" className={`w-full py-3 rounded-xl font-bold transition-all active:scale-[0.99] ${styles.button}`}>
                 解锁档案
               </button>
             </form>
@@ -379,9 +379,9 @@ export const StudentPortfolioPage: React.FC = () => {
   const renderRadarChart = (items: SkillItem[]) => {
     if (!items.length) return null;
 
-    const size = 240;
+    const size = 220;
     const center = size / 2;
-    const radius = 75;
+    const radius = 66;
     const angleStep = (Math.PI * 2) / items.length;
 
     const getPoint = (value: number, index: number, rScale = radius) => {
@@ -394,7 +394,12 @@ export const StudentPortfolioPage: React.FC = () => {
 
     return (
       <div className="flex flex-col items-center justify-center py-2">
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="overflow-visible">
+        <svg
+          width={size}
+          height={size}
+          viewBox={`0 0 ${size} ${size}`}
+          className="overflow-visible w-[208px] h-[208px] sm:w-[220px] sm:h-[220px] md:w-[240px] md:h-[240px]"
+        >
           {[25, 50, 75, 100].map((level) => (
             <polygon
               key={level}
@@ -422,7 +427,7 @@ export const StudentPortfolioPage: React.FC = () => {
           })}
           <polygon points={points} className={`${styles.radarPolygon} stroke-2`} />
           {items.map((item, i) => {
-            const [x, y] = getPoint(100, i, radius + 25).split(',').map(Number);
+            const [x, y] = getPoint(100, i, radius + 22).split(',').map(Number);
             return (
               <text key={i} x={x} y={y} textAnchor="middle" dominantBaseline="middle" className={`text-[10px] font-bold fill-current ${styles.text}`}>
                 {item.name} <tspan className="fill-current opacity-60 font-mono" dx="2" fontSize="9">{item.value}</tspan>
@@ -445,10 +450,10 @@ export const StudentPortfolioPage: React.FC = () => {
               : [];
 
         return (
-          <header className="relative w-full pt-24 md:pt-32 pb-8 md:pb-12 px-6 md:px-12 max-w-6xl mx-auto mb-10 md:mb-16">
-            <div className="flex flex-col md:flex-row items-start gap-8 md:gap-12 text-center md:text-left">
-              <div className="flex flex-col gap-6 w-full md:w-auto md:min-w-[280px] md:max-w-[320px] shrink-0 items-center">
-                <div className={`w-40 h-40 md:w-64 md:h-64 rounded-full ${styles.cardBg} border-4 ${styles.border} flex items-center justify-center text-5xl md:text-8xl font-bold shadow-2xl overflow-hidden relative z-10`}>
+          <header className="relative w-full pt-20 sm:pt-24 md:pt-32 pb-6 sm:pb-8 md:pb-12 px-4 sm:px-6 md:px-12 max-w-6xl mx-auto mb-8 sm:mb-10 md:mb-16">
+            <div className="flex flex-col md:flex-row items-start gap-6 sm:gap-8 md:gap-12 text-center md:text-left">
+              <div className="flex flex-col gap-4 sm:gap-6 w-full md:w-auto md:min-w-[280px] md:max-w-[320px] shrink-0 items-center">
+                <div className={`w-32 h-32 sm:w-40 sm:h-40 md:w-64 md:h-64 rounded-full ${styles.cardBg} border-4 ${styles.border} flex items-center justify-center text-4xl sm:text-5xl md:text-8xl font-bold shadow-2xl overflow-hidden relative z-10`}>
                   {block.data.avatar_url ? <img src={block.data.avatar_url} className="w-full h-full object-cover" /> : portfolio.student_name[0]}
                 </div>
 
@@ -463,15 +468,15 @@ export const StudentPortfolioPage: React.FC = () => {
               </div>
 
               <div className="flex-1 pt-4 md:pt-8">
-                <div className={`inline-block px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-widest mb-3 md:mb-4 ${styles.accentBadge}`}>
+                <div className={`inline-block px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-widest mb-2 sm:mb-3 md:mb-4 ${styles.accentBadge}`}>
                   SparkMinds Portfolio
                 </div>
-                <h1 className={`text-3xl md:text-4xl font-semibold mb-2 opacity-90 ${styles.fontHeading}`}>{portfolio.student_name}</h1>
-                <p className={`text-xl md:text-5xl font-extrabold leading-tight max-w-4xl mb-4 md:mb-6 drop-shadow-sm ${styles.fontHeading}`}>
+                <h1 className={`text-2xl sm:text-3xl md:text-4xl font-semibold mb-2 opacity-90 ${styles.fontHeading}`}>{portfolio.student_name}</h1>
+                <p className={`text-lg sm:text-2xl md:text-5xl font-extrabold leading-tight max-w-4xl mb-3 sm:mb-4 md:mb-6 drop-shadow-sm ${styles.fontHeading}`}>
                   {block.data.student_title || 'Future Innovator & Builder'}
                 </p>
                 {block.data.summary_bio && (
-                  <div className={`mt-2 md:mt-4 text-sm md:text-lg opacity-90 max-w-3xl leading-relaxed whitespace-pre-wrap ${styles.muted}`}>
+                  <div className={`mt-2 md:mt-4 text-sm sm:text-base md:text-lg opacity-90 max-w-3xl leading-relaxed whitespace-pre-wrap ${styles.muted}`}>
                     {block.data.summary_bio}
                   </div>
                 )}
@@ -483,16 +488,16 @@ export const StudentPortfolioPage: React.FC = () => {
 
       case 'skills_matrix':
         return (
-          <section className="max-w-6xl mx-auto px-4 mb-16 md:mb-24">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <section className="max-w-6xl mx-auto px-4 sm:px-6 mb-14 sm:mb-16 md:mb-24">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {block.data.skills_categories?.map((cat, idx) => {
                 const isRadar = cat.layout === 'radar';
                 return (
                   <div
                     key={idx}
-                    className={`p-6 md:p-8 rounded-3xl ${styles.cardBg} border ${styles.border} shadow-lg transition-all duration-300 ${styles.sectionCardHover} ${isRadar ? 'md:col-span-2 lg:col-span-1' : ''}`}
+                    className={`p-5 sm:p-6 md:p-8 rounded-3xl ${styles.cardBg} border ${styles.border} shadow-lg transition-all duration-300 ${styles.sectionCardHover} ${isRadar ? 'md:col-span-2 lg:col-span-1' : ''}`}
                   >
-                    <h3 className={`font-bold text-lg mb-6 flex items-center gap-2 ${styles.accent} ${styles.fontHeading}`}>
+                    <h3 className={`font-bold text-base sm:text-lg mb-5 sm:mb-6 flex items-center gap-2 ${styles.accent} ${styles.fontHeading}`}>
                       <Icons.Zap size={20} className="fill-current" /> {cat.name}
                     </h3>
 
@@ -520,15 +525,15 @@ export const StudentPortfolioPage: React.FC = () => {
 
       case 'project_highlight':
         return (
-          <section className="max-w-6xl mx-auto px-4 mb-16 md:mb-24">
-            <div className="mb-8 md:mb-12">
+          <section className="max-w-6xl mx-auto px-4 sm:px-6 mb-14 sm:mb-16 md:mb-24">
+            <div className="mb-6 sm:mb-8 md:mb-12">
               <div className={`inline-block px-4 py-1.5 rounded-full text-[10px] font-bold mb-6 tracking-widest uppercase ${styles.projectBadge}`}>
                 Project Highlight
               </div>
-              <h3 className={`text-2xl md:text-5xl font-bold leading-tight mb-4 ${styles.projectTitle} ${styles.fontHeading}`}>{block.data.title}</h3>
+              <h3 className={`text-xl sm:text-3xl md:text-5xl font-bold leading-tight mb-4 ${styles.projectTitle} ${styles.fontHeading}`}>{block.data.title}</h3>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 md:gap-6">
               {[
                 { letter: 'S', title: '背景 (SITUATION)', text: block.data.star_situation },
                 { letter: 'T', title: '任务 (TASK)', text: block.data.star_task },
@@ -537,9 +542,9 @@ export const StudentPortfolioPage: React.FC = () => {
               ].map((item, index) => (
                 <div
                   key={index}
-                  className={`relative p-6 md:p-8 rounded-3xl border overflow-hidden group transition-all duration-300 min-h-[180px] ${styles.projectCard}`}
+                  className={`relative p-5 sm:p-6 md:p-8 rounded-3xl border overflow-hidden group transition-all duration-300 min-h-[160px] sm:min-h-[180px] ${styles.projectCard}`}
                 >
-                  <div className={`absolute -right-2 -bottom-6 md:-bottom-10 text-[6rem] md:text-[10rem] font-black select-none pointer-events-none transition-colors font-sans leading-none ${styles.projectLetter}`}>
+                  <div className={`absolute -right-2 -bottom-5 sm:-bottom-6 md:-bottom-10 text-[4.8rem] sm:text-[6rem] md:text-[10rem] font-black select-none pointer-events-none transition-colors font-sans leading-none ${styles.projectLetter}`}>
                     {item.letter}
                   </div>
 
@@ -561,7 +566,7 @@ export const StudentPortfolioPage: React.FC = () => {
                       ? 'grid-cols-1'
                       : block.data.evidence_urls.length === 2
                         ? 'grid-cols-1 md:grid-cols-2'
-                        : 'grid-cols-2 md:grid-cols-3'
+                        : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3'
                   }`}
                 >
                   {block.data.evidence_urls.map((url, i) => {
@@ -575,7 +580,7 @@ export const StudentPortfolioPage: React.FC = () => {
                         <img
                           src={url}
                           className={`w-full h-full transition-transform duration-500 group-hover:scale-105 ${
-                            isSingle ? 'object-contain max-h-[600px] bg-black/5' : 'object-cover'
+                            isSingle ? 'object-contain max-h-[420px] sm:max-h-[600px] bg-black/5' : 'object-cover'
                           }`}
                         />
                         <div className={`absolute inset-0 bg-transparent transition-colors ${styles.evidenceHoverMask}`} />
@@ -593,10 +598,10 @@ export const StudentPortfolioPage: React.FC = () => {
 
       case 'info_list':
         return (
-          <section className="max-w-6xl mx-auto px-4 mb-16 md:mb-20">
+          <section className="max-w-6xl mx-auto px-4 sm:px-6 mb-14 sm:mb-16 md:mb-20">
             <div className={`p-6 md:p-10 rounded-3xl ${styles.cardBg} border ${styles.border}`}>
               {block.data.title && <h3 className={`text-xl font-bold mb-8 pb-4 border-b ${styles.border} ${styles.fontHeading}`}>{block.data.title}</h3>}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-8 gap-x-12">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-7 sm:gap-y-8 gap-x-8 sm:gap-x-12">
                 {block.data.info_items?.map((item, idx) => {
                   const Icon = (Icons as any)[item.icon || 'Star'] || Icons.Star;
                   return (
@@ -618,24 +623,24 @@ export const StudentPortfolioPage: React.FC = () => {
 
       case 'section_heading':
         return (
-          <div className="max-w-4xl mx-auto px-4 mb-8 md:mb-10 mt-16 md:mt-24 text-center">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 mb-7 sm:mb-8 md:mb-10 mt-14 sm:mt-16 md:mt-24 text-center">
             <h2 className={`text-2xl md:text-4xl font-bold ${styles.text} ${styles.fontHeading}`}>{block.data.title}</h2>
           </div>
         );
 
       case 'timeline_node':
         return (
-          <div className="max-w-4xl mx-auto px-4 mb-6 md:mb-8 flex gap-4 md:gap-10 group">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 mb-5 sm:mb-6 md:mb-8 flex gap-3 sm:gap-4 md:gap-10 group">
             <div className="flex flex-col items-center shrink-0">
               <div className={`w-3 h-3 md:w-4 md:h-4 rounded-full ${styles.barFill} mt-2 ring-4 ${styles.timelineDotRing} ${styles.barGlow}`} />
               <div className={`w-0.5 flex-1 my-2 group-last:hidden ${styles.timelineLine}`} />
             </div>
-            <div className={`flex-1 pb-8 ${styles.cardBg} p-6 md:p-8 rounded-2xl border ${styles.border} relative transition-colors ${styles.timelineCardHover}`}>
+            <div className={`flex-1 pb-6 sm:pb-8 ${styles.cardBg} p-4 sm:p-6 md:p-8 rounded-2xl border ${styles.border} relative transition-colors ${styles.timelineCardHover}`}>
               <div className={`absolute top-6 -left-3 w-6 h-6 ${styles.cardBg} border-l border-b ${styles.border} transform rotate-45 md:block hidden rounded-bl-md`} />
               <div className="flex flex-wrap items-center gap-3 mb-4">
-                <span className={`inline-block px-3 py-1 rounded-md text-xs font-mono font-bold ${styles.cardSubtle} ${styles.accent} border ${styles.border}`}>{block.data.date}</span>
+                <span className={`inline-block px-3 py-1 rounded-md text-[11px] sm:text-xs font-mono font-bold ${styles.cardSubtle} ${styles.accent} border ${styles.border}`}>{block.data.date}</span>
               </div>
-              <h3 className={`text-xl font-bold mb-3 ${styles.fontHeading}`}>{block.data.title}</h3>
+              <h3 className={`text-lg sm:text-xl font-bold mb-3 ${styles.fontHeading}`}>{block.data.title}</h3>
               <p className={`${styles.muted} text-sm leading-relaxed whitespace-pre-wrap`}>{block.data.content}</p>
               {block.data.urls && block.data.urls.length > 0 && (
                 <div className="mt-6 flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
@@ -643,7 +648,7 @@ export const StudentPortfolioPage: React.FC = () => {
                     <img
                       key={i}
                       src={url}
-                      className={`h-24 w-32 object-cover rounded-lg border cursor-pointer hover:scale-105 transition-transform ${styles.timelineMediaBorder}`}
+                      className={`h-20 w-28 sm:h-24 sm:w-32 object-cover rounded-lg border cursor-pointer hover:scale-105 transition-transform ${styles.timelineMediaBorder}`}
                       onClick={() => window.open(url, '_blank')}
                     />
                   ))}
@@ -655,15 +660,15 @@ export const StudentPortfolioPage: React.FC = () => {
 
       case 'table':
         return (
-          <section className="max-w-6xl mx-auto px-4 mb-16 md:mb-20">
+          <section className="max-w-6xl mx-auto px-4 sm:px-6 mb-14 sm:mb-16 md:mb-20">
             {block.data.title && <h3 className={`text-xl font-bold mb-6 px-2 ${styles.fontHeading}`}>{block.data.title}</h3>}
             <div className={`overflow-hidden rounded-2xl border ${styles.border} ${styles.cardBg}`}>
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm whitespace-nowrap">
+                <table className="min-w-[560px] w-full text-left text-xs sm:text-sm whitespace-nowrap">
                   <thead>
                     <tr className={`border-b ${styles.border} ${styles.tableHeader}`}>
                       {block.data.table_columns?.map((col, i) => (
-                        <th key={i} className={`p-5 font-bold ${styles.text} uppercase tracking-wider text-xs`}>{col}</th>
+                        <th key={i} className={`p-3 sm:p-4 md:p-5 font-bold ${styles.text} uppercase tracking-wider text-[11px] sm:text-xs`}>{col}</th>
                       ))}
                     </tr>
                   </thead>
@@ -671,7 +676,7 @@ export const StudentPortfolioPage: React.FC = () => {
                     {block.data.table_rows?.map((row, rIdx) => (
                       <tr key={rIdx} className={`transition-colors ${styles.tableRowHover}`}>
                         {row.map((cell, cIdx) => (
-                          <td key={cIdx} className={`p-5 ${styles.muted} font-mono`}>{cell}</td>
+                          <td key={cIdx} className={`p-3 sm:p-4 md:p-5 ${styles.muted} font-mono`}>{cell}</td>
                         ))}
                       </tr>
                     ))}
@@ -684,7 +689,7 @@ export const StudentPortfolioPage: React.FC = () => {
 
       case 'text':
         return (
-          <section className="max-w-4xl mx-auto px-4 mb-12 md:mb-16">
+          <section className="max-w-4xl mx-auto px-4 sm:px-6 mb-10 sm:mb-12 md:mb-16">
             {block.data.title && <h3 className={`text-2xl font-bold mb-6 ${styles.fontHeading}`}>{block.data.title}</h3>}
             <div className={styles.prose}>
               <p className="whitespace-pre-wrap">{block.data.content}</p>
@@ -694,9 +699,9 @@ export const StudentPortfolioPage: React.FC = () => {
 
       case 'image_grid':
         return (
-          <section className="max-w-6xl mx-auto px-4 mb-16 md:mb-20">
+          <section className="max-w-6xl mx-auto px-4 sm:px-6 mb-14 sm:mb-16 md:mb-20">
             {block.data.title && <h3 className={`text-xl font-bold mb-6 px-2 ${styles.fontHeading}`}>{block.data.title}</h3>}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
               {block.data.urls?.map((url, i) => (
                 <div key={i} className={`aspect-square rounded-2xl overflow-hidden cursor-pointer group relative border ${styles.border}`}>
                   <img src={url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
@@ -717,9 +722,9 @@ export const StudentPortfolioPage: React.FC = () => {
       {renderAmbientLayers()}
 
       <div className="relative z-10">
-        <nav className={`fixed top-0 w-full z-50 px-6 py-4 flex justify-between items-center backdrop-blur-xl border-b ${styles.border} ${styles.navBg}`}>
-          <div className="flex items-center gap-4">
-            <Logo className={`h-8 w-auto ${styles.navLogo}`} />
+        <nav className={`fixed top-0 w-full z-50 px-3 sm:px-5 md:px-6 py-3 sm:py-4 flex justify-between items-center backdrop-blur-xl border-b portfolio-safe-top ${styles.border} ${styles.navBg}`}>
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <Logo className={`h-7 sm:h-8 w-auto ${styles.navLogo}`} />
             <div className={`text-[10px] font-mono uppercase tracking-widest border px-2 py-1 rounded hidden md:block ${styles.navBadge}`}>
               Student Portfolio
             </div>
@@ -730,17 +735,18 @@ export const StudentPortfolioPage: React.FC = () => {
               {({ loading: pdfLoading }: { loading: boolean }) => (
                 <button
                   disabled={pdfLoading}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${pdfLoading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'} ${styles.button}`}
+                  className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all ${pdfLoading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'} ${styles.button}`}
                 >
                   {pdfLoading ? <Icons.Loader2 size={14} className="animate-spin" /> : <Icons.Download size={14} />}
-                  {pdfLoading ? 'Generating...' : 'Export PDF'}
+                  <span className="hidden sm:inline">{pdfLoading ? 'Generating...' : 'Export PDF'}</span>
+                  <span className="sm:hidden">{pdfLoading ? '生成中' : 'PDF'}</span>
                 </button>
               )}
             </PDFDownloadLink>
           </div>
         </nav>
 
-        <div className="pt-10">
+        <div className="pt-16 sm:pt-20">
           {portfolio.content_blocks?.map((block, index) => (
             <div key={block.id || `${block.type}-${index}`} className="portfolio-reveal" style={{ animationDelay: `${Math.min(index * 90, 540)}ms` }}>
               {renderBlock(block)}
@@ -748,7 +754,7 @@ export const StudentPortfolioPage: React.FC = () => {
           ))}
         </div>
 
-        <footer className={`py-12 text-center text-xs ${styles.muted} border-t ${styles.border} mt-20 bg-black/5`}>
+        <footer className={`py-10 sm:py-12 px-4 text-center text-xs ${styles.muted} border-t ${styles.border} mt-16 sm:mt-20 bg-black/5 portfolio-safe-bottom`}>
           <p>© 2024 SparkMinds Lab. All rights reserved.</p>
           <p className="mt-2 opacity-60">Generated by SparkMinds Portfolio System</p>
         </footer>

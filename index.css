@@ -19,6 +19,14 @@
   z-index: 0;
 }
 
+.portfolio-safe-top {
+  padding-top: max(env(safe-area-inset-top), 0px);
+}
+
+.portfolio-safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 0px);
+}
+
 .portfolio-backdrop-tech {
   background:
     radial-gradient(circle at 16% 15%, rgba(34, 211, 238, 0.22), transparent 37%),

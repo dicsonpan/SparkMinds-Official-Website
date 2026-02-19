@@ -6,6 +6,7 @@ import {
   Image,
   Line,
   Page,
+  Path,
   Polygon,
   StyleSheet,
   Svg,
@@ -928,45 +929,55 @@ const renderSkillsCategory = (
       );
     }
 
-    const size = 152;
-    const cx = size / 2;
-    const r = 48;
-    const step = (Math.PI * 2) / items.length;
+    const S = 152;
+    const C = S / 2;
+    const R = 48;
+    const N = items.length;
+    const angleStep = (2 * Math.PI) / N;
 
-    const pt = (val: number, idx: number, scale = r) => {
-      const a = idx * step - Math.PI / 2;
+    const xy = (val: number, idx: number, scale = R): [number, number] => {
+      const a = idx * angleStep - Math.PI / 2;
       const d = (clampPercent(val) / 100) * scale;
-      return `${cx + d * Math.cos(a)},${cx + d * Math.sin(a)}`;
+      return [Math.round(C + d * Math.cos(a)), Math.round(C + d * Math.sin(a))];
     };
 
-    const dataPts = items.map((item, i) => pt(item.value, i)).join(' ');
+    // Build path "d" string for a polygon at a given level
+    const polyPath = (val: number): string => {
+      const coords = items.map((_, i) => xy(val, i));
+      return coords.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x} ${y}`).join(' ') + ' Z';
+    };
+
+    const dataPath = items.map((item, i) => {
+      const [x, y] = xy(item.value, i);
+      return `${i === 0 ? 'M' : 'L'}${x} ${y}`;
+    }).join(' ') + ' Z';
 
     return (
       <View key={key} style={composeStyles(styles.skillCategory, layoutStyle)} wrap={false}>
         <Text style={styles.skillCategoryTitle}>{category.name}</Text>
         <View style={{ alignItems: 'center', marginBottom: 6 }}>
-          <Svg width={size} height={size}>
+          <Svg width={S} height={S}>
             {[25, 50, 75, 100].map((level) => (
-              <Polygon
+              <Path
                 key={level}
-                points={items.map((_, i) => pt(level, i)).join(' ')}
+                d={polyPath(level)}
                 stroke={theme.radarGrid}
                 strokeWidth={1}
                 fill="none"
               />
             ))}
-            {items.map((_, i) => (
-              <Line
-                key={i}
-                x1={cx}
-                y1={cx}
-                x2={pt(100, i).split(',')[0]}
-                y2={pt(100, i).split(',')[1]}
-                stroke={theme.radarGrid}
-                strokeWidth={1}
-              />
-            ))}
-            <Polygon points={dataPts} fill={theme.radarFill} stroke={theme.radarStroke} strokeWidth={2} />
+            {items.map((_, i) => {
+              const [ex, ey] = xy(100, i);
+              return (
+                <Line key={i} x1={C} y1={C} x2={ex} y2={ey} stroke={theme.radarGrid} strokeWidth={1} />
+              );
+            })}
+            <Path
+              d={dataPath}
+              stroke={theme.radarStroke}
+              strokeWidth={2}
+              fill={theme.radarFill}
+            />
           </Svg>
         </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginRight: -8 }}>

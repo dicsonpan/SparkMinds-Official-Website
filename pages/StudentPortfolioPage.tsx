@@ -240,6 +240,11 @@ export const StudentPortfolioPage: React.FC = () => {
   const renderBlock = (block: ContentBlock) => {
     switch (block.type) {
       case 'profile_header':
+         // Resolve images: either from new array or legacy single field
+         const heroImages = block.data.hero_image_urls && block.data.hero_image_urls.length > 0
+            ? block.data.hero_image_urls
+            : (block.data.hero_image_url ? [block.data.hero_image_url] : []);
+
          return (
             <header key={block.id} className="relative w-full pt-24 md:pt-32 pb-8 md:pb-12 px-6 md:px-12 max-w-6xl mx-auto mb-10 md:mb-16">
                 <div className="flex flex-col md:flex-row items-center gap-6 md:gap-12 text-center md:text-left">
@@ -257,10 +262,15 @@ export const StudentPortfolioPage: React.FC = () => {
                         )}
                     </div>
                 </div>
-                {/* Hero Background Image if available */}
-                {block.data.hero_image_url && (
-                    <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 opacity-20" style={{ maskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)' }}>
-                         <img src={block.data.hero_image_url} className="w-full h-full object-cover blur-sm" />
+                {/* Hero Background Images - Stacked Vertically */}
+                {heroImages.length > 0 && (
+                    <div className="absolute top-0 left-0 w-full h-full -z-10 flex flex-col opacity-20">
+                         {heroImages.map((url, idx) => (
+                             <div key={idx} className="relative w-full flex-1 min-h-[50%]">
+                                <img src={url} className="w-full h-full object-cover blur-sm" />
+                             </div>
+                         ))}
+                         {/* Overlay Gradient */}
                          <div className={`absolute inset-0 bg-gradient-to-b ${styles.gradient}`}></div>
                     </div>
                 )}

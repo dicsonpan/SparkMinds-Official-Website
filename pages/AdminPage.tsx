@@ -177,7 +177,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
             student_title: 'Future Innovator',
             summary_bio: '在此输入个人简介...',
             avatar_url: '',
-            hero_image_url: ''
+            hero_image_url: '', // Legacy init
+            hero_image_urls: [] // New array init
         };
     } else if (type === 'skills_matrix') {
         initialData = {
@@ -250,7 +251,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                         student_title: '',
                         summary_bio: '',
                         avatar_url: '',
-                        hero_image_url: ''
+                        hero_image_urls: []
                     }
                 }
             ],
@@ -282,7 +283,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                     student_title: preparedItem.student_title,
                     summary_bio: preparedItem.summary_bio,
                     avatar_url: preparedItem.avatar_url,
-                    hero_image_url: preparedItem.hero_image_url
+                    hero_image_url: preparedItem.hero_image_url,
+                    hero_image_urls: preparedItem.hero_image_url ? [preparedItem.hero_image_url] : []
                 }
             });
         }
@@ -328,7 +330,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
             dataToSave.student_title = profileBlock.data.student_title;
             dataToSave.summary_bio = profileBlock.data.summary_bio;
             dataToSave.avatar_url = profileBlock.data.avatar_url;
-            dataToSave.hero_image_url = profileBlock.data.hero_image_url;
+            // Use the first image in array for legacy field or fallback to singular
+            dataToSave.hero_image_url = (profileBlock.data.hero_image_urls && profileBlock.data.hero_image_urls.length > 0) 
+                ? profileBlock.data.hero_image_urls[0] 
+                : profileBlock.data.hero_image_url;
         }
       }
 
@@ -380,7 +385,17 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
              if (targetType === 'avatar') {
                  updateContentBlock(blockId, 'avatar_url', publicUrl);
              } else if (targetType === 'hero') {
-                 updateContentBlock(blockId, 'hero_image_url', publicUrl);
+                 // UPDATED: Support multiple hero images
+                 // Init array from existing array OR legacy string
+                 const currentUrls = block.data.hero_image_urls || (block.data.hero_image_url ? [block.data.hero_image_url] : []);
+                 const newUrls = [...currentUrls, publicUrl];
+                 
+                 // Update the block using a cleaner state update
+                 const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => 
+                    b.id === blockId ? { ...b, data: { ...b.data, hero_image_urls: newUrls, hero_image_url: newUrls[0] } } : b
+                 );
+                 setEditingItem({ ...editingItem, content_blocks: newBlocks });
+
              } else {
                  // Array types
                  const field = targetType === 'evidence' ? 'evidence_urls' : 'urls';
@@ -725,12 +740,39 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                                   </div>
                                               </div>
                                               <div className="pt-2 border-t border-purple-100">
-                                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-500 cursor-pointer hover:text-purple-600 transition-colors w-fit">
+                                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-500 cursor-pointer hover:text-purple-600 transition-colors w-fit mb-3">
                                                       <Icons.Image size={14} /> 
-                                                      {b.data.hero_image_url ? '点击更换背景大图' : '上传背景大图 (Hero Image)'}
+                                                      点击添加头图 (Hero Images)
                                                       <input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(e, 'hero', b.id)} />
                                                   </label>
-                                                  {b.data.hero_image_url && <div className="mt-2 h-20 w-full rounded-lg bg-slate-100 overflow-hidden relative"><img src={b.data.hero_image_url} className="w-full h-full object-cover opacity-50" /></div>}
+                                                  {/* Hero Images Gallery */}
+                                                  <div className="flex flex-wrap gap-2">
+                                                      {/* Show existing array or legacy single url */}
+                                                      {(b.data.hero_image_urls || (b.data.hero_image_url ? [b.data.hero_image_url] : [])).map((url: string, imgIdx: number) => (
+                                                          <div key={imgIdx} className="h-20 w-32 rounded-lg bg-slate-100 overflow-hidden relative group/heroimg border border-purple-200">
+                                                              <img src={url} className="w-full h-full object-cover" />
+                                                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/heroimg:opacity-100 flex items-center justify-center transition-opacity">
+                                                                  <button 
+                                                                    onClick={() => {
+                                                                        // Remove specific image
+                                                                        const currentUrls = b.data.hero_image_urls || (b.data.hero_image_url ? [b.data.hero_image_url] : []);
+                                                                        const newUrls = currentUrls.filter((_: string, idx: number) => idx !== imgIdx);
+                                                                        const newBlocks = editingItem.content_blocks.map((block: ContentBlock) => 
+                                                                            block.id === b.id ? { ...block, data: { ...block.data, hero_image_urls: newUrls, hero_image_url: newUrls[0] } } : block
+                                                                        );
+                                                                        setEditingItem({ ...editingItem, content_blocks: newBlocks });
+                                                                    }}
+                                                                    className="text-white hover:text-red-400"
+                                                                  >
+                                                                      <Icons.Trash2 size={16} />
+                                                                  </button>
+                                                              </div>
+                                                          </div>
+                                                      ))}
+                                                      {(!b.data.hero_image_urls?.length && !b.data.hero_image_url) && (
+                                                          <div className="text-xs text-slate-400 italic py-2">暂无背景头图</div>
+                                                      )}
+                                                  </div>
                                               </div>
                                           </div>
                                       )}

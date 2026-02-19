@@ -109,7 +109,8 @@ export interface ContentBlock {
     student_title?: string;
     summary_bio?: string;
     avatar_url?: string;
-    hero_image_url?: string;
+    hero_image_url?: string; // Legacy single image
+    hero_image_urls?: string[]; // New: Multiple header images
     // Skills Matrix Data
     skills_categories?: SkillCategory[];
     // STAR Method Fields for Project Highlight

@@ -15,15 +15,18 @@ import {
 } from '@react-pdf/renderer';
 import { ContentBlock, PortfolioTheme, SkillCategory, SkillItem, StudentPortfolio } from '../types';
 
+// Use static (non-variable) TTF files from Google Fonts.
+// The @fontsource WOFF files are variable fonts which @react-pdf/renderer
+// does not support (causes "unsupported number" errors during glyph rendering).
 Font.register({
   family: 'Noto Sans SC',
   fonts: [
     {
-      src: 'https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.12/files/noto-sans-sc-chinese-simplified-400-normal.woff',
+      src: 'https://fonts.gstatic.com/s/notosanssc/v40/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaG9_FnYw.ttf',
       fontWeight: 400,
     },
     {
-      src: 'https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.12/files/noto-sans-sc-chinese-simplified-700-normal.woff',
+      src: 'https://fonts.gstatic.com/s/notosanssc/v40/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaGzjCnYw.ttf',
       fontWeight: 700,
     },
   ],
@@ -73,8 +76,8 @@ const PDF_THEMES: Record<ThemeKey, PdfTheme> = {
     barFill: '#22d3ee',
     tableHeader: '#12333f',
     radarStroke: '#67e8f9',
-    radarFill: 'rgba(103,232,249,0.2)',
-    radarGrid: 'rgba(207,250,254,0.4)',
+    radarFill: '#67E8F933',
+    radarGrid: '#CFFAFE66',
   },
   academic_light: {
     pageBackground: '#f4f1ea',
@@ -88,7 +91,7 @@ const PDF_THEMES: Record<ThemeKey, PdfTheme> = {
     barFill: '#4338ca',
     tableHeader: '#ece7de',
     radarStroke: '#4338ca',
-    radarFill: 'rgba(67,56,202,0.15)',
+    radarFill: '#4338CA26',
     radarGrid: '#a8a29e',
   },
   creative_color: {
@@ -103,7 +106,7 @@ const PDF_THEMES: Record<ThemeKey, PdfTheme> = {
     barFill: '#14b8a6',
     tableHeader: '#ffedd5',
     radarStroke: '#0d9488',
-    radarFill: 'rgba(20,184,166,0.18)',
+    radarFill: '#14B8A62E',
     radarGrid: '#fdba74',
   },
 };
@@ -817,13 +820,25 @@ const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, 
   const radius = 48;
   const angleStep = (Math.PI * 2) / items.length;
 
-  const getPoint = (value: number, index: number, scale = radius) => {
+  const getPointCoords = (value: number, index: number, scale = radius): { x: number; y: number } => {
     const angle = index * angleStep - Math.PI / 2;
     const r = (clampPercent(value) / 100) * scale;
-    return `${center + r * Math.cos(angle)},${center + r * Math.sin(angle)}`;
+    return {
+      x: Math.round((center + r * Math.cos(angle)) * 100) / 100,
+      y: Math.round((center + r * Math.sin(angle)) * 100) / 100,
+    };
   };
 
-  const points = items.map((item, index) => getPoint(item.value, index)).join(' ');
+  const toPointsStr = (value: number) =>
+    items.map((_, index) => {
+      const p = getPointCoords(value, index);
+      return `${p.x},${p.y}`;
+    }).join(' ');
+
+  const points = items.map((item, index) => {
+    const p = getPointCoords(item.value, index);
+    return `${p.x},${p.y}`;
+  }).join(' ');
 
   return (
     <View>
@@ -832,23 +847,26 @@ const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, 
           {[25, 50, 75, 100].map((level) => (
             <Polygon
               key={level}
-              points={items.map((_, index) => getPoint(level, index)).join(' ')}
+              points={toPointsStr(level)}
               stroke={theme.radarGrid}
               strokeWidth={1}
               fill="none"
             />
           ))}
-          {items.map((_, index) => (
-            <Line
-              key={index}
-              x1={center}
-              y1={center}
-              x2={getPoint(100, index).split(',')[0]}
-              y2={getPoint(100, index).split(',')[1]}
-              stroke={theme.radarGrid}
-              strokeWidth={1}
-            />
-          ))}
+          {items.map((_, index) => {
+            const p = getPointCoords(100, index);
+            return (
+              <Line
+                key={index}
+                x1={center}
+                y1={center}
+                x2={p.x}
+                y2={p.y}
+                stroke={theme.radarGrid}
+                strokeWidth={1}
+              />
+            );
+          })}
           <Polygon points={points} fill={theme.radarFill} stroke={theme.radarStroke} strokeWidth={2} />
         </Svg>
       </View>
@@ -866,13 +884,14 @@ const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, 
 };
 
 const describeArc = (cx: number, cy: number, r: number, startAngle: number, endAngle: number): string => {
+  const round = (n: number) => Math.round(n * 100) / 100;
   const start = {
-    x: cx + r * Math.cos(startAngle),
-    y: cy + r * Math.sin(startAngle),
+    x: round(cx + r * Math.cos(startAngle)),
+    y: round(cy + r * Math.sin(startAngle)),
   };
   const end = {
-    x: cx + r * Math.cos(endAngle),
-    y: cy + r * Math.sin(endAngle),
+    x: round(cx + r * Math.cos(endAngle)),
+    y: round(cy + r * Math.sin(endAngle)),
   };
   const largeArc = Math.abs(endAngle - startAngle) > Math.PI ? 1 : 0;
   return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}`;

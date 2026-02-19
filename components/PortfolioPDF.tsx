@@ -14,7 +14,8 @@ Font.registerHyphenationCallback((word) => [word]);
 const ZWSP = '\u200B';
 const CJK_BOUNDARY_REGEX = /([\u3400-\u9fff\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af])(?=[\u3400-\u9fff\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af])/g;
 const LONG_TOKEN_REGEX = /[A-Za-z0-9][A-Za-z0-9/@_\-.:?&=#%+]{18,}/g;
-const BREAKABLE_SYMBOL_REGEX = /([/@_\-.:?&=#%+])/g;
+// 不在 "-" 处插入断行点，避免行尾出现视觉上的额外连字符
+const BREAKABLE_SYMBOL_REGEX = /([/@_.:?&=#%+])/g;
 const ALNUM_CHUNK_REGEX = /([A-Za-z0-9]{12})(?=[A-Za-z0-9])/g;
 
 const addWrapOpportunities = (input: string) =>

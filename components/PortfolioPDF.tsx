@@ -72,8 +72,8 @@ const PDF_THEMES: Record<ThemeKey, PdfTheme> = {
     barFill: '#22d3ee',
     tableHeader: '#12333f',
     radarStroke: '#67e8f9',
-    radarFill: 'rgba(103,232,249,0.2)',
-    radarGrid: 'rgba(207,250,254,0.4)',
+    radarFill: '#1a3a4a',
+    radarGrid: '#5b8a90',
   },
   academic_light: {
     pageBackground: '#f4f1ea',
@@ -87,7 +87,7 @@ const PDF_THEMES: Record<ThemeKey, PdfTheme> = {
     barFill: '#4338ca',
     tableHeader: '#ece7de',
     radarStroke: '#4338ca',
-    radarFill: 'rgba(67,56,202,0.15)',
+    radarFill: '#dddaf3',
     radarGrid: '#a8a29e',
   },
   creative_color: {
@@ -102,7 +102,7 @@ const PDF_THEMES: Record<ThemeKey, PdfTheme> = {
     barFill: '#14b8a6',
     tableHeader: '#ffedd5',
     radarStroke: '#0d9488',
-    radarFill: 'rgba(20,184,166,0.18)',
+    radarFill: '#d4f0ec',
     radarGrid: '#fdba74',
   },
 };

@@ -367,28 +367,41 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
   // --- Image Upload ---
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, targetType: string = 'standard', blockId?: string) => {
     if (!event.target.files?.length) return;
-    const file = event.target.files[0];
-    if (!file.type.startsWith('image/')) { alert("仅支持上传图片格式文件"); return; }
+
+    const selectedFiles = Array.from(event.target.files);
+    const filesToUpload = targetType === 'evidence' ? selectedFiles : [selectedFiles[0]];
+    const invalidFiles = filesToUpload.filter(file => !file.type.startsWith('image/'));
+    if (invalidFiles.length > 0) {
+      alert("仅支持上传图片格式文件");
+      event.target.value = '';
+      return;
+    }
 
     setUploading(true);
     try {
-      const compressedFile = await imageCompression(file, COMPRESSION_OPTIONS);
-      const fileName = `${Math.random().toString(36).substr(2)}.${compressedFile.name.split('.').pop() || 'jpg'}`;
-      await supabase.storage.from('images').upload(fileName, compressedFile, { cacheControl: CACHE_CONTROL_MAX_AGE, upsert: false });
-      const { data } = supabase.storage.from('images').getPublicUrl(fileName);
-      const publicUrl = data.publicUrl;
+      const uploadedUrls: string[] = [];
+
+      for (const file of filesToUpload) {
+        const compressedFile = await imageCompression(file, COMPRESSION_OPTIONS);
+        const fileExt = COMPRESSION_OPTIONS.fileType?.split('/')[1] || compressedFile.name.split('.').pop() || 'jpg';
+        const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage.from('images').upload(fileName, compressedFile, { cacheControl: CACHE_CONTROL_MAX_AGE, upsert: false });
+        if (uploadError) throw uploadError;
+        const { data } = supabase.storage.from('images').getPublicUrl(fileName);
+        uploadedUrls.push(data.publicUrl);
+      }
 
       if (activeTab === 'students' && blockId) {
          // Specialized block image uploads
          const block = editingItem.content_blocks.find((b: any) => b.id === blockId);
          if (block) {
              if (targetType === 'avatar') {
-                 updateContentBlock(blockId, 'avatar_url', publicUrl);
+                 updateContentBlock(blockId, 'avatar_url', uploadedUrls[0]);
              } else if (targetType === 'hero') {
                  // UPDATED: Support multiple hero images
                  // Init array from existing array OR legacy string
                  const currentUrls = block.data.hero_image_urls || (block.data.hero_image_url ? [block.data.hero_image_url] : []);
-                 const newUrls = [...currentUrls, publicUrl];
+                 const newUrls = [...currentUrls, ...uploadedUrls];
                  
                  // Update the block using a cleaner state update
                  const newBlocks = editingItem.content_blocks.map((b: ContentBlock) => 
@@ -399,17 +412,22 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
              } else {
                  // Array types
                  const field = targetType === 'evidence' ? 'evidence_urls' : 'urls';
-                 updateContentBlock(blockId, field, [...(block.data[field] || []), publicUrl]);
+                 updateContentBlock(blockId, field, [...(block.data[field] || []), ...uploadedUrls]);
              }
          }
       } else if (activeTab !== 'students') {
          if (['curriculum', 'showcase', 'social'].includes(activeTab)) {
-            setEditingItem({ ...editingItem, image_urls: [...(editingItem.image_urls || []), publicUrl] });
+            setEditingItem({ ...editingItem, image_urls: [...(editingItem.image_urls || []), ...uploadedUrls] });
          } else {
-            setEditingItem({ ...editingItem, icon_name: publicUrl });
+            setEditingItem({ ...editingItem, icon_name: uploadedUrls[0] });
          }
       }
-    } catch (error: any) { alert('上传失败: ' + error.message); } finally { setUploading(false); }
+    } catch (error: any) {
+      alert('上传失败: ' + error.message);
+    } finally {
+      setUploading(false);
+      event.target.value = '';
+    }
   };
 
   const handleAddVideo = (blockId: string) => {
@@ -857,10 +875,30 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                                   <textarea className="text-xs border p-2 rounded h-20" placeholder="Action (行动)" value={b.data.star_action || ''} onChange={e => updateContentBlock(b.id, 'star_action', e.target.value)} />
                                                   <textarea className="text-xs border p-2 rounded h-20" placeholder="Result (结果)" value={b.data.star_result || ''} onChange={e => updateContentBlock(b.id, 'star_result', e.target.value)} />
                                               </div>
-                                              <div className="pt-2 border-t flex gap-2 overflow-x-auto">
-                                                  <label className="shrink-0 px-3 py-1 bg-slate-100 rounded text-xs font-bold cursor-pointer hover:bg-slate-200">+ 佐证图</label>
-                                                  <input type="file" className="hidden" accept="image/*" onChange={e => handleImageUpload(e, 'evidence', b.id)} />
-                                                  {b.data.evidence_urls?.map((url: string, i: number) => <img key={i} src={url} className="h-8 w-8 rounded object-cover" />)}
+                                              <div className="pt-2 border-t space-y-2">
+                                                  <label className="inline-flex items-center shrink-0 px-3 py-1 bg-slate-100 rounded text-xs font-bold cursor-pointer hover:bg-slate-200 w-fit">
+                                                      + 佐证图
+                                                      <input type="file" className="hidden" accept="image/*" multiple onChange={e => handleImageUpload(e, 'evidence', b.id)} />
+                                                  </label>
+                                                  <div className="flex flex-wrap gap-2">
+                                                      {b.data.evidence_urls?.map((url: string, i: number) => (
+                                                          <div key={i} className="h-12 w-12 rounded overflow-hidden relative group/evidence border border-slate-200 bg-slate-100">
+                                                              <img src={url} className="w-full h-full object-cover" />
+                                                              <button
+                                                                  onClick={() => {
+                                                                      const nextEvidenceUrls = (b.data.evidence_urls || []).filter((_: string, idx: number) => idx !== i);
+                                                                      updateContentBlock(b.id, 'evidence_urls', nextEvidenceUrls);
+                                                                  }}
+                                                                  className="absolute inset-0 bg-black/55 text-white hidden group-hover/evidence:flex items-center justify-center hover:text-red-300"
+                                                              >
+                                                                  <Icons.X size={12} />
+                                                              </button>
+                                                          </div>
+                                                      ))}
+                                                      {!b.data.evidence_urls?.length && (
+                                                          <div className="text-xs text-slate-400 italic py-1">暂无佐证图</div>
+                                                      )}
+                                                  </div>
                                               </div>
                                           </div>
                                       )}

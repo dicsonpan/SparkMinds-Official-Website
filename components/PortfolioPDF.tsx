@@ -932,35 +932,27 @@ const renderSkillsCategory = (
     const svgSize = 180;
     const center = svgSize / 2;
     const radius = 55;
-    const labelRadius = radius + 20;
     const angleStep = (Math.PI * 2) / items.length;
 
-    const getPoint = (value: number, idx: number, r = radius) => {
+    const getXY = (value: number, idx: number, r = radius) => {
       const angle = idx * angleStep - Math.PI / 2;
       const scaled = (clampPercent(value) / 100) * r;
-      return { x: center + scaled * Math.cos(angle), y: center + scaled * Math.sin(angle) };
+      const x = Math.round((center + scaled * Math.cos(angle)) * 100) / 100;
+      const y = Math.round((center + scaled * Math.sin(angle)) * 100) / 100;
+      return { x, y };
     };
 
     const toPoints = (value: number) =>
-      items.map((_, i) => { const p = getPoint(value, i); return `${p.x},${p.y}`; }).join(' ');
+      items.map((_, i) => { const p = getXY(value, i); return `${p.x},${p.y}`; }).join(' ');
 
-    const dataPoints = items.map((item, i) => getPoint(item.value, i));
+    const dataPoints = items.map((item, i) => getXY(item.value, i));
     const dataPolygon = dataPoints.map((p) => `${p.x},${p.y}`).join(' ');
-
-    // Compute label positions for SVG text
-    const labelPositions = items.map((_, i) => {
-      const angle = i * angleStep - Math.PI / 2;
-      return {
-        x: center + labelRadius * Math.cos(angle),
-        y: center + labelRadius * Math.sin(angle),
-      };
-    });
 
     return (
       <View key={key} style={composeStyles(styles.skillCategory, layoutStyle)} wrap={false}>
         <Text style={styles.skillCategoryTitle}>{category.name}</Text>
         <View style={{ alignItems: 'center', marginBottom: 8 }}>
-          <Svg width={svgSize} height={svgSize}>
+          <Svg width={svgSize} height={svgSize} viewBox={`0 0 ${svgSize} ${svgSize}`}>
             {/* Grid polygons at 25%, 50%, 75%, 100% */}
             {[25, 50, 75, 100].map((level) => (
               <Polygon
@@ -969,22 +961,20 @@ const renderSkillsCategory = (
                 stroke={theme.radarGrid}
                 strokeWidth={0.8}
                 fill="none"
-                opacity={0.4}
               />
             ))}
             {/* Axis lines from center to each vertex */}
             {items.map((_, i) => {
-              const p = getPoint(100, i);
+              const p = getXY(100, i);
               return (
                 <Line
                   key={i}
-                  x1={center}
-                  y1={center}
-                  x2={p.x}
-                  y2={p.y}
+                  x1={String(center)}
+                  y1={String(center)}
+                  x2={String(p.x)}
+                  y2={String(p.y)}
                   stroke={theme.radarGrid}
                   strokeWidth={0.8}
-                  opacity={0.4}
                 />
               );
             })}

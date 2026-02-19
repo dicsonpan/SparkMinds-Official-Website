@@ -7,3 +7,111 @@
   background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
   background-size: 20px 20px;
 }
+
+.portfolio-theme {
+  isolation: isolate;
+}
+
+.portfolio-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.portfolio-backdrop-tech {
+  background:
+    radial-gradient(circle at 16% 15%, rgba(34, 211, 238, 0.22), transparent 37%),
+    radial-gradient(circle at 84% 6%, rgba(56, 189, 248, 0.18), transparent 34%),
+    linear-gradient(150deg, rgba(2, 6, 23, 0.98) 24%, rgba(7, 20, 47, 0.96) 100%);
+}
+
+.portfolio-pattern-tech {
+  background-image:
+    linear-gradient(to right, rgba(56, 189, 248, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(56, 189, 248, 0.07) 1px, transparent 1px);
+  background-size: 32px 32px;
+  opacity: 0.22;
+}
+
+.portfolio-backdrop-academic {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(251, 191, 36, 0.16), transparent 38%),
+    radial-gradient(circle at 90% 10%, rgba(129, 140, 248, 0.14), transparent 34%),
+    linear-gradient(165deg, #f5f2eb 0%, #f1ede3 100%);
+}
+
+.portfolio-pattern-academic {
+  background-image:
+    repeating-linear-gradient(0deg, rgba(148, 163, 184, 0.12), rgba(148, 163, 184, 0.12) 1px, transparent 1px, transparent 32px),
+    repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.08), rgba(148, 163, 184, 0.08) 1px, transparent 1px, transparent 32px);
+  opacity: 0.18;
+}
+
+.portfolio-backdrop-creative {
+  background:
+    radial-gradient(circle at 12% 12%, rgba(251, 146, 60, 0.25), transparent 36%),
+    radial-gradient(circle at 88% 12%, rgba(45, 212, 191, 0.22), transparent 35%),
+    radial-gradient(circle at 50% 90%, rgba(251, 191, 36, 0.16), transparent 40%),
+    linear-gradient(160deg, #fff8ec 0%, #fff3df 100%);
+}
+
+.portfolio-pattern-creative {
+  background-image:
+    radial-gradient(rgba(251, 146, 60, 0.2) 1.4px, transparent 1.4px),
+    radial-gradient(rgba(20, 184, 166, 0.16) 1.2px, transparent 1.2px);
+  background-size: 34px 34px, 24px 24px;
+  background-position: 0 0, 12px 12px;
+  opacity: 0.2;
+}
+
+.portfolio-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(78px);
+  z-index: 0;
+  pointer-events: none;
+  animation: portfolioDrift 14s ease-in-out infinite;
+}
+
+.portfolio-orb--slow {
+  animation-duration: 20s;
+  animation-delay: -6s;
+}
+
+.portfolio-reveal {
+  opacity: 0;
+  animation: portfolioReveal 700ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes portfolioDrift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -18px, 0) scale(1.05);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes portfolioReveal {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portfolio-orb,
+  .portfolio-reveal {
+    animation: none;
+    transform: none;
+    opacity: 1;
+  }
+}

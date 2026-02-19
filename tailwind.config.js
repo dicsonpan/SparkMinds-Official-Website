@@ -7,7 +7,11 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['"Noto Sans SC"', '"PingFang SC"', '"Hiragino Sans GB"', 'sans-serif'],
+        portfolioSans: ['"Noto Sans SC"', '"PingFang SC"', '"Hiragino Sans GB"', 'sans-serif'],
+        portfolioTech: ['"Space Grotesk"', '"Noto Sans SC"', 'sans-serif'],
+        portfolioAcademic: ['"Noto Serif SC"', '"Songti SC"', 'serif'],
+        portfolioCreative: ['"ZCOOL XiaoWei"', '"Noto Sans SC"', 'serif'],
       },
       animation: {
         blob: "blob 7s infinite",

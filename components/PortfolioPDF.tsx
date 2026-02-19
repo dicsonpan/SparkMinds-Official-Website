@@ -481,11 +481,11 @@ const createStyles = (theme: PdfTheme) =>
     },
     mediaTwoColumnRow: {
       flexDirection: 'row',
-      width: '100%',
     },
     mediaImageFrameHalf: {
-      width: '49%',
-      marginRight: '2%',
+      flexGrow: 1,
+      flexBasis: 0,
+      marginRight: 8,
     },
     mediaImageFrameFull: {
       width: '100%',
@@ -1119,7 +1119,7 @@ const renderBlock = (
                 <View
                   key={`${block.id}-timeline-row-${rowIndex}`}
                   style={styles.mediaTwoColumnRow}
-                  wrap={false}
+                  wrap={row.length !== 2}
                 >
                   {row.map((item, index) => {
                     const isSingleImage = timelineUrls.length === 1;
@@ -1182,7 +1182,7 @@ const renderBlock = (
                 <View
                   key={`${block.id}-evidence-row-${rowIndex}`}
                   style={styles.mediaTwoColumnRow}
-                  wrap={false}
+                  wrap={row.length !== 2}
                 >
                   {row.map((item, index) => {
                     const isSingleImage = block.data.evidence_urls?.length === 1;
@@ -1282,7 +1282,7 @@ const renderBlock = (
             <View
               key={`${block.id}-image-grid-row-${rowIndex}`}
               style={styles.mediaTwoColumnRow}
-              wrap={false}
+              wrap={row.length !== 2}
             >
               {row.map((item, index) => {
                 const isSingleImage = urls.length === 1;

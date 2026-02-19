@@ -453,7 +453,7 @@ const createStyles = (theme: PdfTheme) =>
     },
     timelineDate: {
       alignSelf: 'flex-start',
-      fontSize: 8,
+      fontSize: 12,
       fontWeight: 700,
       color: theme.accent,
       borderWidth: 1,
@@ -1154,10 +1154,10 @@ const renderBlock = (
 
   if (block.type === 'project_highlight') {
     const starItems = [
-      { label: 'S Situation / 背景', content: block.data.star_situation },
-      { label: 'T Task / 任务', content: block.data.star_task },
-      { label: 'A Action / 行动', content: block.data.star_action },
-      { label: 'R Result / 结果', content: block.data.star_result },
+      { label: 'Situation / 背景', content: block.data.star_situation },
+      { label: 'Task / 任务', content: block.data.star_task },
+      { label: 'Action / 行动', content: block.data.star_action },
+      { label: 'Result / 结果', content: block.data.star_result },
     ];
 
     return (

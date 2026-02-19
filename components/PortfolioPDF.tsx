@@ -11,10 +11,28 @@ Font.register({
 // 禁用自动断词（避免行尾自动加 "-"）
 Font.registerHyphenationCallback((word) => [word]);
 
-// 不再插入零宽空格，避免触发异常断词；顺带清理软连字符
+const ZWSP = '\u200B';
+const CJK_BOUNDARY_REGEX = /([\u3400-\u9fff\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af])(?=[\u3400-\u9fff\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af])/g;
+const LONG_TOKEN_REGEX = /[A-Za-z0-9][A-Za-z0-9/@_\-.:?&=#%+]{18,}/g;
+const BREAKABLE_SYMBOL_REGEX = /([/@_\-.:?&=#%+])/g;
+const ALNUM_CHUNK_REGEX = /([A-Za-z0-9]{12})(?=[A-Za-z0-9])/g;
+
+const addWrapOpportunities = (input: string) =>
+  input
+    .replace(CJK_BOUNDARY_REGEX, `$1${ZWSP}`)
+    .replace(LONG_TOKEN_REGEX, (token) =>
+      token
+        .replace(BREAKABLE_SYMBOL_REGEX, `$1${ZWSP}`)
+        .replace(ALNUM_CHUNK_REGEX, `$1${ZWSP}`)
+    );
+
+// 为中日韩连续字符、超长英文串和 URL 添加可断行点，并清理软连字符
 const processText = (text: string | undefined | null) => {
   if (text == null) return '';
-  return String(text).replace(/[\u00AD\u2010\u2011]/g, '');
+  const normalized = String(text)
+    .replace(/\r\n?/g, '\n')
+    .replace(/[\u00AD\u2010\u2011]/g, '');
+  return addWrapOpportunities(normalized);
 };
 
 const styles = StyleSheet.create({
@@ -213,21 +231,33 @@ const styles = StyleSheet.create({
   timelineContent: {
     flex: 1
   },
+  timelineHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 4
+  },
   timelineDate: {
     fontSize: 9,
     fontWeight: 'bold',
     color: '#2563eb',
-    marginBottom: 2,
+    marginBottom: 0,
     backgroundColor: '#eff6ff',
     padding: '2 6',
     borderRadius: 4,
-    alignSelf: 'flex-start'
+    alignSelf: 'flex-start',
+    flexShrink: 0
   },
   timelineTitle: {
     fontSize: 12,
     fontWeight: 'bold',
     color: '#0f172a',
-    marginBottom: 4
+    marginBottom: 0,
+    marginLeft: 8,
+    flexGrow: 1,
+    flexShrink: 1,
+    textAlign: 'right',
+    lineHeight: 1.3
   },
   timelineDesc: {
     fontSize: 10,
@@ -579,7 +609,7 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
             return (
               <View key={block.id} style={[styles.section, styles.timelineRow]} wrap={false}>
                 <View style={styles.timelineContent}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <View style={styles.timelineHeaderRow}>
                     <Text style={styles.timelineDate}>{processText(block.data.date)}</Text>
                     <Text style={styles.timelineTitle}>{processText(block.data.title)}</Text>
                   </View>

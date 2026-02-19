@@ -1116,7 +1116,11 @@ const renderBlock = (
           {timelineUrls.length > 0 ? (
             <View style={styles.timelineImageRow}>
               {timelineRows.map((row, rowIndex) => (
-                <View key={`${block.id}-timeline-row-${rowIndex}`} style={styles.mediaTwoColumnRow}>
+                <View
+                  key={`${block.id}-timeline-row-${rowIndex}`}
+                  style={styles.mediaTwoColumnRow}
+                  wrap={false}
+                >
                   {row.map((item, index) => {
                     const isSingleImage = timelineUrls.length === 1;
                     const fullRow = item.fullRow || isSingleImage;
@@ -1175,7 +1179,11 @@ const renderBlock = (
           <View style={styles.evidenceRow}>
             {splitImagesIntoRows(block.data.evidence_urls, shouldUseFullRowForImage).map(
               (row, rowIndex) => (
-                <View key={`${block.id}-evidence-row-${rowIndex}`} style={styles.mediaTwoColumnRow}>
+                <View
+                  key={`${block.id}-evidence-row-${rowIndex}`}
+                  style={styles.mediaTwoColumnRow}
+                  wrap={false}
+                >
                   {row.map((item, index) => {
                     const isSingleImage = block.data.evidence_urls?.length === 1;
                     const fullRow = item.fullRow || isSingleImage;
@@ -1271,7 +1279,11 @@ const renderBlock = (
         {block.data.title ? <Text style={styles.sectionTitle}>{block.data.title}</Text> : null}
         <View style={styles.imageGrid}>
           {imageRows.map((row, rowIndex) => (
-            <View key={`${block.id}-image-grid-row-${rowIndex}`} style={styles.mediaTwoColumnRow}>
+            <View
+              key={`${block.id}-image-grid-row-${rowIndex}`}
+              style={styles.mediaTwoColumnRow}
+              wrap={false}
+            >
               {row.map((item, index) => {
                 const isSingleImage = urls.length === 1;
                 const fullRow = item.fullRow || isSingleImage;

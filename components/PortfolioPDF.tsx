@@ -2,10 +2,11 @@ import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image, Font, Svg, Polygon, Line, Circle } from '@react-pdf/renderer';
 import { StudentPortfolio, ContentBlock, SkillCategory, SkillItem } from '../types';
 
-// Register the Microsoft YaHei font located in the public folder to support Chinese characters
+// Register a Chinese font from a reliable CDN since the local file is missing.
+// Using Noto Sans SC which provides good coverage for Simplified Chinese.
 Font.register({
-  family: 'Microsoft YaHei',
-  src: '/microsoft yahei.ttf'
+  family: 'Noto Sans SC',
+  src: 'https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.12/files/noto-sans-sc-chinese-simplified-400-normal.woff'
 });
 
 // 【关键修复】注册断行回调函数
@@ -21,7 +22,7 @@ Font.registerHyphenationCallback(word => {
 const styles = StyleSheet.create({
   page: {
     padding: 40,
-    fontFamily: 'Microsoft YaHei',
+    fontFamily: 'Noto Sans SC',
     backgroundColor: '#ffffff',
     color: '#334155', // Slate 700
     fontSize: 10,
@@ -460,7 +461,7 @@ const RadarChart = ({ items }: { items: SkillItem[] }) => {
                             key={i}
                             x={x + adjX}
                             y={y + adjY}
-                            style={{ fontSize: 8, fill: '#334155', fontFamily: 'Microsoft YaHei' }}
+                            style={{ fontSize: 8, fill: '#334155', fontFamily: 'Noto Sans SC' }}
                         >
                             {item.name}
                         </Text>

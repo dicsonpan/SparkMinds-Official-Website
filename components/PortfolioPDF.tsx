@@ -706,16 +706,22 @@ const renderParagraphs = (text: string | undefined, style: any) => {
 const renderParagraphsWithIndent = (text: string | undefined, style: any) => {
   if (!text) return null;
 
-  const paragraphs = text
-    .split(/\r\n|\r|\n|\u2028|\u2029/)
-    .map((line) => line.replace(/^[\s\u3000]+/, '').trim())
+  const normalizedText = text
+    .replace(/\r\n?/g, '\n')
+    .replace(/[\u2028\u2029]/g, '\n')
+    .replace(/^[\t \u00a0\u1680\u2000-\u200d\u202f\u205f\u3000\ufeff]*$/gm, '')
+    .replace(/\n{2,}/g, '\n')
+    .trim();
+
+  const paragraphs = normalizedText
+    .split('\n')
+    .map((line) => line.replace(/^[\t \u00a0\u1680\u2000-\u200d\u202f\u205f\u3000\ufeff]+/, '').trim())
     .filter(Boolean);
 
   if (!paragraphs.length) return null;
 
-  // Keep all paragraphs in a single Text node. React PDF may collapse leading
-  // spaces at the start of separate Text nodes, which causes random indent loss.
-  const normalized = paragraphs.map((line) => `\u200B\u3000\u3000${line}`).join('\n');
+  // Keep all paragraphs in one Text node for stable leading indent behavior.
+  const normalized = paragraphs.map((line) => `\u3000\u3000${line}`).join('\n');
   return <Text style={style}>{normalized}</Text>;
 };
 

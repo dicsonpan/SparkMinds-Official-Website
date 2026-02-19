@@ -482,10 +482,11 @@ const createStyles = (theme: PdfTheme) =>
     mediaTwoColumnRow: {
       flexDirection: 'row',
       width: '100%',
+      justifyContent: 'space-between',
     },
     mediaImageFrameHalf: {
       width: '49%',
-      marginRight: '2%',
+      marginRight: 0,
     },
     mediaImageFrameFull: {
       width: '100%',
@@ -1093,6 +1094,7 @@ const renderBlock = (
                 <View
                   key={`${block.id}-timeline-row-${rowIndex}`}
                   style={styles.mediaTwoColumnRow}
+                  wrap={row.length !== 2}
                   minPresenceAhead={rowIndex < timelineRows.length - 1 ? 210 : undefined}
                 >
                   {row.map((item, index) => {
@@ -1157,6 +1159,7 @@ const renderBlock = (
                 <View
                   key={`${block.id}-evidence-row-${rowIndex}`}
                   style={styles.mediaTwoColumnRow}
+                  wrap={row.length !== 2}
                   minPresenceAhead={rowIndex < evidenceRows.length - 1 ? 210 : undefined}
                 >
                   {row.map((item, index) => {
@@ -1257,6 +1260,7 @@ const renderBlock = (
             <View
               key={`${block.id}-image-grid-row-${rowIndex}`}
               style={styles.mediaTwoColumnRow}
+              wrap={row.length !== 2}
               minPresenceAhead={rowIndex < imageRows.length - 1 ? 210 : undefined}
             >
               {row.map((item, index) => {

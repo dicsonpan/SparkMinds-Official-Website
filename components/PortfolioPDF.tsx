@@ -8,305 +8,126 @@ Font.register({
   src: 'https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.12/files/noto-sans-sc-chinese-simplified-400-normal.woff'
 });
 
-// 核心修复：注册断行回调函数
-// 逻辑来源：将每个字符拆分，并在字符间插入空字符串。
-// 这会让 PDF 引擎认为可以在任意字符间断行，且不显示连字符（-）。
+// Hyphenation callback to fix Chinese wrapping
 Font.registerHyphenationCallback((word) => {
-  if (word.length === 1) {
-    return [word];
-  }
-  return Array.from(word)
-    .map((char) => [char, ''])
-    .reduce((arr, current) => {
-        arr.push(...current);
-        return arr;
-    }, [] as string[]);
+  if (word.length === 1) return [word];
+  return Array.from(word).map(char => [char, '']).reduce((arr, current) => {
+      arr.push(...current);
+      return arr;
+  }, [] as string[]);
 });
 
 const styles = StyleSheet.create({
   page: {
-    padding: 40,
+    paddingTop: 40,
+    paddingBottom: 60,
+    paddingHorizontal: 40,
     fontFamily: 'Noto Sans SC',
     backgroundColor: '#ffffff',
     color: '#334155', // Slate 700
     fontSize: 10,
-    lineHeight: 1.6
+    lineHeight: 1.5
   },
-  // === Header ===
-  header: {
-    flexDirection: 'row',
-    marginBottom: 30,
+  // === 1. Header Section ===
+  headerContainer: {
+    marginBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#2563eb', // Blue 600
-    paddingBottom: 20,
-    alignItems: 'flex-start' 
+    borderBottomColor: '#e2e8f0',
+    paddingBottom: 20
   },
-  // Updated Avatar Styles
-  headerAvatarContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15
+  },
+  avatar: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     marginRight: 20,
-    overflow: 'hidden', // Clip content to circle
-    backgroundColor: '#f1f5f9'
+    backgroundColor: '#f1f5f9',
+    objectFit: 'cover'
   },
-  headerAvatarImage: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover' // Simulates background-size: cover
-  },
-  headerContent: {
-    flex: 1,
-    flexDirection: 'column',
-    justifyContent: 'center' // Center vertically if content is short
+  headerInfo: {
+    flex: 1
   },
   studentName: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: 'heavy', // 'heavy' works better for bold in some fonts
     color: '#0f172a', // Slate 900
-    marginBottom: 10, // Increased spacing
-    lineHeight: 1.2
+    marginBottom: 4
   },
   studentTitle: {
     fontSize: 12,
     color: '#2563eb', // Blue 600
-    fontWeight: 'bold',
-    marginBottom: 8,
-    marginTop: 0, 
-    textTransform: 'uppercase'
+    textTransform: 'uppercase',
+    marginBottom: 6,
+    fontWeight: 'bold'
   },
-  studentBio: {
-    fontSize: 10,
+  bio: {
+    fontSize: 9,
     color: '#64748b',
-    lineHeight: 1.5,
-    textAlign: 'justify',
-    marginTop: 4
+    lineHeight: 1.4,
+    textAlign: 'justify'
+  },
+  headerImages: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+    height: 80,
+    overflow: 'hidden'
+  },
+  headerHeroImg: {
+    flex: 1,
+    height: '100%',
+    borderRadius: 4,
+    objectFit: 'cover',
+    backgroundColor: '#f8fafc'
   },
 
-  // === Section Defaults ===
-  section: {
-    marginBottom: 15,
+  // === General Blocks ===
+  sectionContainer: {
+    marginBottom: 20,
     width: '100%'
   },
   
   // === Section Heading ===
-  sectionHeadingContainer: {
-    marginTop: 15,
-    marginBottom: 10,
-    paddingBottom: 5,
-    borderBottomWidth: 2,
-    borderBottomColor: '#f1f5f9'
-  },
   sectionHeadingTitle: {
     fontSize: 16,
-    fontWeight: 'heavy',
+    fontWeight: 'bold',
     color: '#0f172a',
-    textTransform: 'uppercase'
-  },
-
-  // === Info List (Grid) ===
-  infoGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 5
-  },
-  infoItem: {
-    width: '32%', // 3 columns with gap
-    backgroundColor: '#f8fafc',
-    padding: 10,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#e2e8f0'
-  },
-  infoLabel: {
-    fontSize: 8,
-    color: '#64748b',
-    fontWeight: 'bold',
-    marginBottom: 4,
-    textTransform: 'uppercase'
-  },
-  infoValue: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#0f172a'
-  },
-
-  // === Skills (Progress Bars) ===
-  skillCategory: {
-    marginBottom: 10,
-    width: '100%'
-  },
-  skillCategoryTitle: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    marginBottom: 6,
-    color: '#475569',
-    backgroundColor: '#f1f5f9',
-    padding: '4 8',
-    borderRadius: 4
-  },
-  // -- Bar Layout --
-  skillRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12
-  },
-  skillItem: {
-    width: '48%', // 2 columns
-    marginBottom: 6
-  },
-  skillHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 3
-  },
-  skillName: {
-    fontSize: 9,
-    fontWeight: 'bold',
-    color: '#334155'
-  },
-  skillScore: {
-    fontSize: 9,
-    color: '#2563eb',
-    fontWeight: 'bold'
-  },
-  skillTrack: {
-    height: 6,
-    backgroundColor: '#e2e8f0',
-    borderRadius: 3,
-    overflow: 'hidden'
-  },
-  skillFill: {
-    height: '100%',
-    backgroundColor: '#2563eb'
-  },
-  // -- Stat Grid Layout --
-  statGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8
-  },
-  statItem: {
-    width: '32%',
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 6,
-    backgroundColor: '#f8fafc',
-    alignItems: 'center',
-    marginBottom: 6
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2563eb',
-    marginBottom: 2
-  },
-  statLabel: {
-    fontSize: 8,
-    color: '#64748b',
-    fontWeight: 'bold',
-    textTransform: 'uppercase'
-  },
-  // -- Circle Layout --
-  circleGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    justifyContent: 'flex-start'
-  },
-  circleItem: {
-    width: '30%',
-    alignItems: 'center',
-    marginBottom: 10
-  },
-
-  // === Timeline ===
-  timelineRow: {
-    flexDirection: 'row',
+    textAlign: 'center',
+    marginTop: 10,
     marginBottom: 15,
-    borderLeftWidth: 2,
-    borderLeftColor: '#e2e8f0',
-    paddingLeft: 15,
-    marginLeft: 5
-  },
-  timelineContent: {
-    flex: 1
-  },
-  timelineHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 4
-  },
-  timelineDate: {
-    fontSize: 9,
-    fontWeight: 'bold',
-    color: '#2563eb',
-    marginBottom: 0,
-    backgroundColor: '#eff6ff',
-    padding: '2 6',
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-    flexShrink: 0
-  },
-  timelineTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#0f172a',
-    marginBottom: 0,
-    marginLeft: 8,
-    flexGrow: 1,
-    flexShrink: 1,
-    textAlign: 'right',
-    lineHeight: 1.3
-  },
-  timelineDesc: {
-    fontSize: 10,
-    color: '#475569',
-    lineHeight: 1.5,
-    textAlign: 'justify'
-  },
-  timelineImages: {
-    marginTop: 8,
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap'
-  },
-  timelineImg: {
-    width: 140,  // Increased size
-    height: 90,
-    borderRadius: 4,
-    objectFit: 'cover',
-    backgroundColor: '#f1f5f9'
+    textTransform: 'uppercase'
   },
 
   // === STAR Project ===
   starContainer: {
-    marginTop: 5,
-    borderRadius: 6,
     borderWidth: 1,
     borderColor: '#cbd5e1',
-    overflow: 'hidden'
+    borderRadius: 6,
+    overflow: 'hidden',
+    backgroundColor: '#ffffff'
   },
   starHeader: {
     padding: '8 12',
     backgroundColor: '#f8fafc',
     borderBottomWidth: 1,
-    borderBottomColor: '#cbd5e1'
+    borderBottomColor: '#e2e8f0'
   },
   starTitle: {
     fontSize: 12,
     fontWeight: 'bold',
     color: '#0f172a'
   },
+  // The 2x2 Grid
   starGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap'
   },
-  starBox: {
-    width: '50%', // 2x2 Grid
+  starCell: {
+    width: '50%',
     padding: 10,
     borderRightWidth: 1,
     borderRightColor: '#f1f5f9',
@@ -315,114 +136,210 @@ const styles = StyleSheet.create({
   },
   starLabel: {
     fontSize: 8,
+    color: '#2563eb', // Blue Accent
     fontWeight: 'bold',
-    color: '#2563eb',
     marginBottom: 4,
-    opacity: 0.8
+    textTransform: 'uppercase'
   },
   starText: {
     fontSize: 9,
-    color: '#334155',
-    lineHeight: 1.4
+    color: '#334155'
   },
-  starEvidence: {
+  // Evidence Section
+  starEvidenceContainer: {
     padding: 10,
-    backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9'
+    borderTopColor: '#e2e8f0'
+  },
+  evidenceLabel: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    color: '#94a3b8',
+    marginBottom: 6,
+    textTransform: 'uppercase'
+  },
+  evidenceGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6
+  },
+
+  // === Timeline ===
+  timelineItem: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    paddingLeft: 10,
+    borderLeftWidth: 2,
+    borderLeftColor: '#e2e8f0'
+  },
+  timelineDateBox: {
+    width: 70,
+    marginRight: 10
+  },
+  timelineDate: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: '#2563eb',
+    backgroundColor: '#eff6ff',
+    padding: '2 6',
+    borderRadius: 4,
+    textAlign: 'center'
+  },
+  timelineContent: {
+    flex: 1
+  },
+  timelineTitle: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#0f172a',
+    marginBottom: 2
+  },
+  timelineDesc: {
+    fontSize: 9,
+    color: '#475569'
+  },
+  timelineImages: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 6
+  },
+  timelineImg: {
+    width: 80,
+    height: 50,
+    borderRadius: 2,
+    objectFit: 'cover'
+  },
+
+  // === Skills ===
+  skillContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 15
+  },
+  skillGroup: {
+    width: '47%', // 2 cols
+    marginBottom: 10,
+    padding: 10,
+    backgroundColor: '#f8fafc',
+    borderRadius: 6
+  },
+  skillGroupTitle: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#0f172a',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    paddingBottom: 4
+  },
+  skillRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+    alignItems: 'center'
+  },
+  skillName: {
+    fontSize: 9,
+    color: '#334155'
+  },
+  skillBarContainer: {
+    width: '50%',
+    height: 4,
+    backgroundColor: '#e2e8f0',
+    borderRadius: 2,
+    marginLeft: 5
+  },
+  skillBarFill: {
+    height: '100%',
+    backgroundColor: '#2563eb',
+    borderRadius: 2
+  },
+
+  // === Info List ===
+  infoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    backgroundColor: '#f8fafc',
+    padding: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e2e8f0'
+  },
+  infoItem: {
+    width: '31%',
+    marginBottom: 6
+  },
+  infoLabel: {
+    fontSize: 8,
+    color: '#94a3b8',
+    textTransform: 'uppercase',
+    marginBottom: 1
+  },
+  infoValue: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#0f172a'
   },
 
   // === Image Grid ===
-  imageGridContainer: {
+  galleryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8
-  },
-  // Default Style (3 cols)
-  imageGridItem: {
-    width: '31%', 
-    height: 120,
-    borderRadius: 4,
-    objectFit: 'cover',
-    backgroundColor: '#f1f5f9',
-    marginBottom: 8
-  },
-
-  // === Text Block ===
-  textBlock: {
-    fontSize: 10,
-    lineHeight: 1.6,
-    color: '#334155',
-    textAlign: 'justify'
+    gap: 6
   },
 
   // === Table ===
   table: {
     width: '100%',
     borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 6,
-    overflow: 'hidden',
-    marginTop: 5
-  },
-  tableHeaderRow: {
-    flexDirection: 'row',
-    backgroundColor: '#f1f5f9',
-    borderBottomWidth: 1,
-    borderBottomColor: '#cbd5e1',
-    alignItems: 'center'
+    borderColor: '#e2e8f0',
+    borderRadius: 4
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-    minHeight: 24,
-    alignItems: 'center'
+    borderBottomColor: '#e2e8f0'
   },
-  tableHeaderCell: {
-    padding: 8,
+  tableCellHeader: {
+    padding: 6,
     fontSize: 9,
     fontWeight: 'bold',
+    backgroundColor: '#f1f5f9',
     color: '#0f172a',
     borderRightWidth: 1,
-    borderRightColor: '#cbd5e1',
-    textAlign: 'left'
+    borderRightColor: '#e2e8f0'
   },
   tableCell: {
-    padding: 8,
+    padding: 6,
     fontSize: 9,
     color: '#334155',
     borderRightWidth: 1,
-    borderRightColor: '#e2e8f0',
-    textAlign: 'left'
+    borderRightColor: '#e2e8f0'
   },
 
   // === Footer ===
   footer: {
     position: 'absolute',
-    bottom: 30,
+    bottom: 20,
     left: 40,
     right: 40,
-    fontSize: 8,
     textAlign: 'center',
-    color: '#94a3b8',
+    fontSize: 8,
+    color: '#cbd5e1',
     borderTopWidth: 1,
     borderTopColor: '#f1f5f9',
     paddingTop: 10
   }
 });
 
-interface PortfolioPDFProps {
-  portfolio: StudentPortfolio;
-}
+// --- Chart Components ---
 
-// === Chart Helpers ===
-
-// Helper: Radar Chart
 const RadarChart = ({ items }: { items: SkillItem[] }) => {
-    const size = 180;
+    if (!items || items.length < 3) return null; // Need at least 3 points
+    const size = 150;
     const center = size / 2;
-    const radius = 60;
+    const radius = 50;
     const angleStep = (Math.PI * 2) / items.length;
 
     const getPoint = (value: number, index: number, rScale = radius) => {
@@ -434,170 +351,175 @@ const RadarChart = ({ items }: { items: SkillItem[] }) => {
     const dataPoints = items.map((item, i) => getPoint(item.value, i)).join(' ');
 
     return (
-        <View style={{ alignItems: 'center', marginBottom: 10 }}>
+        <View style={{ alignItems: 'center', marginVertical: 10 }}>
             <Svg width={size} height={size}>
-                {/* Grid Background */}
-                {[0.25, 0.5, 0.75, 1].map((scale, i) => (
-                    <Polygon
-                        key={i}
-                        points={items.map((_, idx) => getPoint(100 * scale, idx)).join(' ')}
-                        stroke="#cbd5e1"
-                        strokeWidth={1}
-                        fill="none"
-                    />
+                {/* Background Grid */}
+                {[0.5, 1].map((scale, i) => (
+                    <Polygon key={i} points={items.map((_, idx) => getPoint(100 * scale, idx)).join(' ')} stroke="#cbd5e1" strokeWidth={1} fill="none" />
                 ))}
                 {/* Axes */}
                 {items.map((_, i) => (
-                    <Line
-                        key={i}
-                        x1={center}
-                        y1={center}
-                        x2={getPoint(100, i).split(',')[0]}
-                        y2={getPoint(100, i).split(',')[1]}
-                        stroke="#cbd5e1"
-                        strokeWidth={1}
-                    />
+                    <Line key={i} x1={center} y1={center} x2={getPoint(100, i).split(',')[0]} y2={getPoint(100, i).split(',')[1]} stroke="#cbd5e1" strokeWidth={1} />
                 ))}
-                {/* Data Shape */}
-                <Polygon
-                    points={dataPoints}
-                    fill="rgba(37, 99, 235, 0.1)"
-                    stroke="#2563eb"
-                    strokeWidth={2}
-                />
-                {/* Labels at vertices */}
+                {/* Data */}
+                <Polygon points={dataPoints} fill="rgba(37, 99, 235, 0.1)" stroke="#2563eb" strokeWidth={2} />
+                {/* Labels */}
                 {items.map((item, i) => {
-                    // Position label slightly outside the last grid ring
                     const [x, y] = getPoint(100, i, radius + 15).split(',').map(Number);
-                    // Simple offset adjustment to center text approximately
-                    const adjX = x > center ? 0 : x < center ? -20 : -10;
-                    const adjY = y > center ? 5 : -5;
-                    return (
-                        <Text
-                            key={i}
-                            x={x + adjX}
-                            y={y + adjY}
-                            style={{ fontSize: 8, fill: '#334155', fontFamily: 'Noto Sans SC' }}
-                        >
-                            {item.name}
-                        </Text>
-                    );
+                    return <Text key={i} x={x - 10} y={y} style={{ fontSize: 8, fill: '#334155' }}>{item.name}</Text>;
                 })}
             </Svg>
-            {/* Legend for exact values */}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginTop: -20 }}>
-                {items.map((item, i) => (
-                    <Text key={i} style={{ fontSize: 8, color: '#64748b' }}>
-                        {item.name}: <Text style={{ color: '#2563eb', fontWeight: 'bold' }}>{item.value}%</Text>
-                    </Text>
-                ))}
-            </View>
         </View>
     );
 };
 
-// Helper: Circle Chart
-const CircleChart = ({ item }: { item: SkillItem }) => {
-    const size = 50;
-    const r = 20;
-    const c = 2 * Math.PI * r;
-    const offset = c - (Math.min(100, Math.max(0, item.value)) / 100) * c;
+// --- Main Document Component ---
 
-    return (
-        <View style={styles.circleItem}>
-            <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                <Svg width={size} height={size}>
-                    <Circle cx={size/2} cy={size/2} r={r} stroke="#e2e8f0" strokeWidth={4} fill="none" />
-                    <Circle 
-                        cx={size/2} 
-                        cy={size/2} 
-                        r={r} 
-                        stroke="#2563eb" 
-                        strokeWidth={4} 
-                        fill="none" 
-                        strokeDasharray={`${c} ${c}`}
-                        {...({ strokeDashoffset: offset } as any)}
-                        transform={`rotate(-90 ${size/2} ${size/2})`}
-                    />
-                </Svg>
-                <Text style={{ position: 'absolute', fontSize: 10, fontWeight: 'bold', color: '#2563eb', top: 19, left: 0, right: 0, textAlign: 'center' }}>
-                    {item.value}%
-                </Text>
-            </View>
-            <Text style={{ fontSize: 8, fontWeight: 'bold', marginTop: 4, textAlign: 'center', color: '#334155' }}>
-                {item.name}
-            </Text>
-        </View>
-    );
-};
-
-// Helper: Stat Grid
-const StatBox = ({ item }: { item: SkillItem }) => (
-    <View style={styles.statItem}>
-        <Text style={styles.statValue}>
-            {item.value}<Text style={{ fontSize: 10, color: '#64748b', fontWeight: 'normal' }}>{item.unit}</Text>
-        </Text>
-        <Text style={styles.statLabel}>{item.name}</Text>
-    </View>
-);
-
-// Helper function to render text with paragraph indentation
-// Adds full-width spaces at the beginning of each paragraph to ensure consistent indentation
-const renderParagraphs = (text: string | undefined, style: any) => {
-  if (!text) return null;
-  return text.split(/\r?\n/).filter(p => p.trim()).map((para, index) => (
-    <Text key={index} style={style}>
-      {`\u3000\u3000${para.trim()}`}
-    </Text>
-  ));
-};
-
-export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
+export const PortfolioPDF: React.FC<{ portfolio: StudentPortfolio }> = ({ portfolio }) => {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         
-        {/* === 1. Profile Header (Main) === */}
-        <View style={styles.header}>
-          {portfolio.avatar_url && (
-             // Wrap Image in a View with overflow: hidden to create a clean circle (background simulation)
-             <View style={styles.headerAvatarContainer}>
-                <Image src={portfolio.avatar_url} style={styles.headerAvatarImage} />
-             </View>
-          )}
-          <View style={styles.headerContent}>
-            <Text style={styles.studentName}>{portfolio.student_name}</Text>
-            {portfolio.student_title && <Text style={styles.studentTitle}>{portfolio.student_title}</Text>}
-            {portfolio.summary_bio && (
-              <View style={{ marginTop: 4 }}>
-                {renderParagraphs(portfolio.summary_bio, { ...styles.studentBio, marginTop: 0 })}
+        {/* === 1. Profile Header === */}
+        {portfolio.content_blocks
+          .filter(b => b.type === 'profile_header')
+          .map(block => (
+            <View key={block.id} style={styles.headerContainer}>
+              <View style={styles.headerTopRow}>
+                {block.data.avatar_url && (
+                  <Image src={block.data.avatar_url} style={styles.avatar} />
+                )}
+                <View style={styles.headerInfo}>
+                  <Text style={styles.studentName}>{portfolio.student_name}</Text>
+                  {block.data.student_title && <Text style={styles.studentTitle}>{block.data.student_title}</Text>}
+                  {block.data.summary_bio && <Text style={styles.bio}>{block.data.summary_bio}</Text>}
+                </View>
               </View>
-            )}
-          </View>
-        </View>
+              {/* Hero Images Strip */}
+              {block.data.hero_image_urls && block.data.hero_image_urls.length > 0 && (
+                <View style={styles.headerImages}>
+                  {block.data.hero_image_urls.slice(0, 4).map((url, i) => (
+                    <Image key={i} src={url} style={styles.headerHeroImg} />
+                  ))}
+                </View>
+              )}
+            </View>
+        ))}
 
-        {/* Content Blocks Loop */}
-        {portfolio.content_blocks.map((block, index) => {
-          
-          if (block.type === 'profile_header') return null; 
+        {/* === Other Blocks === */}
+        {portfolio.content_blocks.map((block) => {
+          if (block.type === 'profile_header') return null;
 
-          // === 5. Section Heading ===
+          // -- Section Heading --
           if (block.type === 'section_heading') {
+            return <Text key={block.id} style={styles.sectionHeadingTitle}>{block.data.title}</Text>;
+          }
+
+          // -- Text --
+          if (block.type === 'text') {
             return (
-              <View key={block.id} style={styles.sectionHeadingContainer} wrap={false}>
-                <Text style={styles.sectionHeadingTitle}>{block.data.title}</Text>
+              <View key={block.id} style={styles.sectionContainer}>
+                {block.data.title && <Text style={{fontSize: 12, fontWeight: 'bold', marginBottom: 5}}>{block.data.title}</Text>}
+                <Text style={{fontSize: 10, lineHeight: 1.5, textAlign: 'justify'}}>{block.data.content}</Text>
               </View>
             );
           }
 
-          // === 7. Info List ===
+          // -- STAR Project --
+          if (block.type === 'project_highlight') {
+            return (
+              <View key={block.id} style={styles.sectionContainer}>
+                <View style={styles.starContainer}>
+                  <View style={styles.starHeader}>
+                    <Text style={styles.starTitle}>{block.data.title || 'Project Highlight'}</Text>
+                  </View>
+                  <View style={styles.starGrid}>
+                    <View style={styles.starCell}><Text style={styles.starLabel}>SITUATION (背景)</Text><Text style={styles.starText}>{block.data.star_situation}</Text></View>
+                    <View style={[styles.starCell, {borderRightWidth: 0}]}><Text style={styles.starLabel}>TASK (任务)</Text><Text style={styles.starText}>{block.data.star_task}</Text></View>
+                    <View style={[styles.starCell, {borderBottomWidth: 0}]}><Text style={styles.starLabel}>ACTION (行动)</Text><Text style={styles.starText}>{block.data.star_action}</Text></View>
+                    <View style={[styles.starCell, {borderRightWidth: 0, borderBottomWidth: 0}]}><Text style={styles.starLabel}>RESULT (结果)</Text><Text style={styles.starText}>{block.data.star_result}</Text></View>
+                  </View>
+                  {/* Dynamic Evidence Grid */}
+                  {block.data.evidence_urls && block.data.evidence_urls.length > 0 && (
+                    <View style={styles.starEvidenceContainer}>
+                      <Text style={styles.evidenceLabel}>Project Evidence</Text>
+                      <View style={styles.evidenceGrid}>
+                        {block.data.evidence_urls.map((url, i) => {
+                           const count = block.data.evidence_urls!.length;
+                           // Dynamic Sizing Logic for PDF
+                           let imgStyle = { borderRadius: 4, objectFit: 'cover' as any, backgroundColor: '#f1f5f9' };
+                           if (count === 1) {
+                               Object.assign(imgStyle, { width: '100%', height: 250 });
+                           } else if (count === 2) {
+                               Object.assign(imgStyle, { width: '48%', height: 150 });
+                           } else {
+                               Object.assign(imgStyle, { width: '31%', height: 100 });
+                           }
+                           return <Image key={i} src={url} style={imgStyle} />;
+                        })}
+                      </View>
+                    </View>
+                  )}
+                </View>
+              </View>
+            );
+          }
+
+          // -- Timeline --
+          if (block.type === 'timeline_node') {
+            return (
+              <View key={block.id} style={styles.timelineItem} wrap={false}>
+                <View style={styles.timelineDateBox}>
+                  <Text style={styles.timelineDate}>{block.data.date}</Text>
+                </View>
+                <View style={styles.timelineContent}>
+                  <Text style={styles.timelineTitle}>{block.data.title}</Text>
+                  <Text style={styles.timelineDesc}>{block.data.content}</Text>
+                  {block.data.urls && (
+                    <View style={styles.timelineImages}>
+                      {block.data.urls.map((url, i) => <Image key={i} src={url} style={styles.timelineImg} />)}
+                    </View>
+                  )}
+                </View>
+              </View>
+            );
+          }
+
+          // -- Skills Matrix --
+          if (block.type === 'skills_matrix') {
+            return (
+              <View key={block.id} style={styles.sectionContainer} wrap={false}>
+                <View style={styles.skillContainer}>
+                  {block.data.skills_categories?.map((cat, i) => (
+                    <View key={i} style={[styles.skillGroup, cat.layout === 'radar' ? {width: '100%'} : {}]}>
+                      <Text style={styles.skillGroupTitle}>{cat.name}</Text>
+                      {cat.layout === 'radar' ? (
+                        <RadarChart items={cat.items} />
+                      ) : (
+                        cat.items.map((skill, si) => (
+                          <View key={si} style={styles.skillRow}>
+                            <Text style={styles.skillName}>{skill.name}</Text>
+                            <View style={styles.skillBarContainer}>
+                              <View style={[styles.skillBarFill, { width: `${Math.min(100, Math.max(0, skill.value))}%` }]} />
+                            </View>
+                          </View>
+                        ))
+                      )}
+                    </View>
+                  ))}
+                </View>
+              </View>
+            );
+          }
+
+          // -- Info List --
           if (block.type === 'info_list') {
             return (
-              <View key={block.id} style={styles.section} wrap={false}>
-                {block.data.title && <Text style={{fontSize: 12, fontWeight: 'bold', marginBottom: 8}}>{block.data.title}</Text>}
+              <View key={block.id} style={styles.sectionContainer}>
+                {block.data.title && <Text style={{fontSize: 12, fontWeight: 'bold', marginBottom: 5}}>{block.data.title}</Text>}
                 <View style={styles.infoGrid}>
-                  {block.data.info_items?.map((item, idx) => (
-                    <View key={idx} style={styles.infoItem}>
+                  {block.data.info_items?.map((item, i) => (
+                    <View key={i} style={styles.infoItem}>
                       <Text style={styles.infoLabel}>{item.label}</Text>
                       <Text style={styles.infoValue}>{item.value}</Text>
                     </View>
@@ -607,189 +529,49 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
             );
           }
 
-          // === 2. Skills Matrix (UPDATED) ===
-          if (block.type === 'skills_matrix') {
-            return (
-              <View key={block.id} style={styles.section} wrap={false}>
-                {block.data.skills_categories?.map((cat: SkillCategory, idx: number) => (
-                  <View key={idx} style={styles.skillCategory}>
-                    <Text style={styles.skillCategoryTitle}>{cat.name}</Text>
-                    
-                    {/* Render based on layout type */}
-                    {cat.layout === 'radar' ? (
-                        <RadarChart items={cat.items} />
-                    ) : cat.layout === 'circle' ? (
-                        <View style={styles.circleGrid}>
-                            {cat.items.map((skill, sIdx) => (
-                                <CircleChart key={sIdx} item={skill} />
-                            ))}
-                        </View>
-                    ) : cat.layout === 'stat_grid' ? (
-                        <View style={styles.statGrid}>
-                            {cat.items.map((skill, sIdx) => (
-                                <StatBox key={sIdx} item={skill} />
-                            ))}
-                        </View>
-                    ) : (
-                        // Default 'bar' layout
-                        <View style={styles.skillRow}>
-                            {cat.items.map((skill: SkillItem, sIdx: number) => (
-                                <View key={sIdx} style={styles.skillItem}>
-                                    <View style={styles.skillHeader}>
-                                        <Text style={styles.skillName}>{skill.name}</Text>
-                                        <Text style={styles.skillScore}>{skill.value}{skill.unit || '%'}</Text>
-                                    </View>
-                                    <View style={styles.skillTrack}>
-                                        <View style={[styles.skillFill, { width: `${Math.min(100, Math.max(0, skill.value))}%` }]} />
-                                    </View>
-                                </View>
-                            ))}
-                        </View>
-                    )}
-                  </View>
-                ))}
-              </View>
-            );
-          }
-
-          // === 3. Timeline Node ===
-          if (block.type === 'timeline_node') {
+          // -- Image Grid --
+          if (block.type === 'image_grid') {
              return (
-               <View key={block.id} style={[styles.section, styles.timelineRow]} wrap={false}>
-                  <View style={styles.timelineContent}>
-                     <View style={styles.timelineHeaderRow}>
-                        <Text style={styles.timelineDate}>{block.data.date}</Text>
-                        <Text style={styles.timelineTitle}>{block.data.title}</Text>
-                     </View>
-                     <View style={styles.timelineDesc}>
-                        {renderParagraphs(block.data.content, {})}
-                     </View>
-                     {block.data.urls && block.data.urls.length > 0 && (
-                        <View style={styles.timelineImages}>
-                           {block.data.urls.map((url, i) => (
-                              <Image key={i} src={url} style={styles.timelineImg} />
-                           ))}
-                        </View>
-                     )}
+               <View key={block.id} style={styles.sectionContainer} wrap={false}>
+                  {block.data.title && <Text style={{fontSize: 12, fontWeight: 'bold', marginBottom: 8}}>{block.data.title}</Text>}
+                  <View style={styles.galleryGrid}>
+                     {block.data.urls?.map((url, i) => (
+                        <Image key={i} src={url} style={{width: '31%', height: 100, borderRadius: 4, objectFit: 'cover'}} />
+                     ))}
                   </View>
                </View>
-             )
+             );
           }
 
-          // === 4. STAR Project ===
-          if (block.type === 'project_highlight') {
-            return (
-              <View key={block.id} style={styles.section} wrap={false}>
-                <View style={styles.starContainer}>
-                  <View style={styles.starHeader}>
-                    <Text style={styles.starTitle}>{block.data.title || 'Project Highlight'}</Text>
-                  </View>
-                  <View style={styles.starGrid}>
-                    <View style={styles.starBox}>
-                      <Text style={styles.starLabel}>SITUATION (背景)</Text>
-                      <Text style={styles.starText}>{block.data.star_situation}</Text>
-                    </View>
-                    <View style={[styles.starBox, { borderRightWidth: 0 }]}>
-                      <Text style={styles.starLabel}>TASK (任务)</Text>
-                      <Text style={styles.starText}>{block.data.star_task}</Text>
-                    </View>
-                    <View style={[styles.starBox, { borderBottomWidth: 0 }]}>
-                      <Text style={styles.starLabel}>ACTION (行动)</Text>
-                      <Text style={styles.starText}>{block.data.star_action}</Text>
-                    </View>
-                    <View style={[styles.starBox, { borderRightWidth: 0, borderBottomWidth: 0 }]}>
-                      <Text style={styles.starLabel}>RESULT (结果)</Text>
-                      <Text style={styles.starText}>{block.data.star_result}</Text>
-                    </View>
-                  </View>
-                  {block.data.evidence_urls && block.data.evidence_urls.length > 0 && (
-                    <View style={styles.starEvidence}>
-                        <Text style={{fontSize: 8, fontWeight: 'bold', marginBottom: 6, color: '#64748b'}}>EVIDENCE</Text>
-                        <View style={{flexDirection: 'row', gap: 8, flexWrap: 'wrap'}}>
-                           {block.data.evidence_urls.map((url, i) => (
-                              <Image key={i} src={url} style={{width: 100, height: 60, borderRadius: 4, objectFit: 'cover'}} />
-                           ))}
-                        </View>
-                    </View>
-                  )}
-                </View>
-              </View>
-            );
-          }
-
-          // === 8. Table ===
+          // -- Table --
           if (block.type === 'table') {
-             const colCount = block.data.table_columns?.length || 1;
-             const colWidth = `${100 / colCount}%`;
-             
+             const colWidth = `${100 / (block.data.table_columns?.length || 1)}%`;
              return (
-               <View key={block.id} style={styles.section} wrap={false}>
+               <View key={block.id} style={styles.sectionContainer} wrap={false}>
                   {block.data.title && <Text style={{fontSize: 12, fontWeight: 'bold', marginBottom: 5}}>{block.data.title}</Text>}
                   <View style={styles.table}>
-                     {/* Header */}
-                     <View style={styles.tableHeaderRow}>
+                     <View style={styles.tableRow}>
                         {block.data.table_columns?.map((col, i) => (
-                           <View key={i} style={[styles.tableHeaderCell, { width: colWidth, borderRightWidth: i === colCount - 1 ? 0 : 1 }]}>
-                              <Text>{col}</Text>
-                           </View>
+                           <View key={i} style={[styles.tableCellHeader, {width: colWidth, borderRightWidth: i === block.data.table_columns!.length-1 ? 0 : 1}]}><Text>{col}</Text></View>
                         ))}
                      </View>
-                     {/* Rows */}
                      {block.data.table_rows?.map((row, rIdx) => (
-                        <View key={rIdx} style={[styles.tableRow, { backgroundColor: rIdx % 2 === 0 ? '#ffffff' : '#f8fafc', borderBottomWidth: rIdx === (block.data.table_rows?.length || 0) - 1 ? 0 : 1 }]}>
+                        <View key={rIdx} style={[styles.tableRow, {borderBottomWidth: rIdx === block.data.table_rows!.length-1 ? 0 : 1}]}>
                            {row.map((cell, cIdx) => (
-                              <View key={cIdx} style={[styles.tableCell, { width: colWidth, borderRightWidth: cIdx === colCount - 1 ? 0 : 1 }]}>
-                                 <Text>{cell}</Text>
-                              </View>
+                              <View key={cIdx} style={[styles.tableCell, {width: colWidth, borderRightWidth: cIdx === row.length-1 ? 0 : 1}]}><Text>{cell}</Text></View>
                            ))}
                         </View>
                      ))}
                   </View>
                </View>
-             )
-          }
-
-          // === 6. Image Grid ===
-          if (block.type === 'image_grid' && block.data.urls && block.data.urls.length > 0) {
-             const urls = block.data.urls;
-             
-             // Dynamic styling based on count
-             let dynamicStyle = {};
-             if (urls.length === 1) {
-                 dynamicStyle = { width: '100%', height: 300 }; // Full width for 1 image
-             } else if (urls.length === 2) {
-                 dynamicStyle = { width: '48%', height: 200 }; // Half width for 2 images
-             } else {
-                 dynamicStyle = styles.imageGridItem; // Default 31% for 3+
-             }
-
-             return (
-               <View key={block.id} style={styles.section} wrap={false}>
-                  {block.data.title && <Text style={{fontSize: 12, fontWeight: 'bold', marginBottom: 8}}>{block.data.title}</Text>}
-                  <View style={styles.imageGridContainer}>
-                     {urls.map((url, idx) => (
-                        <Image key={idx} src={url} style={[styles.imageGridItem, dynamicStyle]} />
-                     ))}
-                  </View>
-               </View>
-             )
-          }
-
-          // === Text (Default) ===
-          if (block.type === 'text') {
-            return (
-              <View key={block.id} style={styles.section}>
-                {block.data.title && <Text style={{fontSize: 12, fontWeight: 'bold', marginBottom: 6}}>{block.data.title}</Text>}
-                {renderParagraphs(block.data.content, styles.textBlock)}
-              </View>
-            );
+             );
           }
 
           return null;
         })}
 
         <Text style={styles.footer}>
-          Generated by SparkMinds Lab | {new Date().toLocaleDateString()} | sparkminds.edu
+          Generated by SparkMinds Lab | {new Date().toLocaleDateString()}
         </Text>
       </Page>
     </Document>

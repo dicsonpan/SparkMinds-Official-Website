@@ -330,10 +330,10 @@ const createStyles = (theme: PdfTheme) =>
     infoGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      marginRight: -8,
+      marginRight: -6,
     },
     infoItem: {
-      width: '48%',
+      width: '31.33%',
       marginRight: '2%',
       marginBottom: 8,
       borderWidth: 1,
@@ -709,20 +709,31 @@ const renderParagraphsWithIndent = (text: string | undefined, style: any) => {
   const normalizedText = text
     .replace(/\r\n?/g, '\n')
     .replace(/[\u2028\u2029]/g, '\n')
-    .replace(/^[\t \u00a0\u1680\u2000-\u200d\u202f\u205f\u3000\ufeff]*$/gm, '')
+    .replace(/^[\t \u00a0\u1680\u2000-\u200d\u202f\u205f\u3000\ufeff\u200b\u2060]*$/gm, '')
     .replace(/\n{2,}/g, '\n')
     .trim();
 
   const paragraphs = normalizedText
     .split('\n')
-    .map((line) => line.replace(/^[\t \u00a0\u1680\u2000-\u200d\u202f\u205f\u3000\ufeff]+/, '').trim())
+    .map((line) =>
+      line
+        .replace(/^[\t \u00a0\u1680\u2000-\u200d\u202f\u205f\u3000\ufeff\u200b\u2060]+/, '')
+        .trim(),
+    )
     .filter(Boolean);
 
   if (!paragraphs.length) return null;
 
-  // Keep all paragraphs in one Text node for stable leading indent behavior.
-  const normalized = paragraphs.map((line) => `\u3000\u3000${line}`).join('\n');
-  return <Text style={style}>{normalized}</Text>;
+  return (
+    <View>
+      {paragraphs.map((line, index) => (
+        <Text key={`${index}-${line.slice(0, 12)}`} style={style}>
+          {'\u2060\u3000\u3000'}
+          {line}
+        </Text>
+      ))}
+    </View>
+  );
 };
 
 const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, theme }) => {
@@ -928,12 +939,17 @@ const renderBlock = (
   }
 
   if (block.type === 'info_list') {
+    const infoItems = block.data.info_items || [];
+
     return (
       <View key={block.id} style={styles.section} wrap={false}>
         {block.data.title ? <Text style={styles.sectionTitle}>{block.data.title}</Text> : null}
         <View style={styles.infoGrid}>
-          {block.data.info_items?.map((item, index) => (
-            <View key={`${item.label}-${index}`} style={styles.infoItem}>
+          {infoItems.map((item, index) => (
+            <View
+              key={`${item.label}-${index}`}
+              style={composeStyles(styles.infoItem, index % 3 === 2 && { marginRight: 0 })}
+            >
               <Text style={styles.infoLabel}>{item.label}</Text>
               <Text style={styles.infoValue}>{item.value}</Text>
             </View>

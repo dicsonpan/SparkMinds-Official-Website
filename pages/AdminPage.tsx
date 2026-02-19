@@ -24,8 +24,20 @@ const AI_PROVIDERS = [
 ];
 
 type AdminTab = 'curriculum' | 'showcase' | 'social' | 'philosophy' | 'pages' | 'bookings' | 'students' | 'settings';
-type PolishScope = 'content'; // Simplified scope
+type AiGenerateMode = 'replace' | 'append';
 type BlockImageField = 'hero_image_urls' | 'urls' | 'evidence_urls';
+
+const STUDENT_AI_BLOCK_TYPES: ContentBlockType[] = [
+  'profile_header',
+  'skills_matrix',
+  'section_heading',
+  'timeline_node',
+  'project_highlight',
+  'info_list',
+  'table',
+  'text',
+  'image_grid'
+];
 
 interface AdminPageProps {
   defaultTab?: AdminTab;
@@ -61,6 +73,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
   });
   const [aiPrompt, setAiPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [aiGenerateMode, setAiGenerateMode] = useState<AiGenerateMode>('replace');
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false); // Collapsible AI panel
   
   // AI Polish State
@@ -144,6 +157,212 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
       };
     });
 
+  const createBlockId = () => Math.random().toString(36).slice(2, 11);
+
+  const extractJsonPayload = (rawContent: string): string => {
+    const cleaned = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const objectStart = cleaned.indexOf('{');
+    const arrayStart = cleaned.indexOf('[');
+    const start =
+      objectStart === -1 ? arrayStart : arrayStart === -1 ? objectStart : Math.min(objectStart, arrayStart);
+
+    if (start < 0) return cleaned;
+
+    const opening = cleaned[start];
+    const closing = opening === '[' ? ']' : '}';
+    const end = cleaned.lastIndexOf(closing);
+    if (end < 0 || end <= start) return cleaned.slice(start);
+    return cleaned.slice(start, end + 1);
+  };
+
+  const normalizeSkillsCategories = (rawCategories: any): SkillCategory[] => {
+    if (!Array.isArray(rawCategories)) return [];
+    return rawCategories
+      .filter((cat) => cat && typeof cat === 'object')
+      .map((cat: any) => ({
+        name: typeof cat.name === 'string' ? cat.name : '能力分类',
+        layout: ['bar', 'radar', 'circle', 'stat_grid'].includes(cat.layout) ? cat.layout : 'bar',
+        items: Array.isArray(cat.items)
+          ? cat.items
+              .filter((item: any) => item && typeof item === 'object')
+              .map((item: any) => ({
+                name: typeof item.name === 'string' ? item.name : '能力项',
+                value: Number.isFinite(Number(item.value)) ? Number(item.value) : 80,
+                unit: typeof item.unit === 'string' ? item.unit : '%'
+              }))
+          : []
+      }));
+  };
+
+  const normalizeGeneratedBlock = (rawBlock: any): ContentBlock | null => {
+    if (!rawBlock || typeof rawBlock !== 'object') return null;
+    if (!STUDENT_AI_BLOCK_TYPES.includes(rawBlock.type)) return null;
+
+    const type = rawBlock.type as ContentBlockType;
+    const rawData = rawBlock.data && typeof rawBlock.data === 'object' ? rawBlock.data : {};
+    let data: any = {};
+
+    switch (type) {
+      case 'profile_header':
+        data = {
+          student_title: typeof rawData.student_title === 'string' ? rawData.student_title : '',
+          summary_bio: typeof rawData.summary_bio === 'string' ? rawData.summary_bio : '',
+          avatar_url: typeof rawData.avatar_url === 'string' ? rawData.avatar_url : '',
+          hero_image_urls: Array.isArray(rawData.hero_image_urls)
+            ? rawData.hero_image_urls.filter((url: any) => typeof url === 'string')
+            : []
+        };
+        break;
+      case 'skills_matrix':
+        data = {
+          skills_categories: normalizeSkillsCategories(rawData.skills_categories)
+        };
+        break;
+      case 'section_heading':
+        data = {
+          title: typeof rawData.title === 'string' ? rawData.title : ''
+        };
+        break;
+      case 'timeline_node':
+        data = {
+          date: typeof rawData.date === 'string' ? rawData.date : '',
+          title: typeof rawData.title === 'string' ? rawData.title : '',
+          content: typeof rawData.content === 'string' ? rawData.content : '',
+          urls: Array.isArray(rawData.urls) ? rawData.urls.filter((url: any) => typeof url === 'string') : []
+        };
+        break;
+      case 'project_highlight':
+        data = {
+          title: typeof rawData.title === 'string' ? rawData.title : '',
+          star_situation: typeof rawData.star_situation === 'string' ? rawData.star_situation : '',
+          star_task: typeof rawData.star_task === 'string' ? rawData.star_task : '',
+          star_action: typeof rawData.star_action === 'string' ? rawData.star_action : '',
+          star_result: typeof rawData.star_result === 'string' ? rawData.star_result : '',
+          evidence_urls: Array.isArray(rawData.evidence_urls)
+            ? rawData.evidence_urls.filter((url: any) => typeof url === 'string')
+            : []
+        };
+        break;
+      case 'info_list':
+        data = {
+          title: typeof rawData.title === 'string' ? rawData.title : '',
+          info_items: Array.isArray(rawData.info_items)
+            ? rawData.info_items
+                .filter((item: any) => item && typeof item === 'object')
+                .map((item: any) => ({
+                  icon: typeof item.icon === 'string' ? item.icon : 'Star',
+                  label: typeof item.label === 'string' ? item.label : '',
+                  value: typeof item.value === 'string' ? item.value : ''
+                }))
+            : []
+        };
+        break;
+      case 'table': {
+        const tableColumns = Array.isArray(rawData.table_columns)
+          ? rawData.table_columns.map((col: any) => (typeof col === 'string' ? col : '')).filter(Boolean)
+          : [];
+        const colCount = Math.max(1, tableColumns.length);
+        const tableRows = Array.isArray(rawData.table_rows)
+          ? rawData.table_rows
+              .filter((row: any) => Array.isArray(row))
+              .map((row: any[]) => {
+                const normalized = row.slice(0, colCount).map((cell: any) => (typeof cell === 'string' ? cell : ''));
+                while (normalized.length < colCount) normalized.push('');
+                return normalized;
+              })
+          : [];
+        data = {
+          title: typeof rawData.title === 'string' ? rawData.title : '',
+          table_columns: tableColumns.length > 0 ? tableColumns : ['项目', '内容'],
+          table_rows: tableRows
+        };
+        break;
+      }
+      case 'text':
+        data = {
+          title: typeof rawData.title === 'string' ? rawData.title : '',
+          content: typeof rawData.content === 'string' ? rawData.content : ''
+        };
+        break;
+      case 'image_grid':
+        data = {
+          title: typeof rawData.title === 'string' ? rawData.title : '',
+          urls: Array.isArray(rawData.urls) ? rawData.urls.filter((url: any) => typeof url === 'string') : []
+        };
+        break;
+      default:
+        data = rawData;
+    }
+
+    if (type === 'profile_header') {
+      data.hero_image_url = data.hero_image_urls[0] || '';
+    }
+
+    return {
+      id: createBlockId(),
+      type,
+      data
+    };
+  };
+
+  const normalizeGeneratedBlocks = (rawBlocks: any): ContentBlock[] => {
+    if (!Array.isArray(rawBlocks)) return [];
+    const normalized: ContentBlock[] = rawBlocks
+      .map((rawBlock: any) => normalizeGeneratedBlock(rawBlock))
+      .filter((block: ContentBlock | null): block is ContentBlock => block !== null);
+
+    let profileSeen = false;
+    return normalized.filter((block) => {
+      if (block.type !== 'profile_header') return true;
+      if (profileSeen) return false;
+      profileSeen = true;
+      return true;
+    });
+  };
+
+  const mergeGeneratedBlocks = (existing: ContentBlock[] = [], generated: ContentBlock[] = [], mode: AiGenerateMode): ContentBlock[] => {
+    if (mode === 'replace') {
+      const profileIndex = generated.findIndex((block) => block.type === 'profile_header');
+      if (profileIndex <= 0) return generated;
+      const reordered = [...generated];
+      const [profileBlock] = reordered.splice(profileIndex, 1);
+      reordered.unshift(profileBlock);
+      return reordered;
+    }
+
+    const merged = [...existing];
+    const incomingProfile = generated.find((block) => block.type === 'profile_header');
+    if (incomingProfile) {
+      const profileIndex = merged.findIndex((block) => block.type === 'profile_header');
+      if (profileIndex >= 0) {
+        const originalProfile = merged[profileIndex];
+        const nextHeroImages = incomingProfile.data.hero_image_urls?.length
+          ? incomingProfile.data.hero_image_urls
+          : originalProfile.data.hero_image_urls || [];
+        merged[profileIndex] = {
+          ...originalProfile,
+          data: {
+            ...originalProfile.data,
+            ...incomingProfile.data,
+            avatar_url: incomingProfile.data.avatar_url || originalProfile.data.avatar_url || '',
+            hero_image_urls: nextHeroImages,
+            hero_image_url: nextHeroImages[0] || ''
+          }
+        };
+      } else {
+        merged.unshift(incomingProfile);
+      }
+    }
+
+    generated
+      .filter((block) => block.type !== 'profile_header')
+      .forEach((block) => {
+        merged.push(block);
+      });
+
+    return merged;
+  };
+
   // --- Logic Helpers ---
   const getCurrentList = () => {
       switch (activeTab) {
@@ -203,7 +422,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
     }
 
     const newBlock: ContentBlock = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: createBlockId(),
       type,
       data: initialData
     };
@@ -547,102 +766,358 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
     }
   };
 
+  const requestAiJson = async (systemPrompt: string, userPrompt: string, temperature: number = 0.5) => {
+    const response = await fetch(`${aiConfig.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${aiConfig.apiKey}` },
+      body: JSON.stringify({
+        model: aiConfig.model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature
+      })
+    });
+
+    const rawText = await response.text();
+    let data: any = null;
+
+    try {
+      data = JSON.parse(rawText);
+    } catch (error) {
+      throw new Error(`AI 返回格式异常: ${rawText.slice(0, 180)}`);
+    }
+
+    if (!response.ok) {
+      throw new Error(data?.error?.message || `请求失败 (${response.status})`);
+    }
+
+    if (data?.error) {
+      throw new Error(data.error.message || 'AI 请求失败');
+    }
+
+    const content = data?.choices?.[0]?.message?.content;
+    if (typeof content !== 'string' || !content.trim()) {
+      throw new Error('AI 未返回可解析内容');
+    }
+
+    const jsonPayload = extractJsonPayload(content);
+    try {
+      return JSON.parse(jsonPayload);
+    } catch (error) {
+      throw new Error(`AI 返回 JSON 解析失败: ${jsonPayload.slice(0, 180)}`);
+    }
+  };
+
+  const getPolishPayloadData = (block: ContentBlock) => {
+    switch (block.type) {
+      case 'profile_header':
+        return {
+          student_title: block.data.student_title || '',
+          summary_bio: block.data.summary_bio || ''
+        };
+      case 'skills_matrix':
+        return {
+          skills_categories: (block.data.skills_categories || []).map((cat) => ({
+            name: cat.name,
+            layout: cat.layout,
+            items: (cat.items || []).map((item) => ({
+              name: item.name,
+              value: item.value,
+              unit: item.unit || '%'
+            }))
+          }))
+        };
+      case 'timeline_node':
+        return {
+          date: block.data.date || '',
+          title: block.data.title || '',
+          content: block.data.content || ''
+        };
+      case 'project_highlight':
+        return {
+          title: block.data.title || '',
+          star_situation: block.data.star_situation || '',
+          star_task: block.data.star_task || '',
+          star_action: block.data.star_action || '',
+          star_result: block.data.star_result || ''
+        };
+      case 'info_list':
+        return {
+          title: block.data.title || '',
+          info_items: (block.data.info_items || []).map((item) => ({
+            icon: item.icon || 'Star',
+            label: item.label || '',
+            value: item.value || ''
+          }))
+        };
+      case 'section_heading':
+      case 'text':
+      case 'image_grid':
+        return {
+          title: block.data.title || '',
+          content: block.type === 'text' ? block.data.content || '' : undefined
+        };
+      case 'table':
+        return {
+          title: block.data.title || '',
+          table_columns: block.data.table_columns || [],
+          table_rows: block.data.table_rows || []
+        };
+      default:
+        return block.data;
+    }
+  };
+
+  const mergePolishedBlockData = (originalBlock: ContentBlock, polishedData: any): ContentBlock => {
+    if (!polishedData || typeof polishedData !== 'object') return originalBlock;
+
+    const asString = (value: any, fallback: string = '') => (typeof value === 'string' ? value : fallback);
+
+    if (originalBlock.type === 'profile_header') {
+      return {
+        ...originalBlock,
+        data: {
+          ...originalBlock.data,
+          student_title: asString(polishedData.student_title, originalBlock.data.student_title || ''),
+          summary_bio: asString(polishedData.summary_bio, originalBlock.data.summary_bio || '')
+        }
+      };
+    }
+
+    if (originalBlock.type === 'section_heading') {
+      return {
+        ...originalBlock,
+        data: {
+          ...originalBlock.data,
+          title: asString(polishedData.title, originalBlock.data.title || '')
+        }
+      };
+    }
+
+    if (originalBlock.type === 'timeline_node') {
+      return {
+        ...originalBlock,
+        data: {
+          ...originalBlock.data,
+          date: asString(polishedData.date, originalBlock.data.date || ''),
+          title: asString(polishedData.title, originalBlock.data.title || ''),
+          content: asString(polishedData.content, originalBlock.data.content || '')
+        }
+      };
+    }
+
+    if (originalBlock.type === 'project_highlight') {
+      return {
+        ...originalBlock,
+        data: {
+          ...originalBlock.data,
+          title: asString(polishedData.title, originalBlock.data.title || ''),
+          star_situation: asString(polishedData.star_situation, originalBlock.data.star_situation || ''),
+          star_task: asString(polishedData.star_task, originalBlock.data.star_task || ''),
+          star_action: asString(polishedData.star_action, originalBlock.data.star_action || ''),
+          star_result: asString(polishedData.star_result, originalBlock.data.star_result || '')
+        }
+      };
+    }
+
+    if (originalBlock.type === 'info_list') {
+      const polishedItems = Array.isArray(polishedData.info_items) ? polishedData.info_items : [];
+      return {
+        ...originalBlock,
+        data: {
+          ...originalBlock.data,
+          title: asString(polishedData.title, originalBlock.data.title || ''),
+          info_items: (originalBlock.data.info_items || []).map((item, index) => ({
+            ...item,
+            label: asString(polishedItems[index]?.label, item.label),
+            value: asString(polishedItems[index]?.value, item.value)
+          }))
+        }
+      };
+    }
+
+    if (originalBlock.type === 'table') {
+      const polishedColumns = Array.isArray(polishedData.table_columns) ? polishedData.table_columns : [];
+      const polishedRows = Array.isArray(polishedData.table_rows) ? polishedData.table_rows : [];
+      return {
+        ...originalBlock,
+        data: {
+          ...originalBlock.data,
+          title: asString(polishedData.title, originalBlock.data.title || ''),
+          table_columns: (originalBlock.data.table_columns || []).map((col, columnIndex) =>
+            asString(polishedColumns[columnIndex], col)
+          ),
+          table_rows: (originalBlock.data.table_rows || []).map((row, rowIndex) =>
+            row.map((cell, columnIndex) => asString(polishedRows[rowIndex]?.[columnIndex], cell))
+          )
+        }
+      };
+    }
+
+    if (originalBlock.type === 'skills_matrix') {
+      const polishedCategories = Array.isArray(polishedData.skills_categories) ? polishedData.skills_categories : [];
+      return {
+        ...originalBlock,
+        data: {
+          ...originalBlock.data,
+          skills_categories: (originalBlock.data.skills_categories || []).map((category, categoryIndex) => {
+            const polishedCategory = polishedCategories[categoryIndex] || {};
+            const polishedItems = Array.isArray(polishedCategory.items) ? polishedCategory.items : [];
+            return {
+              ...category,
+              name: asString(polishedCategory.name, category.name),
+              items: (category.items || []).map((item, itemIndex) => ({
+                ...item,
+                name: asString(polishedItems[itemIndex]?.name, item.name),
+                unit: asString(polishedItems[itemIndex]?.unit, item.unit || '%')
+              }))
+            };
+          })
+        }
+      };
+    }
+
+    if (originalBlock.type === 'text') {
+      return {
+        ...originalBlock,
+        data: {
+          ...originalBlock.data,
+          title: asString(polishedData.title, originalBlock.data.title || ''),
+          content: asString(polishedData.content, originalBlock.data.content || '')
+        }
+      };
+    }
+
+    if (originalBlock.type === 'image_grid') {
+      return {
+        ...originalBlock,
+        data: {
+          ...originalBlock.data,
+          title: asString(polishedData.title, originalBlock.data.title || '')
+        }
+      };
+    }
+
+    return originalBlock;
+  };
+
   // --- AI Gen ---
   const handleAIGenerate = async () => {
-    if (!aiConfig.apiKey || !aiPrompt.trim()) return alert("请配置 API Key 并输入资料");
+    if (!aiConfig.apiKey || !aiPrompt.trim()) return alert('请配置 API Key 并输入资料');
+    if (!editingItem) return;
     setIsGenerating(true);
-    try {
-      const systemPrompt = `You are a Student Portfolio Architect. Convert raw notes into structured JSON.
-        LANGUAGE: Simplified Chinese.
-        OUTPUT SCHEMA: {
-          "content_blocks": [
-            {"type": "profile_header", "data": {"student_title": "...", "summary_bio": "..."}},
-            {"type": "skills_matrix", "data": {"skills_categories": [{"name": "Category", "layout": "bar", "items": [{"name": "Skill", "value": 80, "unit": "%"}]}]}},
-            {"type": "info_list", "data": {"title": "基本信息", "info_items": [{"icon": "User", "label": "Age", "value": "10"}]}},
-            {"type": "section_heading", "data": {"title": "Section Title"}},
-            {"type": "project_highlight", "data": {"title": "Project", "star_situation": "...", "star_task": "...", "star_action": "...", "star_result": "..."}},
-            {"type": "timeline_node", "data": {"date": "...", "title": "...", "content": "..."}}
-          ]
-        }`;
-      const response = await fetch(`${aiConfig.baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${aiConfig.apiKey}` },
-        body: JSON.stringify({
-          model: aiConfig.model,
-          messages: [{ role: "system", content: systemPrompt }, { role: "user", content: aiPrompt }],
-          temperature: 0.7
-        })
-      });
-      const data = await response.json();
-      if (data.error) throw new Error(data.error.message);
-      let content = data.choices[0].message.content.replace(/```json/g, '').replace(/```/g, '').trim();
-      const parsed = JSON.parse(content);
-      const processedBlocks = (parsed.content_blocks || []).map((b: any) => ({ ...b, id: Math.random().toString(36).substr(2, 9), data: { ...b.data, urls: [], evidence_urls: [] } }));
 
-      setEditingItem((prev: any) => ({
-        ...prev,
-        content_blocks: [...(prev.content_blocks || []), ...processedBlocks]
-      }));
+    try {
+      const systemPrompt = `你是 SparkMinds 学生成长档案编辑助手。
+请将用户输入整理为“学生成长档案页面内容流”，仅输出 JSON（不要 markdown，不要解释）。
+允许的模块 type 仅限：${STUDENT_AI_BLOCK_TYPES.join(', ')}。
+输出格式：
+{
+  "student_name": "可选",
+  "content_blocks": [
+    { "type": "profile_header", "data": { "student_title": "", "summary_bio": "" } },
+    { "type": "skills_matrix", "data": { "skills_categories": [ { "name": "", "layout": "bar", "items": [ { "name": "", "value": 80, "unit": "%" } ] } ] } },
+    { "type": "section_heading", "data": { "title": "" } },
+    { "type": "timeline_node", "data": { "date": "", "title": "", "content": "" } },
+    { "type": "project_highlight", "data": { "title": "", "star_situation": "", "star_task": "", "star_action": "", "star_result": "" } },
+    { "type": "info_list", "data": { "title": "", "info_items": [ { "icon": "Star", "label": "", "value": "" } ] } },
+    { "type": "table", "data": { "title": "", "table_columns": ["项目", "内容"], "table_rows": [["", ""]] } },
+    { "type": "text", "data": { "title": "", "content": "" } },
+    { "type": "image_grid", "data": { "title": "" } }
+  ]
+}
+规则：
+1. 最多只返回一个 profile_header。
+2. 文案用简体中文，适配成长档案语境，表达具体、有证据感。
+3. 不要编造图片链接，不要输出无关字段。`;
+
+      const aiResult = await requestAiJson(systemPrompt, aiPrompt, 0.55);
+      const rawBlocks = Array.isArray(aiResult) ? aiResult : aiResult?.content_blocks;
+      const generatedBlocks = normalizeGeneratedBlocks(rawBlocks);
+
+      if (!generatedBlocks.length) {
+        throw new Error('AI 未返回可用的内容模块');
+      }
+
+      setEditingItem((prev: any) => {
+        const mergedBlocks = mergeGeneratedBlocks(prev?.content_blocks || [], generatedBlocks, aiGenerateMode);
+        return {
+          ...prev,
+          student_name: !prev?.student_name && typeof aiResult?.student_name === 'string' ? aiResult.student_name : prev?.student_name,
+          content_blocks: sanitizeSkillsMatrixBlocks(mergedBlocks)
+        };
+      });
+
       setAiPrompt('');
-      setIsAiPanelOpen(false);
-      alert("AI 生成成功！");
-    } catch (e: any) { alert("AI 生成失败: " + e.message); } finally { setIsGenerating(false); }
+      alert(`AI 生成成功，已更新 ${generatedBlocks.length} 个模块`);
+    } catch (e: any) {
+      alert('AI 生成失败: ' + e.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleUndoPolish = () => {
+    if (!prePolishState) return;
+    setEditingItem(prePolishState);
+    setPrePolishState(null);
+    alert('已恢复到润色前版本');
   };
 
   const handleAIPolish = async () => {
-    if (!aiConfig.apiKey) return alert("请先在系统设置中配置 API Key");
-    if (isPolishing) return;
+    if (!aiConfig.apiKey) return alert('请先在系统设置中配置 API Key');
+    if (isPolishing || !editingItem) return;
+    if (!editingItem.content_blocks?.length) return alert('当前没有可润色的内容模块');
 
     setPrePolishState(JSON.parse(JSON.stringify(editingItem)));
     setIsPolishing(true);
 
     try {
-        const payload = {
-            content_blocks: (editingItem.content_blocks || []).map((b: any) => ({
-                id: b.id, 
-                type: b.type, 
-                data: b.data // Send full data for context
-            }))
+      const payload = {
+        content_blocks: (editingItem.content_blocks || []).map((block: ContentBlock) => ({
+          id: block.id,
+          type: block.type,
+          data: getPolishPayloadData(block)
+        }))
+      };
+
+      const systemPrompt = `你是 SparkMinds 学生成长档案文字编辑。
+任务：润色输入 JSON 中每个内容模块的文字，使其更清晰、专业、有说服力（中文）。
+硬性约束：
+1. 必须保留每个模块的 id 与 type，且顺序不变。
+2. 仅优化文字，不得新增/删除模块，不得修改数值、布局、图片链接、数组长度。
+3. 输出必须是纯 JSON，格式为 { "content_blocks": [...] }。`;
+
+      const polishedResult = await requestAiJson(systemPrompt, JSON.stringify(payload), 0.35);
+      const polishedBlocks: any[] = Array.isArray(polishedResult?.content_blocks) ? polishedResult.content_blocks : [];
+
+      if (!polishedBlocks.length) {
+        throw new Error('AI 未返回可用的润色结果');
+      }
+
+      const polishedMap = new Map(polishedBlocks.map((block: any) => [block.id, block]));
+
+      setEditingItem((prev: any) => {
+        const nextBlocks = (prev.content_blocks || []).map((oldBlock: ContentBlock) => {
+          const polishedBlock = polishedMap.get(oldBlock.id);
+          if (!polishedBlock || polishedBlock.type !== oldBlock.type) return oldBlock;
+          return mergePolishedBlockData(oldBlock, polishedBlock.data);
+        });
+
+        return {
+          ...prev,
+          content_blocks: sanitizeSkillsMatrixBlocks(nextBlocks)
         };
-        const specificPrompt = `
-            Review the 'content_blocks'. Polish all text fields to be academic, professional, and impressive (Ivy League standard).
-            Standardize layouts. Fix typos.
-            Return the exact same structure with updated 'data' fields.
-            Do NOT change IDs or Types.
-        `;
+      });
 
-        const systemPrompt = `You are a professional Ivy League admissions editor. LANGUAGE: Simplified Chinese. ${specificPrompt} RETURN: Raw JSON.`;
-
-        const response = await fetch(`${aiConfig.baseUrl}/chat/completions`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${aiConfig.apiKey}` },
-            body: JSON.stringify({
-              model: aiConfig.model,
-              messages: [{ role: "system", content: systemPrompt }, { role: "user", content: JSON.stringify(payload) }],
-              temperature: 0.4
-            })
-        });
-
-        const data = await response.json();
-        if (data.error) throw new Error(data.error.message);
-        let content = data.choices[0].message.content.replace(/```json/g, '').replace(/```/g, '').trim();
-        const polishedData = JSON.parse(content);
-
-        // Merge logic
-        setEditingItem((prev: any) => {
-            const newItem = { ...prev };
-            newItem.content_blocks = (prev.content_blocks || []).map((oldBlock: ContentBlock) => {
-                const polishedBlock = polishedData.content_blocks.find((pb: any) => pb.id === oldBlock.id);
-                return polishedBlock ? { ...oldBlock, data: { ...oldBlock.data, ...polishedBlock.data } } : oldBlock;
-            });
-            return newItem;
-        });
-        alert("AI 润色完成！");
+      alert('AI 润色完成');
     } catch (e: any) {
-        alert("AI 润色失败: " + e.message);
-        setPrePolishState(null);
+      alert('AI 润色失败: ' + e.message);
+      setPrePolishState(null);
     } finally {
-        setIsPolishing(false);
+      setIsPolishing(false);
     }
   };
 
@@ -781,23 +1256,79 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
              
              {/* AI Panel */}
              {isAiPanelOpen && activeTab === 'students' && (
-                 <div className="bg-indigo-50 border-b border-indigo-100 p-4 animate-slide-down">
-                     <div className="flex gap-4">
-                         <div className="flex-1">
+                 <div className="bg-indigo-50 border-b border-indigo-100 p-4 animate-slide-down space-y-3">
+                     <div className="flex items-center justify-between gap-3">
+                         <div className="text-sm font-bold text-indigo-900 flex items-center gap-2">
+                           <Icons.Bot size={16} />
+                           AI 助手（当前页面框架）
+                         </div>
+                         {!aiConfig.apiKey && (
+                           <div className="text-xs text-amber-700 bg-amber-100 border border-amber-200 px-2 py-1 rounded">
+                             未配置 API Key，请先到系统配置保存
+                           </div>
+                         )}
+                     </div>
+                     <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-4">
+                         <div className="space-y-2">
                              <textarea 
-                                className="w-full h-24 p-3 border border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm" 
-                                placeholder="输入原始资料（简历、笔记），AI 将自动生成结构化档案..." 
+                                className="w-full h-28 p-3 border border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm" 
+                                placeholder="输入原始资料（简历、笔记、活动记录、获奖信息），AI 将按当前档案模块结构生成内容..." 
                                 value={aiPrompt} 
                                 onChange={e => setAiPrompt(e.target.value)} 
                              />
+                             <div className="text-xs text-indigo-700 bg-indigo-100/60 border border-indigo-200 rounded-lg px-3 py-2">
+                               生成范围：个人头图、技能矩阵、章节标题、时间节点、STAR 项目、个人信息、表格、文本、图集。
+                             </div>
                          </div>
-                         <div className="flex flex-col gap-2 w-48">
-                             <button onClick={handleAIGenerate} disabled={isGenerating} className="flex-1 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 flex items-center justify-center gap-2">
+                         <div className="flex flex-col gap-2">
+                             <div className="bg-white border border-indigo-200 rounded-lg p-2">
+                               <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-2">生成方式</div>
+                               <div className="grid grid-cols-2 gap-2">
+                                 <button
+                                   onClick={() => setAiGenerateMode('replace')}
+                                   className={`text-xs font-bold py-1.5 rounded border transition-colors ${
+                                     aiGenerateMode === 'replace'
+                                       ? 'bg-indigo-600 text-white border-indigo-600'
+                                       : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'
+                                   }`}
+                                 >
+                                   覆盖
+                                 </button>
+                                 <button
+                                   onClick={() => setAiGenerateMode('append')}
+                                   className={`text-xs font-bold py-1.5 rounded border transition-colors ${
+                                     aiGenerateMode === 'append'
+                                       ? 'bg-indigo-600 text-white border-indigo-600'
+                                       : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'
+                                   }`}
+                                 >
+                                   追加
+                                 </button>
+                               </div>
+                             </div>
+                             <button
+                               onClick={handleAIGenerate}
+                               disabled={isGenerating || isPolishing || !aiPrompt.trim()}
+                               className="h-10 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                             >
                                  {isGenerating ? <Icons.Loader2 className="animate-spin" /> : <Icons.Wand2 />} 生成档案
                              </button>
-                             <button onClick={handleAIPolish} disabled={isPolishing} className="flex-1 bg-white border border-indigo-200 text-indigo-700 rounded-lg font-bold text-sm hover:bg-indigo-50 flex items-center justify-center gap-2">
+                             <button
+                               onClick={handleAIPolish}
+                               disabled={isPolishing || isGenerating}
+                               className="h-10 bg-white border border-indigo-200 text-indigo-700 rounded-lg font-bold text-sm hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                             >
                                  {isPolishing ? <Icons.Loader2 className="animate-spin" /> : <Icons.Feather />} 一键润色
                              </button>
+                             {prePolishState && (
+                               <button
+                                 onClick={handleUndoPolish}
+                                 disabled={isPolishing}
+                                 className="h-9 bg-slate-100 border border-slate-200 text-slate-700 rounded-lg font-semibold text-xs hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                               >
+                                 <Icons.RotateCcw size={14} /> 撤销润色
+                               </button>
+                             )}
                          </div>
                      </div>
                  </div>

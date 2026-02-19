@@ -804,9 +804,9 @@ const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, 
     return null;
   }
 
-  const size = 200;
+  const size = 152;
   const center = size / 2;
-  const radius = 60;
+  const radius = 48;
   const angleStep = (Math.PI * 2) / items.length;
 
   const getPoint = (value: number, index: number, scale = radius) => {
@@ -818,64 +818,41 @@ const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, 
   const points = items.map((item, index) => getPoint(item.value, index)).join(' ');
 
   return (
-    <View style={{ alignItems: 'center', marginBottom: 10 }}>
-      <Svg width={size} height={size}>
-        {[25, 50, 75, 100].map((level) => (
-          <Polygon
-            key={`grid-${level}`}
-            points={items.map((_, index) => getPoint(level, index)).join(' ')}
-            stroke={theme.radarGrid}
-            strokeWidth={1}
-            fill="none"
-          />
-        ))}
-        {items.map((_, index) => (
-          <Line
-            key={`axis-${index}`}
-            x1={center}
-            y1={center}
-            x2={getPoint(100, index).split(',')[0]}
-            y2={getPoint(100, index).split(',')[1]}
-            stroke={theme.radarGrid}
-            strokeWidth={1}
-          />
-        ))}
-        <Polygon points={points} fill={theme.radarFill} stroke={theme.radarStroke} strokeWidth={2} />
-        {items.map((item, index) => {
-          const angle = index * angleStep - Math.PI / 2;
-          const labelRadius = radius + 12;
-          const x = center + labelRadius * Math.cos(angle);
-          const y = center + labelRadius * Math.sin(angle);
-          return (
-            <Text
-              key={`label-${index}`}
-              x={x}
-              y={y}
-              textAnchor="middle"
-              style={{ fontSize: 8, fill: theme.text, fontFamily: 'Noto Sans SC', fontWeight: 700 }}
-            >
-              {item.name}
+    <View>
+      <View style={{ alignItems: 'center', marginBottom: 6 }}>
+        <Svg width={size} height={size}>
+          {[25, 50, 75, 100].map((level) => (
+            <Polygon
+              key={level}
+              points={items.map((_, index) => getPoint(level, index)).join(' ')}
+              stroke={theme.radarGrid}
+              strokeWidth={1}
+              fill="none"
+            />
+          ))}
+          {items.map((_, index) => (
+            <Line
+              key={index}
+              x1={center}
+              y1={center}
+              x2={getPoint(100, index).split(',')[0]}
+              y2={getPoint(100, index).split(',')[1]}
+              stroke={theme.radarGrid}
+              strokeWidth={1}
+            />
+          ))}
+          <Polygon points={points} fill={theme.radarFill} stroke={theme.radarStroke} strokeWidth={2} />
+        </Svg>
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginRight: -8 }}>
+        {items.map((item, index) => (
+          <View key={`${item.name}-${index}`} style={{ width: '48%', marginRight: '2%', marginBottom: 4 }}>
+            <Text style={{ fontSize: 8, color: theme.muted }}>
+              {item.name}: <Text style={{ color: theme.radarStroke, fontWeight: 700 }}>{item.value}{item.unit || '%'}</Text>
             </Text>
-          );
-        })}
-        {items.map((item, index) => {
-          const angle = index * angleStep - Math.PI / 2;
-          const labelRadius = radius + 22;
-          const x = center + labelRadius * Math.cos(angle);
-          const y = center + labelRadius * Math.sin(angle);
-          return (
-            <Text
-              key={`val-${index}`}
-              x={x}
-              y={y}
-              textAnchor="middle"
-              style={{ fontSize: 6, fill: theme.accent, fontFamily: 'Noto Sans SC' }}
-            >
-              {item.value}{item.unit || '%'}
-            </Text>
-          );
-        })}
-      </Svg>
+          </View>
+        ))}
+      </View>
     </View>
   );
 };
@@ -931,10 +908,112 @@ const renderSkillsCategory = (
   layoutStyle?: any,
 ) => {
   if (category.layout === 'radar') {
+    const items = category.items;
+    if (items.length < 3) {
+      // Fall back to bar chart if fewer than 3 items
+      return (
+        <View key={key} style={composeStyles(styles.skillCategory, layoutStyle)} wrap={false}>
+          <Text style={styles.skillCategoryTitle}>{category.name}</Text>
+          {items.map((item, index) => (
+            <View key={`${category.name}-${item.name}-${index}`} style={styles.skillRow}>
+              <View style={styles.skillHeader}>
+                <Text style={styles.skillName}>{item.name}</Text>
+                <Text style={styles.skillValue}>{item.value}{item.unit || '%'}</Text>
+              </View>
+              <View style={styles.skillTrack}>
+                <View style={[styles.skillFill, { width: `${clampPercent(item.value)}%` }]} />
+              </View>
+            </View>
+          ))}
+        </View>
+      );
+    }
+
+    const svgSize = 180;
+    const center = svgSize / 2;
+    const radius = 55;
+    const labelRadius = radius + 20;
+    const angleStep = (Math.PI * 2) / items.length;
+
+    const getPoint = (value: number, idx: number, r = radius) => {
+      const angle = idx * angleStep - Math.PI / 2;
+      const scaled = (clampPercent(value) / 100) * r;
+      return { x: center + scaled * Math.cos(angle), y: center + scaled * Math.sin(angle) };
+    };
+
+    const toPoints = (value: number) =>
+      items.map((_, i) => { const p = getPoint(value, i); return `${p.x},${p.y}`; }).join(' ');
+
+    const dataPoints = items.map((item, i) => getPoint(item.value, i));
+    const dataPolygon = dataPoints.map((p) => `${p.x},${p.y}`).join(' ');
+
+    // Compute label positions for SVG text
+    const labelPositions = items.map((_, i) => {
+      const angle = i * angleStep - Math.PI / 2;
+      return {
+        x: center + labelRadius * Math.cos(angle),
+        y: center + labelRadius * Math.sin(angle),
+      };
+    });
+
     return (
       <View key={key} style={composeStyles(styles.skillCategory, layoutStyle)} wrap={false}>
         <Text style={styles.skillCategoryTitle}>{category.name}</Text>
-        <RadarChart items={category.items} theme={theme} />
+        <View style={{ alignItems: 'center', marginBottom: 8 }}>
+          <Svg width={svgSize} height={svgSize}>
+            {/* Grid polygons at 25%, 50%, 75%, 100% */}
+            {[25, 50, 75, 100].map((level) => (
+              <Polygon
+                key={level}
+                points={toPoints(level)}
+                stroke={theme.radarGrid}
+                strokeWidth={0.8}
+                fill="none"
+                opacity={0.4}
+              />
+            ))}
+            {/* Axis lines from center to each vertex */}
+            {items.map((_, i) => {
+              const p = getPoint(100, i);
+              return (
+                <Line
+                  key={i}
+                  x1={center}
+                  y1={center}
+                  x2={p.x}
+                  y2={p.y}
+                  stroke={theme.radarGrid}
+                  strokeWidth={0.8}
+                  opacity={0.4}
+                />
+              );
+            })}
+            {/* Data polygon */}
+            <Polygon
+              points={dataPolygon}
+              fill={theme.radarFill}
+              stroke={theme.radarStroke}
+              strokeWidth={2}
+            />
+            {/* Data point dots */}
+            {dataPoints.map((p, i) => (
+              <Circle key={`dot-${i}`} cx={p.x} cy={p.y} r={2.5} fill={theme.radarStroke} />
+            ))}
+          </Svg>
+        </View>
+        {/* Skill labels below the chart */}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+          {items.map((item, index) => (
+            <View key={`${item.name}-${index}`} style={{ width: '50%', marginBottom: 4, paddingHorizontal: 2 }}>
+              <Text style={{ fontSize: 8.5, fontWeight: 700, color: theme.text }}>
+                {item.name}{' '}
+                <Text style={{ color: theme.radarStroke, fontWeight: 700 }}>
+                  {item.value}{item.unit || '%'}
+                </Text>
+              </Text>
+            </View>
+          ))}
+        </View>
       </View>
     );
   }

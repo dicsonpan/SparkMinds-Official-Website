@@ -678,38 +678,11 @@ const composeStyles = (...styleItems: Array<any | undefined | false>) =>
   styleItems.filter(Boolean) as any;
 const FIRST_LINE_INDENT = 24;
 const LONG_IMAGE_RATIO_THRESHOLD = 2.8;
-const JPEG_URL_PATTERN = /\.jpe?g(?:$|[?#])/i;
 
 interface ImageRowItem {
   url: string;
   fullRow: boolean;
 }
-
-const sanitizeImageUrl = (value: unknown): string => {
-  if (typeof value !== 'string') {
-    return '';
-  }
-
-  let cleaned = value.trim();
-
-  while (
-    cleaned.length >= 2 &&
-    ((cleaned.startsWith('"') && cleaned.endsWith('"')) ||
-      (cleaned.startsWith("'") && cleaned.endsWith("'")))
-  ) {
-    cleaned = cleaned.slice(1, -1).trim();
-  }
-
-  return cleaned;
-};
-
-const sanitizeImageUrls = (values: unknown): string[] => {
-  if (!Array.isArray(values)) {
-    return [];
-  }
-
-  return values.map((item) => sanitizeImageUrl(item)).filter(Boolean);
-};
 
 const isUltraWideImage = (url: string, measuredAspectRatios: Record<string, number>): boolean => {
   const measuredRatio = measuredAspectRatios[url];
@@ -752,21 +725,17 @@ const splitImagesIntoRows = (
 const pickProfileData = (portfolio: StudentPortfolio, blocks: ContentBlock[]): ProfileData => {
   const profileBlock = blocks.find((item) => item.type === 'profile_header');
 
-  const heroImageUrls = sanitizeImageUrls(profileBlock?.data.hero_image_urls);
-  const heroImageUrl = sanitizeImageUrl(profileBlock?.data.hero_image_url);
-  const portfolioHeroImageUrl = sanitizeImageUrl(portfolio.hero_image_url);
-
   const heroImages =
-    heroImageUrls.length > 0
-      ? heroImageUrls
-      : heroImageUrl
-        ? [heroImageUrl]
-        : portfolioHeroImageUrl
-          ? [portfolioHeroImageUrl]
+    profileBlock?.data.hero_image_urls && profileBlock.data.hero_image_urls.length > 0
+      ? profileBlock.data.hero_image_urls
+      : profileBlock?.data.hero_image_url
+        ? [profileBlock.data.hero_image_url]
+        : portfolio.hero_image_url
+          ? [portfolio.hero_image_url]
           : [];
 
   return {
-    avatarUrl: sanitizeImageUrl(profileBlock?.data.avatar_url) || sanitizeImageUrl(portfolio.avatar_url) || undefined,
+    avatarUrl: profileBlock?.data.avatar_url || portfolio.avatar_url,
     title: profileBlock?.data.student_title || portfolio.student_title,
     summary: profileBlock?.data.summary_bio || portfolio.summary_bio,
     heroImages,
@@ -831,36 +800,22 @@ const renderParagraphsWithIndent = (text: string | undefined, style: any) => {
 };
 
 const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, theme }) => {
-  const normalizedItems = items
-    .map((item) => ({
-      ...item,
-      safeValue: clampPercent(item.value),
-    }))
-    .filter((item) => Number.isFinite(item.safeValue));
-
-  if (normalizedItems.length < 3) {
+  if (items.length < 3) {
     return null;
   }
 
   const size = 152;
   const center = size / 2;
   const radius = 48;
-  const angleStep = (Math.PI * 2) / normalizedItems.length;
-
-  const toSafeCoord = (value: number, fallback = center) => (Number.isFinite(value) ? value : fallback);
+  const angleStep = (Math.PI * 2) / items.length;
 
   const getPoint = (value: number, index: number, scale = radius) => {
     const angle = index * angleStep - Math.PI / 2;
     const r = (clampPercent(value) / 100) * scale;
-    const x = toSafeCoord(center + r * Math.cos(angle));
-    const y = toSafeCoord(center + r * Math.sin(angle));
-    return { x, y };
+    return `${center + r * Math.cos(angle)},${center + r * Math.sin(angle)}`;
   };
 
-  const toPointString = (point: { x: number; y: number }) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`;
-  const points = normalizedItems
-    .map((item, index) => toPointString(getPoint(item.safeValue, index)))
-    .join(' ');
+  const points = items.map((item, index) => getPoint(item.value, index)).join(' ');
 
   return (
     <View>
@@ -869,42 +824,31 @@ const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, 
           {[25, 50, 75, 100].map((level) => (
             <Polygon
               key={level}
-              points={normalizedItems.map((_, index) => toPointString(getPoint(level, index))).join(' ')}
+              points={items.map((_, index) => getPoint(level, index)).join(' ')}
               stroke={theme.radarGrid}
               strokeWidth={1}
               fill="none"
             />
           ))}
-          {normalizedItems.map((_, index) => {
-            const edgePoint = getPoint(100, index);
-            return (
+          {items.map((_, index) => (
             <Line
               key={index}
               x1={center}
               y1={center}
-              x2={edgePoint.x}
-              y2={edgePoint.y}
+              x2={getPoint(100, index).split(',')[0]}
+              y2={getPoint(100, index).split(',')[1]}
               stroke={theme.radarGrid}
               strokeWidth={1}
             />
-            );
-          })}
+          ))}
           <Polygon points={points} fill={theme.radarFill} stroke={theme.radarStroke} strokeWidth={2} />
-          {normalizedItems.map((item, index) => {
-            const point = getPoint(item.safeValue, index);
-            return <Circle key={`dot-${index}`} cx={point.x} cy={point.y} r={2.2} fill={theme.radarStroke} />;
-          })}
         </Svg>
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginRight: -8 }}>
-        {normalizedItems.map((item, index) => (
+        {items.map((item, index) => (
           <View key={`${item.name}-${index}`} style={{ width: '48%', marginRight: '2%', marginBottom: 4 }}>
             <Text style={{ fontSize: 8, color: theme.muted }}>
-              {item.name}:{' '}
-              <Text style={{ color: theme.radarStroke, fontWeight: 700 }}>
-                {item.safeValue}
-                {item.unit || '%'}
-              </Text>
+              {item.name}: <Text style={{ color: theme.radarStroke, fontWeight: 700 }}>{item.value}{item.unit || '%'}</Text>
             </Text>
           </View>
         ))}
@@ -967,7 +911,20 @@ const renderSkillsCategory = (
     return (
       <View key={key} style={composeStyles(styles.skillCategory, layoutStyle)} wrap={false}>
         <Text style={styles.skillCategoryTitle}>{category.name}</Text>
-        <RadarChart items={category.items} theme={theme} />
+        {category.items.map((item, index) => (
+          <View key={`${category.name}-${item.name}-${index}`} style={styles.skillRow}>
+            <View style={styles.skillHeader}>
+              <Text style={styles.skillName}>{item.name}</Text>
+              <Text style={styles.skillValue}>
+                {item.value}
+                {item.unit || '%'}
+              </Text>
+            </View>
+            <View style={styles.skillTrack}>
+              <View style={[styles.skillFill, { width: `${clampPercent(item.value)}%` }]} />
+            </View>
+          </View>
+        ))}
       </View>
     );
   }
@@ -1039,7 +996,6 @@ const renderBlock = (
   theme: PdfTheme,
   styles: ReturnType<typeof createStyles>,
   shouldUseFullRowForImage: (url: string) => boolean,
-  resolvePdfImageSrc: (url: string) => string,
 ): React.ReactNode => {
   if (block.type === 'profile_header') {
     return null;
@@ -1123,7 +1079,7 @@ const renderBlock = (
   }
 
   if (block.type === 'timeline_node') {
-    const timelineUrls = sanitizeImageUrls(block.data.urls);
+    const timelineUrls = block.data.urls || [];
     const timelineRows = splitImagesIntoRows(timelineUrls, shouldUseFullRowForImage);
 
     return (
@@ -1157,7 +1113,7 @@ const renderBlock = (
                         )}
                       >
                         <Image
-                          src={resolvePdfImageSrc(item.url)}
+                          src={item.url}
                           style={composeStyles(
                             styles.timelineImage,
                             fullRow ? styles.timelineImageFullRow : styles.timelineImageTwoColumn,
@@ -1183,8 +1139,7 @@ const renderBlock = (
       { label: 'Action / 行动', content: block.data.star_action },
       { label: 'Result / 结果', content: block.data.star_result },
     ];
-    const evidenceUrls = sanitizeImageUrls(block.data.evidence_urls);
-    const evidenceRows = splitImagesIntoRows(evidenceUrls, shouldUseFullRowForImage);
+    const evidenceRows = splitImagesIntoRows(block.data.evidence_urls || [], shouldUseFullRowForImage);
 
     return (
       <View key={block.id} style={styles.section}>
@@ -1197,7 +1152,7 @@ const renderBlock = (
             </View>
           ))}
         </View>
-        {evidenceUrls.length > 0 ? (
+        {block.data.evidence_urls && block.data.evidence_urls.length > 0 ? (
           <View style={styles.evidenceRow}>
             {evidenceRows.map(
               (row, rowIndex) => (
@@ -1208,7 +1163,7 @@ const renderBlock = (
                   minPresenceAhead={rowIndex < evidenceRows.length - 1 ? 210 : undefined}
                 >
                   {row.map((item, index) => {
-                    const isSingleImage = evidenceUrls.length === 1;
+                    const isSingleImage = block.data.evidence_urls?.length === 1;
                     const fullRow = item.fullRow || isSingleImage;
 
                     return (
@@ -1223,7 +1178,7 @@ const renderBlock = (
                         )}
                       >
                         <Image
-                          src={resolvePdfImageSrc(item.url)}
+                          src={item.url}
                           style={composeStyles(
                             styles.evidenceImage,
                             fullRow ? styles.evidenceImageFullRow : styles.evidenceImageTwoColumn,
@@ -1293,12 +1248,8 @@ const renderBlock = (
     );
   }
 
-  if (block.type === 'image_grid') {
-    const urls = sanitizeImageUrls(block.data.urls);
-    if (urls.length === 0) {
-      return null;
-    }
-
+  if (block.type === 'image_grid' && block.data.urls && block.data.urls.length > 0) {
+    const urls = block.data.urls;
     const imageRows = splitImagesIntoRows(urls, shouldUseFullRowForImage);
 
     return (
@@ -1328,7 +1279,7 @@ const renderBlock = (
                     )}
                   >
                     <Image
-                      src={resolvePdfImageSrc(item.url)}
+                      src={item.url}
                       style={composeStyles(
                         styles.imageGridItem,
                         fullRow ? styles.imageGridItemFullRow : styles.imageGridItemTwoColumn,
@@ -1356,39 +1307,30 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
   const blocks = Array.isArray(portfolio.content_blocks) ? portfolio.content_blocks : [];
   const profileData = pickProfileData(portfolio, blocks);
   const coverImages = profileData.heroImages.slice(0, 2);
-  const coverImage0 = coverImages[0] || '';
-  const coverImage1 = coverImages[1] || '';
-  const allPdfImageUrls = React.useMemo(() => {
+  const allBlockImageUrls = React.useMemo(() => {
     const collectedUrls: string[] = [];
 
-    if (profileData.avatarUrl) {
-      collectedUrls.push(profileData.avatarUrl);
-    }
-    collectedUrls.push(...coverImages);
-
     blocks.forEach((block) => {
-      collectedUrls.push(...sanitizeImageUrls(block.data.urls));
-      collectedUrls.push(...sanitizeImageUrls(block.data.evidence_urls));
+      if (Array.isArray(block.data.urls)) {
+        collectedUrls.push(...block.data.urls);
+      }
+      if (Array.isArray(block.data.evidence_urls)) {
+        collectedUrls.push(...block.data.evidence_urls);
+      }
     });
 
     return Array.from(
       new Set(collectedUrls.filter((url) => typeof url === 'string' && url.trim().length > 0)),
     );
-  }, [blocks, profileData.avatarUrl, coverImage0, coverImage1]);
+  }, [blocks]);
   const [measuredAspectRatios, setMeasuredAspectRatios] = React.useState<Record<string, number>>({});
-  const [pdfImageSources, setPdfImageSources] = React.useState<Record<string, string>>({});
-  const inFlightImageUrlsRef = React.useRef<Set<string>>(new Set());
 
   React.useEffect(() => {
     if (typeof window === 'undefined') {
       return;
     }
 
-    const pendingUrls = allPdfImageUrls.filter(
-      (url) =>
-        typeof measuredAspectRatios[url] !== 'number' ||
-        typeof pdfImageSources[url] !== 'string',
-    );
+    const pendingUrls = allBlockImageUrls.filter((url) => typeof measuredAspectRatios[url] !== 'number');
     if (pendingUrls.length === 0) {
       return;
     }
@@ -1396,22 +1338,9 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
     let cancelled = false;
 
     pendingUrls.forEach((url) => {
-      if (inFlightImageUrlsRef.current.has(url)) {
-        return;
-      }
-
-      inFlightImageUrlsRef.current.add(url);
       const probe = new window.Image();
-      probe.crossOrigin = 'anonymous';
       probe.onload = () => {
-        inFlightImageUrlsRef.current.delete(url);
-        if (cancelled) {
-          return;
-        }
-
-        if (probe.naturalWidth <= 0 || probe.naturalHeight <= 0) {
-          setMeasuredAspectRatios((prev) => (typeof prev[url] === 'number' ? prev : { ...prev, [url]: -1 }));
-          setPdfImageSources((prev) => (typeof prev[url] === 'string' ? prev : { ...prev, [url]: url }));
+        if (cancelled || probe.naturalWidth <= 0 || probe.naturalHeight <= 0) {
           return;
         }
 
@@ -1422,63 +1351,19 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
           }
           return { ...prev, [url]: ratio };
         });
-
-        if (!JPEG_URL_PATTERN.test(url)) {
-          setPdfImageSources((prev) => (prev[url] === url ? prev : { ...prev, [url]: url }));
-          return;
-        }
-
-        try {
-          const maxSide = 2200;
-          const scale = Math.min(1, maxSide / Math.max(probe.naturalWidth, probe.naturalHeight));
-          const targetWidth = Math.max(1, Math.round(probe.naturalWidth * scale));
-          const targetHeight = Math.max(1, Math.round(probe.naturalHeight * scale));
-          const canvas = document.createElement('canvas');
-          canvas.width = targetWidth;
-          canvas.height = targetHeight;
-          const context = canvas.getContext('2d');
-          if (!context) {
-            throw new Error('Canvas context is unavailable.');
-          }
-          context.drawImage(probe, 0, 0, targetWidth, targetHeight);
-          const pngDataUrl = canvas.toDataURL('image/png');
-          setPdfImageSources((prev) => ({
-            ...prev,
-            [url]: pngDataUrl || url,
-          }));
-        } catch {
-          setPdfImageSources((prev) => (prev[url] === url ? prev : { ...prev, [url]: url }));
-        }
       };
-      probe.onerror = () => {
-        inFlightImageUrlsRef.current.delete(url);
-        if (cancelled) {
-          return;
-        }
-        setMeasuredAspectRatios((prev) => (typeof prev[url] === 'number' ? prev : { ...prev, [url]: -1 }));
-        setPdfImageSources((prev) => (typeof prev[url] === 'string' ? prev : { ...prev, [url]: url }));
-      };
+      probe.onerror = () => undefined;
       probe.src = url;
     });
 
     return () => {
       cancelled = true;
     };
-  }, [allPdfImageUrls, measuredAspectRatios, pdfImageSources]);
+  }, [allBlockImageUrls, measuredAspectRatios]);
 
   const shouldUseFullRowForImage = React.useCallback(
     (url: string) => isUltraWideImage(url, measuredAspectRatios),
     [measuredAspectRatios],
-  );
-  const resolvePdfImageSrc = React.useCallback(
-    (url: string) => {
-      const normalized = sanitizeImageUrl(url);
-      if (!normalized) {
-        return '';
-      }
-      return pdfImageSources[normalized] || normalized;
-    },
-    [pdfImageSources],
   );
 
   return (
@@ -1489,7 +1374,7 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
             <View style={styles.coverLeft}>
               <View style={styles.coverAvatarWrap}>
                 {profileData.avatarUrl ? (
-                  <Image src={resolvePdfImageSrc(profileData.avatarUrl)} style={styles.coverAvatarImage} />
+                  <Image src={profileData.avatarUrl} style={styles.coverAvatarImage} />
                 ) : (
                   <Text style={styles.coverAvatarFallback}>{portfolio.student_name[0] || 'S'}</Text>
                 )}
@@ -1497,7 +1382,7 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
               {coverImages.map((url, index) => (
                 <Image
                   key={`${url}-${index}`}
-                  src={resolvePdfImageSrc(url)}
+                  src={url}
                   style={composeStyles(styles.coverHeroImage, index === coverImages.length - 1 && { marginBottom: 0 })}
                 />
               ))}
@@ -1511,9 +1396,7 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
           </View>
         </View>
 
-        {blocks.map((block) =>
-          renderBlock(block, theme, styles, shouldUseFullRowForImage, resolvePdfImageSrc),
-        )}
+        {blocks.map((block) => renderBlock(block, theme, styles, shouldUseFullRowForImage))}
 
         <Text
           style={styles.footer}

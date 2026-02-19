@@ -661,6 +661,7 @@ interface ProfileData {
 const clampPercent = (value: number): number => Math.min(100, Math.max(0, value));
 const composeStyles = (...styleItems: Array<any | undefined | false>) =>
   styleItems.filter(Boolean) as any;
+const INDENT_PREFIX = '\u3000\u3000\u2060';
 
 const pickProfileData = (portfolio: StudentPortfolio, blocks: ContentBlock[]): ProfileData => {
   const profileBlock = blocks.find((item) => item.type === 'profile_header');
@@ -718,6 +719,7 @@ const renderParagraphsWithIndent = (text: string | undefined, style: any) => {
     .map((line) =>
       line
         .replace(/^[\t \u00a0\u1680\u2000-\u200d\u202f\u205f\u3000\ufeff\u200b\u2060]+/, '')
+        .replace(/^[\u200b-\u200d\u2060\ufeff]+/, '')
         .trim(),
     )
     .filter(Boolean);
@@ -728,8 +730,7 @@ const renderParagraphsWithIndent = (text: string | undefined, style: any) => {
     <View>
       {paragraphs.map((line, index) => (
         <Text key={`${index}-${line.slice(0, 12)}`} style={style}>
-          {'\u2060\u3000\u3000'}
-          {line}
+          {`${INDENT_PREFIX}${line}`}
         </Text>
       ))}
     </View>

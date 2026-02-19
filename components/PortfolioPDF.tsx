@@ -9,15 +9,13 @@ Font.register({
   src: 'https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.12/files/noto-sans-sc-chinese-simplified-400-normal.woff'
 });
 
-// 【关键修复】注册断行回调函数
-// 解决中文被视为一个长单词而不换行的问题
-Font.registerHyphenationCallback(word => {
-  // 只有当单词长度大于1时才处理（避免处理单个字符）
-  if (word.length === 1) return [word];
-  
-  // 将字符串拆分为字符数组，告诉引擎可以在任意字符之间断行
-  return Array.from(word);
-});
+// Helper to insert Zero-Width Space (\u200B) after Chinese characters
+// This tricks the PDF engine into treating Chinese characters as breakable words without adding hyphens
+const processText = (text: string | undefined | null) => {
+  if (!text) return '';
+  // Add ZWS after every Chinese character
+  return text.replace(/([\u4e00-\u9fa5])/g, '$1\u200B');
+};
 
 const styles = StyleSheet.create({
   page: {
@@ -463,7 +461,7 @@ const RadarChart = ({ items }: { items: SkillItem[] }) => {
                             y={y + adjY}
                             style={{ fontSize: 8, fill: '#334155', fontFamily: 'Noto Sans SC' }}
                         >
-                            {item.name}
+                            {processText(item.name)}
                         </Text>
                     );
                 })}
@@ -472,7 +470,7 @@ const RadarChart = ({ items }: { items: SkillItem[] }) => {
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginTop: -20 }}>
                 {items.map((item, i) => (
                     <Text key={i} style={{ fontSize: 8, color: '#64748b' }}>
-                        {item.name}: <Text style={{ color: '#2563eb', fontWeight: 'bold' }}>{item.value}%</Text>
+                        {processText(item.name)}: <Text style={{ color: '#2563eb', fontWeight: 'bold' }}>{item.value}%</Text>
                     </Text>
                 ))}
             </View>
@@ -509,7 +507,7 @@ const CircleChart = ({ item }: { item: SkillItem }) => {
                 </Text>
             </View>
             <Text style={{ fontSize: 8, fontWeight: 'bold', marginTop: 4, textAlign: 'center', color: '#334155' }}>
-                {item.name}
+                {processText(item.name)}
             </Text>
         </View>
     );
@@ -521,7 +519,7 @@ const StatBox = ({ item }: { item: SkillItem }) => (
         <Text style={styles.statValue}>
             {item.value}<Text style={{ fontSize: 10, color: '#64748b', fontWeight: 'normal' }}>{item.unit}</Text>
         </Text>
-        <Text style={styles.statLabel}>{item.name}</Text>
+        <Text style={styles.statLabel}>{processText(item.name)}</Text>
     </View>
 );
 
@@ -540,9 +538,9 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
              </View>
           )}
           <View style={styles.headerContent}>
-            <Text style={styles.studentName}>{portfolio.student_name}</Text>
-            {portfolio.student_title && <Text style={styles.studentTitle}>{portfolio.student_title}</Text>}
-            {portfolio.summary_bio && <Text style={styles.studentBio}>{portfolio.summary_bio}</Text>}
+            <Text style={styles.studentName}>{processText(portfolio.student_name)}</Text>
+            {portfolio.student_title && <Text style={styles.studentTitle}>{processText(portfolio.student_title)}</Text>}
+            {portfolio.summary_bio && <Text style={styles.studentBio}>{processText(portfolio.summary_bio)}</Text>}
           </View>
         </View>
 
@@ -555,7 +553,7 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
           if (block.type === 'section_heading') {
             return (
               <View key={block.id} style={styles.sectionHeadingContainer} wrap={false}>
-                <Text style={styles.sectionHeadingTitle}>{block.data.title}</Text>
+                <Text style={styles.sectionHeadingTitle}>{processText(block.data.title)}</Text>
               </View>
             );
           }
@@ -564,12 +562,12 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
           if (block.type === 'info_list') {
             return (
               <View key={block.id} style={styles.section} wrap={false}>
-                {block.data.title && <Text style={{fontSize: 12, fontWeight: 'bold', marginBottom: 8}}>{block.data.title}</Text>}
+                {block.data.title && <Text style={{fontSize: 12, fontWeight: 'bold', marginBottom: 8}}>{processText(block.data.title)}</Text>}
                 <View style={styles.infoGrid}>
                   {block.data.info_items?.map((item, idx) => (
                     <View key={idx} style={styles.infoItem}>
-                      <Text style={styles.infoLabel}>{item.label}</Text>
-                      <Text style={styles.infoValue}>{item.value}</Text>
+                      <Text style={styles.infoLabel}>{processText(item.label)}</Text>
+                      <Text style={styles.infoValue}>{processText(item.value)}</Text>
                     </View>
                   ))}
                 </View>
@@ -583,7 +581,7 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
               <View key={block.id} style={styles.section} wrap={false}>
                 {block.data.skills_categories?.map((cat: SkillCategory, idx: number) => (
                   <View key={idx} style={styles.skillCategory}>
-                    <Text style={styles.skillCategoryTitle}>{cat.name}</Text>
+                    <Text style={styles.skillCategoryTitle}>{processText(cat.name)}</Text>
                     
                     {/* Render based on layout type */}
                     {cat.layout === 'radar' ? (
@@ -606,7 +604,7 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
                             {cat.items.map((skill: SkillItem, sIdx: number) => (
                                 <View key={sIdx} style={styles.skillItem}>
                                     <View style={styles.skillHeader}>
-                                        <Text style={styles.skillName}>{skill.name}</Text>
+                                        <Text style={styles.skillName}>{processText(skill.name)}</Text>
                                         <Text style={styles.skillScore}>{skill.value}{skill.unit || '%'}</Text>
                                     </View>
                                     <View style={styles.skillTrack}>
@@ -628,10 +626,10 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
                <View key={block.id} style={[styles.section, styles.timelineRow]} wrap={false}>
                   <View style={styles.timelineContent}>
                      <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4}}>
-                        <Text style={styles.timelineDate}>{block.data.date}</Text>
-                        <Text style={styles.timelineTitle}>{block.data.title}</Text>
+                        <Text style={styles.timelineDate}>{processText(block.data.date)}</Text>
+                        <Text style={styles.timelineTitle}>{processText(block.data.title)}</Text>
                      </View>
-                     <Text style={styles.timelineDesc}>{block.data.content}</Text>
+                     <Text style={styles.timelineDesc}>{processText(block.data.content)}</Text>
                      {block.data.urls && block.data.urls.length > 0 && (
                         <View style={styles.timelineImages}>
                            {block.data.urls.map((url, i) => (
@@ -650,24 +648,24 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
               <View key={block.id} style={styles.section} wrap={false}>
                 <View style={styles.starContainer}>
                   <View style={styles.starHeader}>
-                    <Text style={styles.starTitle}>{block.data.title || 'Project Highlight'}</Text>
+                    <Text style={styles.starTitle}>{processText(block.data.title || 'Project Highlight')}</Text>
                   </View>
                   <View style={styles.starGrid}>
                     <View style={styles.starBox}>
                       <Text style={styles.starLabel}>SITUATION (背景)</Text>
-                      <Text style={styles.starText}>{block.data.star_situation}</Text>
+                      <Text style={styles.starText}>{processText(block.data.star_situation)}</Text>
                     </View>
                     <View style={[styles.starBox, { borderRightWidth: 0 }]}>
                       <Text style={styles.starLabel}>TASK (任务)</Text>
-                      <Text style={styles.starText}>{block.data.star_task}</Text>
+                      <Text style={styles.starText}>{processText(block.data.star_task)}</Text>
                     </View>
                     <View style={[styles.starBox, { borderBottomWidth: 0 }]}>
                       <Text style={styles.starLabel}>ACTION (行动)</Text>
-                      <Text style={styles.starText}>{block.data.star_action}</Text>
+                      <Text style={styles.starText}>{processText(block.data.star_action)}</Text>
                     </View>
                     <View style={[styles.starBox, { borderRightWidth: 0, borderBottomWidth: 0 }]}>
                       <Text style={styles.starLabel}>RESULT (结果)</Text>
-                      <Text style={styles.starText}>{block.data.star_result}</Text>
+                      <Text style={styles.starText}>{processText(block.data.star_result)}</Text>
                     </View>
                   </View>
                   {block.data.evidence_urls && block.data.evidence_urls.length > 0 && (
@@ -692,13 +690,13 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
              
              return (
                <View key={block.id} style={styles.section} wrap={false}>
-                  {block.data.title && <Text style={{fontSize: 12, fontWeight: 'bold', marginBottom: 5}}>{block.data.title}</Text>}
+                  {block.data.title && <Text style={{fontSize: 12, fontWeight: 'bold', marginBottom: 5}}>{processText(block.data.title)}</Text>}
                   <View style={styles.table}>
                      {/* Header */}
                      <View style={styles.tableHeaderRow}>
                         {block.data.table_columns?.map((col, i) => (
                            <View key={i} style={[styles.tableHeaderCell, { width: colWidth, borderRightWidth: i === colCount - 1 ? 0 : 1 }]}>
-                              <Text>{col}</Text>
+                              <Text>{processText(col)}</Text>
                            </View>
                         ))}
                      </View>
@@ -707,7 +705,7 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
                         <View key={rIdx} style={[styles.tableRow, { backgroundColor: rIdx % 2 === 0 ? '#ffffff' : '#f8fafc', borderBottomWidth: rIdx === (block.data.table_rows?.length || 0) - 1 ? 0 : 1 }]}>
                            {row.map((cell, cIdx) => (
                               <View key={cIdx} style={[styles.tableCell, { width: colWidth, borderRightWidth: cIdx === colCount - 1 ? 0 : 1 }]}>
-                                 <Text>{cell}</Text>
+                                 <Text>{processText(cell)}</Text>
                               </View>
                            ))}
                         </View>
@@ -733,7 +731,7 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
 
              return (
                <View key={block.id} style={styles.section} wrap={false}>
-                  {block.data.title && <Text style={{fontSize: 12, fontWeight: 'bold', marginBottom: 8}}>{block.data.title}</Text>}
+                  {block.data.title && <Text style={{fontSize: 12, fontWeight: 'bold', marginBottom: 8}}>{processText(block.data.title)}</Text>}
                   <View style={styles.imageGridContainer}>
                      {urls.map((url, idx) => (
                         <Image key={idx} src={url} style={[styles.imageGridItem, dynamicStyle]} />
@@ -747,8 +745,8 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
           if (block.type === 'text') {
             return (
               <View key={block.id} style={styles.section}>
-                {block.data.title && <Text style={{fontSize: 12, fontWeight: 'bold', marginBottom: 6}}>{block.data.title}</Text>}
-                <Text style={styles.textBlock}>{block.data.content}</Text>
+                {block.data.title && <Text style={{fontSize: 12, fontWeight: 'bold', marginBottom: 6}}>{processText(block.data.title)}</Text>}
+                <Text style={styles.textBlock}>{processText(block.data.content)}</Text>
               </View>
             );
           }

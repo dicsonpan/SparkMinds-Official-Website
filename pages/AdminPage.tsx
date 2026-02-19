@@ -884,7 +884,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                                               onDrop={handleBlockImageDrop}
                                                               onDragEnd={handleBlockImageDragEnd}
                                                               className={`h-20 w-32 rounded-lg bg-slate-100 overflow-hidden relative group/heroimg border transition-colors cursor-move ${
-                                                                  draggedBlockImage?.blockId === b.id && draggedBlockImage.field === 'hero_image_urls' && draggedBlockImage.index === imgIdx
+                                                                  draggedBlockImage?.blockId === b.id && draggedBlockImage?.field === 'hero_image_urls' && draggedBlockImage?.index === imgIdx
                                                                       ? 'border-purple-500'
                                                                       : 'border-purple-200'
                                                               }`}
@@ -991,7 +991,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                                           onDrop={handleBlockImageDrop}
                                                           onDragEnd={handleBlockImageDragEnd}
                                                           className={`w-12 h-12 bg-black rounded relative overflow-hidden group/img border transition-colors cursor-move ${
-                                                              draggedBlockImage?.blockId === b.id && draggedBlockImage.field === 'urls' && draggedBlockImage.index === i
+                                                              draggedBlockImage?.blockId === b.id && draggedBlockImage?.field === 'urls' && draggedBlockImage?.index === i
                                                                   ? 'border-blue-500'
                                                                   : 'border-transparent'
                                                           }`}
@@ -1030,7 +1030,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                                               onDrop={handleBlockImageDrop}
                                                               onDragEnd={handleBlockImageDragEnd}
                                                               className={`h-12 w-12 rounded overflow-hidden relative group/evidence border bg-slate-100 transition-colors cursor-move ${
-                                                                  draggedBlockImage?.blockId === b.id && draggedBlockImage.field === 'evidence_urls' && draggedBlockImage.index === i
+                                                                  draggedBlockImage?.blockId === b.id && draggedBlockImage?.field === 'evidence_urls' && draggedBlockImage?.index === i
                                                                       ? 'border-blue-500'
                                                                       : 'border-slate-200'
                                                               }`}
@@ -1166,7 +1166,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                                               onDrop={handleBlockImageDrop}
                                                               onDragEnd={handleBlockImageDragEnd}
                                                               className={`w-10 h-10 rounded overflow-hidden border cursor-move ${
-                                                                  draggedBlockImage?.blockId === b.id && draggedBlockImage.field === 'urls' && draggedBlockImage.index === i
+                                                                  draggedBlockImage?.blockId === b.id && draggedBlockImage?.field === 'urls' && draggedBlockImage?.index === i
                                                                       ? 'border-blue-500'
                                                                       : 'border-slate-200'
                                                               }`}

@@ -839,7 +839,16 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                                                       const newCats = [...b.data.skills_categories]; newCats[catIdx].items[skIdx].value = parseFloat(e.target.value);
                                                                       updateContentBlock(b.id, 'skills_categories', newCats);
                                                                   }} />
-                                                                  <span className="text-[10px] text-slate-400">{skill.unit || '%'}</span>
+                                                                  <input
+                                                                      className="text-[10px] bg-transparent w-10 text-slate-400 outline-none"
+                                                                      value={skill.unit ?? '%'}
+                                                                      onChange={e => {
+                                                                          const newCats = [...b.data.skills_categories];
+                                                                          newCats[catIdx].items[skIdx].unit = e.target.value;
+                                                                          updateContentBlock(b.id, 'skills_categories', newCats);
+                                                                      }}
+                                                                      placeholder="%"
+                                                                  />
                                                               </div>
                                                           ))}
                                                           <button onClick={() => {

@@ -910,7 +910,6 @@ const renderSkillsCategory = (
   if (category.layout === 'radar') {
     const items = category.items;
     if (items.length < 3) {
-      // Fall back to bar chart if fewer than 3 items
       return (
         <View key={key} style={composeStyles(styles.skillCategory, layoutStyle)} wrap={false}>
           <Text style={styles.skillCategoryTitle}>{category.name}</Text>
@@ -929,77 +928,52 @@ const renderSkillsCategory = (
       );
     }
 
-    const svgSize = 180;
-    const center = svgSize / 2;
-    const radius = 55;
-    const angleStep = (Math.PI * 2) / items.length;
+    const size = 152;
+    const cx = size / 2;
+    const r = 48;
+    const step = (Math.PI * 2) / items.length;
 
-    const getXY = (value: number, idx: number, r = radius) => {
-      const angle = idx * angleStep - Math.PI / 2;
-      const scaled = (clampPercent(value) / 100) * r;
-      const x = Math.round((center + scaled * Math.cos(angle)) * 100) / 100;
-      const y = Math.round((center + scaled * Math.sin(angle)) * 100) / 100;
-      return { x, y };
+    const pt = (val: number, idx: number, scale = r) => {
+      const a = idx * step - Math.PI / 2;
+      const d = (clampPercent(val) / 100) * scale;
+      return `${cx + d * Math.cos(a)},${cx + d * Math.sin(a)}`;
     };
 
-    const toPoints = (value: number) =>
-      items.map((_, i) => { const p = getXY(value, i); return `${p.x},${p.y}`; }).join(' ');
-
-    const dataPoints = items.map((item, i) => getXY(item.value, i));
-    const dataPolygon = dataPoints.map((p) => `${p.x},${p.y}`).join(' ');
+    const dataPts = items.map((item, i) => pt(item.value, i)).join(' ');
 
     return (
       <View key={key} style={composeStyles(styles.skillCategory, layoutStyle)} wrap={false}>
         <Text style={styles.skillCategoryTitle}>{category.name}</Text>
-        <View style={{ alignItems: 'center', marginBottom: 8 }}>
-          <Svg width={svgSize} height={svgSize} viewBox={`0 0 ${svgSize} ${svgSize}`}>
-            {/* Grid polygons at 25%, 50%, 75%, 100% */}
+        <View style={{ alignItems: 'center', marginBottom: 6 }}>
+          <Svg width={size} height={size}>
             {[25, 50, 75, 100].map((level) => (
               <Polygon
                 key={level}
-                points={toPoints(level)}
+                points={items.map((_, i) => pt(level, i)).join(' ')}
                 stroke={theme.radarGrid}
-                strokeWidth={0.8}
+                strokeWidth={1}
                 fill="none"
               />
             ))}
-            {/* Axis lines from center to each vertex */}
-            {items.map((_, i) => {
-              const p = getXY(100, i);
-              return (
-                <Line
-                  key={i}
-                  x1={String(center)}
-                  y1={String(center)}
-                  x2={String(p.x)}
-                  y2={String(p.y)}
-                  stroke={theme.radarGrid}
-                  strokeWidth={0.8}
-                />
-              );
-            })}
-            {/* Data polygon */}
-            <Polygon
-              points={dataPolygon}
-              fill={theme.radarFill}
-              stroke={theme.radarStroke}
-              strokeWidth={2}
-            />
-            {/* Data point dots */}
-            {dataPoints.map((p, i) => (
-              <Circle key={`dot-${i}`} cx={p.x} cy={p.y} r={2.5} fill={theme.radarStroke} />
+            {items.map((_, i) => (
+              <Line
+                key={i}
+                x1={cx}
+                y1={cx}
+                x2={pt(100, i).split(',')[0]}
+                y2={pt(100, i).split(',')[1]}
+                stroke={theme.radarGrid}
+                strokeWidth={1}
+              />
             ))}
+            <Polygon points={dataPts} fill={theme.radarFill} stroke={theme.radarStroke} strokeWidth={2} />
           </Svg>
         </View>
-        {/* Skill labels below the chart */}
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginRight: -8 }}>
           {items.map((item, index) => (
-            <View key={`${item.name}-${index}`} style={{ width: '50%', marginBottom: 4, paddingHorizontal: 2 }}>
-              <Text style={{ fontSize: 8.5, fontWeight: 700, color: theme.text }}>
-                {item.name}{' '}
-                <Text style={{ color: theme.radarStroke, fontWeight: 700 }}>
-                  {item.value}{item.unit || '%'}
-                </Text>
+            <View key={`${item.name}-${index}`} style={{ width: '48%', marginRight: '2%', marginBottom: 4 }}>
+              <Text style={{ fontSize: 8, color: theme.muted }}>
+                {item.name}: <Text style={{ color: theme.radarStroke, fontWeight: 700 }}>{item.value}{item.unit || '%'}</Text>
               </Text>
             </View>
           ))}

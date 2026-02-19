@@ -713,16 +713,10 @@ const renderParagraphsWithIndent = (text: string | undefined, style: any) => {
 
   if (!paragraphs.length) return null;
 
-  return (
-    <View>
-      {paragraphs.map((line, index) => (
-        <Text key={`${index}-${line.slice(0, 12)}`} style={style}>
-          <Text>{'\u3000\u3000'}</Text>
-          {line}
-        </Text>
-      ))}
-    </View>
-  );
+  // Keep all paragraphs in a single Text node. React PDF may collapse leading
+  // spaces at the start of separate Text nodes, which causes random indent loss.
+  const normalized = paragraphs.map((line) => `\u200B\u3000\u3000${line}`).join('\n');
+  return <Text style={style}>{normalized}</Text>;
 };
 
 const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, theme }) => {

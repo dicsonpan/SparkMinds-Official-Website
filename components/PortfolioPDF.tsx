@@ -9,6 +9,12 @@ Font.register({
   src: 'https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.12/files/noto-sans-sc-chinese-simplified-400-normal.woff'
 });
 
+// 【关键修复】：禁用 react-pdf 默认的连字符（hyphen）行为
+// 配合下方的 \u200B 零宽空格，可以实现中文自动换行且行尾不带“-”号
+Font.registerHyphenationCallback((word) => {
+  return [word];
+});
+
 // Helper to insert Zero-Width Space (\u200B) after Chinese characters
 // This tricks the PDF engine into treating Chinese characters as breakable words without adding hyphens
 const processText = (text: string | undefined | null) => {

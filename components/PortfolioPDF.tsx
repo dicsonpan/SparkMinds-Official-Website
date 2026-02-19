@@ -800,22 +800,36 @@ const renderParagraphsWithIndent = (text: string | undefined, style: any) => {
 };
 
 const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, theme }) => {
-  if (items.length < 3) {
+  const normalizedItems = items
+    .map((item) => ({
+      ...item,
+      safeValue: clampPercent(item.value),
+    }))
+    .filter((item) => Number.isFinite(item.safeValue));
+
+  if (normalizedItems.length < 3) {
     return null;
   }
 
   const size = 152;
   const center = size / 2;
   const radius = 48;
-  const angleStep = (Math.PI * 2) / items.length;
+  const angleStep = (Math.PI * 2) / normalizedItems.length;
+
+  const toSafeCoord = (value: number, fallback = center) => (Number.isFinite(value) ? value : fallback);
 
   const getPoint = (value: number, index: number, scale = radius) => {
     const angle = index * angleStep - Math.PI / 2;
     const r = (clampPercent(value) / 100) * scale;
-    return `${center + r * Math.cos(angle)},${center + r * Math.sin(angle)}`;
+    const x = toSafeCoord(center + r * Math.cos(angle));
+    const y = toSafeCoord(center + r * Math.sin(angle));
+    return { x, y };
   };
 
-  const points = items.map((item, index) => getPoint(item.value, index)).join(' ');
+  const toPointString = (point: { x: number; y: number }) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`;
+  const points = normalizedItems
+    .map((item, index) => toPointString(getPoint(item.safeValue, index)))
+    .join(' ');
 
   return (
     <View>
@@ -824,31 +838,42 @@ const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, 
           {[25, 50, 75, 100].map((level) => (
             <Polygon
               key={level}
-              points={items.map((_, index) => getPoint(level, index)).join(' ')}
+              points={normalizedItems.map((_, index) => toPointString(getPoint(level, index))).join(' ')}
               stroke={theme.radarGrid}
               strokeWidth={1}
               fill="none"
             />
           ))}
-          {items.map((_, index) => (
+          {normalizedItems.map((_, index) => {
+            const edgePoint = getPoint(100, index);
+            return (
             <Line
               key={index}
               x1={center}
               y1={center}
-              x2={getPoint(100, index).split(',')[0]}
-              y2={getPoint(100, index).split(',')[1]}
+              x2={edgePoint.x}
+              y2={edgePoint.y}
               stroke={theme.radarGrid}
               strokeWidth={1}
             />
-          ))}
+            );
+          })}
           <Polygon points={points} fill={theme.radarFill} stroke={theme.radarStroke} strokeWidth={2} />
+          {normalizedItems.map((item, index) => {
+            const point = getPoint(item.safeValue, index);
+            return <Circle key={`dot-${index}`} cx={point.x} cy={point.y} r={2.2} fill={theme.radarStroke} />;
+          })}
         </Svg>
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginRight: -8 }}>
-        {items.map((item, index) => (
+        {normalizedItems.map((item, index) => (
           <View key={`${item.name}-${index}`} style={{ width: '48%', marginRight: '2%', marginBottom: 4 }}>
             <Text style={{ fontSize: 8, color: theme.muted }}>
-              {item.name}: <Text style={{ color: theme.radarStroke, fontWeight: 700 }}>{item.value}{item.unit || '%'}</Text>
+              {item.name}:{' '}
+              <Text style={{ color: theme.radarStroke, fontWeight: 700 }}>
+                {item.safeValue}
+                {item.unit || '%'}
+              </Text>
             </Text>
           </View>
         ))}
@@ -911,20 +936,7 @@ const renderSkillsCategory = (
     return (
       <View key={key} style={composeStyles(styles.skillCategory, layoutStyle)} wrap={false}>
         <Text style={styles.skillCategoryTitle}>{category.name}</Text>
-        {category.items.map((item, index) => (
-          <View key={`${category.name}-${item.name}-${index}`} style={styles.skillRow}>
-            <View style={styles.skillHeader}>
-              <Text style={styles.skillName}>{item.name}</Text>
-              <Text style={styles.skillValue}>
-                {item.value}
-                {item.unit || '%'}
-              </Text>
-            </View>
-            <View style={styles.skillTrack}>
-              <View style={[styles.skillFill, { width: `${clampPercent(item.value)}%` }]} />
-            </View>
-          </View>
-        ))}
+        <RadarChart items={category.items} theme={theme} />
       </View>
     );
   }

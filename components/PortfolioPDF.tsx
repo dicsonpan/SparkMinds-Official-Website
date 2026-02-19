@@ -688,7 +688,7 @@ const renderParagraphs = (text: string | undefined, style: any) => {
   }
 
   const lines = text
-    .split(/\r?\n/)
+    .split(/\r\n|\r|\n|\u2028|\u2029/)
     .map((line) => line.trim())
     .filter(Boolean);
 
@@ -707,14 +707,22 @@ const renderParagraphsWithIndent = (text: string | undefined, style: any) => {
   if (!text) return null;
 
   const paragraphs = text
-    .split(/\r?\n/)
+    .split(/\r\n|\r|\n|\u2028|\u2029/)
     .map((line) => line.replace(/^[\s\u3000]+/, '').trim())
     .filter(Boolean);
 
   if (!paragraphs.length) return null;
 
-  const mergedText = paragraphs.map((line) => `\u3000\u3000${line}`).join('\n');
-  return <Text style={style}>{mergedText}</Text>;
+  return (
+    <View>
+      {paragraphs.map((line, index) => (
+        <Text key={`${index}-${line.slice(0, 12)}`} style={style}>
+          <Text>{'\u3000\u3000'}</Text>
+          {line}
+        </Text>
+      ))}
+    </View>
+  );
 };
 
 const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, theme }) => {

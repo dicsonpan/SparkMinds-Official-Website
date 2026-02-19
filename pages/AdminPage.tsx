@@ -730,8 +730,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                                       <label className="block text-xs font-bold text-purple-700 mb-2 text-center">头像</label>
                                                       <div className="relative w-24 h-24 rounded-full bg-slate-200 overflow-hidden group/avatar cursor-pointer border-2 border-white shadow-md">
                                                           {b.data.avatar_url ? <img src={b.data.avatar_url} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-slate-400"><Icons.User size={32}/></div>}
-                                                          <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={e => handleImageUpload(e, 'avatar', b.id)} />
-                                                          <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 text-white text-xs font-bold">更换</div>
+                                                          {/* Corrected: Input must be clickable. Overlay text should ignore events */}
+                                                          <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 text-white text-xs font-bold pointer-events-none">更换</div>
+                                                          <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer z-10" onChange={e => handleImageUpload(e, 'avatar', b.id)} />
                                                       </div>
                                                   </div>
                                                   <div className="flex-1 space-y-3">

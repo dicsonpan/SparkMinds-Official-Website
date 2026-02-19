@@ -266,7 +266,7 @@ export const StudentPortfolioPage: React.FC = () => {
                 {heroImages.length > 0 && (
                     <div className="absolute top-0 left-0 w-full h-full -z-10 flex flex-col opacity-20">
                          {heroImages.map((url, idx) => (
-                             <div key={idx} className="relative w-full flex-1 min-h-[50%]">
+                             <div key={idx} className="relative w-full flex-1 overflow-hidden">
                                 <img src={url} className="w-full h-full object-cover blur-sm" />
                              </div>
                          ))}

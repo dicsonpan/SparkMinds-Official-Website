@@ -481,11 +481,11 @@ const createStyles = (theme: PdfTheme) =>
     },
     mediaTwoColumnRow: {
       flexDirection: 'row',
+      width: '100%',
     },
     mediaImageFrameHalf: {
-      flexGrow: 1,
-      flexBasis: 0,
-      marginRight: 8,
+      width: '49%',
+      marginRight: '2%',
     },
     mediaImageFrameFull: {
       width: '100%',
@@ -667,68 +667,25 @@ interface ProfileData {
   heroImages: string[];
 }
 
-const clampPercent = (value: number): number => Math.min(100, Math.max(0, value));
+const toFiniteNumber = (value: unknown, fallback = 0): number => {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const clampPercent = (value: unknown): number => Math.min(100, Math.max(0, toFiniteNumber(value, 0)));
 const composeStyles = (...styleItems: Array<any | undefined | false>) =>
   styleItems.filter(Boolean) as any;
 const FIRST_LINE_INDENT = 24;
 const LONG_IMAGE_RATIO_THRESHOLD = 2.8;
-const LONG_IMAGE_HINT_PATTERN = /(panorama|pano|banner|wide|long|strip|collage|长图|拼图)/i;
 
 interface ImageRowItem {
   url: string;
   fullRow: boolean;
 }
 
-const safeDecodeUrl = (value: string): string => {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
-};
-
-const parseAspectRatioFromUrl = (url: string): number | undefined => {
-  try {
-    const parsed = new URL(url);
-    const width =
-      Number(parsed.searchParams.get('width')) ||
-      Number(parsed.searchParams.get('w')) ||
-      Number(parsed.searchParams.get('img-width'));
-    const height =
-      Number(parsed.searchParams.get('height')) ||
-      Number(parsed.searchParams.get('h')) ||
-      Number(parsed.searchParams.get('img-height'));
-
-    if (width > 0 && height > 0) {
-      return width / height;
-    }
-  } catch {
-    // Ignore invalid URLs and continue with filename heuristics.
-  }
-
-  const normalized = safeDecodeUrl(url);
-  const match = normalized.match(/(?:^|[^0-9])(\d{3,5})[xX](\d{2,5})(?:[^0-9]|$)/);
-  if (!match) {
-    return undefined;
-  }
-
-  const width = Number(match[1]);
-  const height = Number(match[2]);
-  return width > 0 && height > 0 ? width / height : undefined;
-};
-
 const isUltraWideImage = (url: string, measuredAspectRatios: Record<string, number>): boolean => {
   const measuredRatio = measuredAspectRatios[url];
-  if (typeof measuredRatio === 'number') {
-    return measuredRatio >= LONG_IMAGE_RATIO_THRESHOLD;
-  }
-
-  const parsedRatio = parseAspectRatioFromUrl(url);
-  if (typeof parsedRatio === 'number') {
-    return parsedRatio >= LONG_IMAGE_RATIO_THRESHOLD;
-  }
-
-  return LONG_IMAGE_HINT_PATTERN.test(safeDecodeUrl(url).toLowerCase());
+  return Number.isFinite(measuredRatio) && measuredRatio >= LONG_IMAGE_RATIO_THRESHOLD;
 };
 
 const splitImagesIntoRows = (
@@ -953,7 +910,20 @@ const renderSkillsCategory = (
     return (
       <View key={key} style={composeStyles(styles.skillCategory, layoutStyle)} wrap={false}>
         <Text style={styles.skillCategoryTitle}>{category.name}</Text>
-        <RadarChart items={category.items} theme={theme} />
+        {category.items.map((item, index) => (
+          <View key={`${category.name}-${item.name}-${index}`} style={styles.skillRow}>
+            <View style={styles.skillHeader}>
+              <Text style={styles.skillName}>{item.name}</Text>
+              <Text style={styles.skillValue}>
+                {item.value}
+                {item.unit || '%'}
+              </Text>
+            </View>
+            <View style={styles.skillTrack}>
+              <View style={[styles.skillFill, { width: `${clampPercent(item.value)}%` }]} />
+            </View>
+          </View>
+        ))}
       </View>
     );
   }
@@ -962,16 +932,20 @@ const renderSkillsCategory = (
     return (
       <View key={key} style={composeStyles(styles.skillCategory, layoutStyle)} wrap={false}>
         <Text style={styles.skillCategoryTitle}>{category.name}</Text>
-        <View style={styles.circleGrid}>
-          {category.items.map((item, index) => (
-            <CircleSkill
-              key={`${category.name}-${item.name}-${index}`}
-              item={item}
-              theme={theme}
-              styles={styles}
-            />
-          ))}
-        </View>
+        {category.items.map((item, index) => (
+          <View key={`${category.name}-${item.name}-${index}`} style={styles.skillRow}>
+            <View style={styles.skillHeader}>
+              <Text style={styles.skillName}>{item.name}</Text>
+              <Text style={styles.skillValue}>
+                {item.value}
+                {item.unit || '%'}
+              </Text>
+            </View>
+            <View style={styles.skillTrack}>
+              <View style={[styles.skillFill, { width: `${clampPercent(item.value)}%` }]} />
+            </View>
+          </View>
+        ))}
       </View>
     );
   }
@@ -1119,7 +1093,7 @@ const renderBlock = (
                 <View
                   key={`${block.id}-timeline-row-${rowIndex}`}
                   style={styles.mediaTwoColumnRow}
-                  wrap={row.length !== 2}
+                  minPresenceAhead={rowIndex < timelineRows.length - 1 ? 210 : undefined}
                 >
                   {row.map((item, index) => {
                     const isSingleImage = timelineUrls.length === 1;
@@ -1163,6 +1137,7 @@ const renderBlock = (
       { label: 'Action / 行动', content: block.data.star_action },
       { label: 'Result / 结果', content: block.data.star_result },
     ];
+    const evidenceRows = splitImagesIntoRows(block.data.evidence_urls || [], shouldUseFullRowForImage);
 
     return (
       <View key={block.id} style={styles.section}>
@@ -1177,12 +1152,12 @@ const renderBlock = (
         </View>
         {block.data.evidence_urls && block.data.evidence_urls.length > 0 ? (
           <View style={styles.evidenceRow}>
-            {splitImagesIntoRows(block.data.evidence_urls, shouldUseFullRowForImage).map(
+            {evidenceRows.map(
               (row, rowIndex) => (
                 <View
                   key={`${block.id}-evidence-row-${rowIndex}`}
                   style={styles.mediaTwoColumnRow}
-                  wrap={row.length !== 2}
+                  minPresenceAhead={rowIndex < evidenceRows.length - 1 ? 210 : undefined}
                 >
                   {row.map((item, index) => {
                     const isSingleImage = block.data.evidence_urls?.length === 1;
@@ -1282,7 +1257,7 @@ const renderBlock = (
             <View
               key={`${block.id}-image-grid-row-${rowIndex}`}
               style={styles.mediaTwoColumnRow}
-              wrap={row.length !== 2}
+              minPresenceAhead={rowIndex < imageRows.length - 1 ? 210 : undefined}
             >
               {row.map((item, index) => {
                 const isSingleImage = urls.length === 1;

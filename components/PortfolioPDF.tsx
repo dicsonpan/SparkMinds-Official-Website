@@ -704,25 +704,17 @@ const renderParagraphs = (text: string | undefined, style: any) => {
 };
 
 const renderParagraphsWithIndent = (text: string | undefined, style: any) => {
-  if (!text) {
-    return null;
-  }
+  if (!text) return null;
 
-  const lines = text
+  const paragraphs = text
     .split(/\r?\n/)
-    .map((line) => line.trim())
+    .map((line) => line.replace(/^[\s\u3000]+/, '').trim())
     .filter(Boolean);
 
-  if (!lines.length) {
-    return null;
-  }
+  if (!paragraphs.length) return null;
 
-  return lines.map((line, index) => (
-    <Text key={`${line}-${index}`} style={composeStyles(style, index > 0 && { marginTop: 4 })}>
-      {'\u3000\u3000'}
-      {line}
-    </Text>
-  ));
+  const mergedText = paragraphs.map((line) => `\u3000\u3000${line}`).join('\n');
+  return <Text style={style}>{mergedText}</Text>;
 };
 
 const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, theme }) => {
@@ -836,7 +828,7 @@ const renderSkillsCategory = (
   if (category.layout === 'radar') {
     return (
       <View key={key} style={composeStyles(styles.skillCategory, layoutStyle)} wrap={false}>
-        <Text style={styles.skillCategoryTitle}>⚡ {category.name}</Text>
+        <Text style={styles.skillCategoryTitle}>{category.name}</Text>
         <RadarChart items={category.items} theme={theme} />
       </View>
     );
@@ -845,7 +837,7 @@ const renderSkillsCategory = (
   if (category.layout === 'circle') {
     return (
       <View key={key} style={composeStyles(styles.skillCategory, layoutStyle)} wrap={false}>
-        <Text style={styles.skillCategoryTitle}>⚡ {category.name}</Text>
+        <Text style={styles.skillCategoryTitle}>{category.name}</Text>
         <View style={styles.circleGrid}>
           {category.items.map((item, index) => (
             <CircleSkill
@@ -863,7 +855,7 @@ const renderSkillsCategory = (
   if (category.layout === 'stat_grid') {
     return (
       <View key={key} style={composeStyles(styles.skillCategory, layoutStyle)} wrap={false}>
-        <Text style={styles.skillCategoryTitle}>⚡ {category.name}</Text>
+        <Text style={styles.skillCategoryTitle}>{category.name}</Text>
         <View style={styles.statGrid}>
           {category.items.map((item, index) => (
             <View key={`${category.name}-${item.name}-${index}`} style={styles.statItem}>
@@ -881,7 +873,7 @@ const renderSkillsCategory = (
 
   return (
     <View key={key} style={composeStyles(styles.skillCategory, layoutStyle)} wrap={false}>
-      <Text style={styles.skillCategoryTitle}>⚡ {category.name}</Text>
+      <Text style={styles.skillCategoryTitle}>{category.name}</Text>
       {category.items.map((item, index) => (
         <View key={`${category.name}-${item.name}-${index}`} style={styles.skillRow}>
           <View style={styles.skillHeader}>

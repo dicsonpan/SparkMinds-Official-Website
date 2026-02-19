@@ -54,44 +54,56 @@ interface PdfTheme {
   barTrack: string;
   barFill: string;
   tableHeader: string;
+  radarStroke: string;
+  radarFill: string;
+  radarGrid: string;
 }
 
 const PDF_THEMES: Record<ThemeKey, PdfTheme> = {
   tech_dark: {
-    pageBackground: '#01092b',
-    cardBackground: '#101b3a',
-    cardSoftBackground: '#15254a',
-    text: '#e8efff',
-    muted: '#96a7c7',
-    accent: '#64b2ff',
-    border: '#2a4068',
-    barTrack: '#1a2b52',
-    barFill: '#4fa8ff',
-    tableHeader: '#17284c',
+    pageBackground: '#020617',
+    cardBackground: '#0f172a',
+    cardSoftBackground: '#13223d',
+    text: '#e2e8f0',
+    muted: '#94a3b8',
+    accent: '#67e8f9',
+    border: '#244d58',
+    barTrack: '#1e293b',
+    barFill: '#22d3ee',
+    tableHeader: '#12333f',
+    radarStroke: '#67e8f9',
+    radarFill: 'rgba(103,232,249,0.2)',
+    radarGrid: 'rgba(207,250,254,0.4)',
   },
   academic_light: {
-    pageBackground: '#f8fafc',
-    cardBackground: '#ffffff',
-    cardSoftBackground: '#f8fafc',
-    text: '#1e293b',
-    muted: '#64748b',
-    accent: '#1d4ed8',
-    border: '#cbd5e1',
-    barTrack: '#e2e8f0',
-    barFill: '#1e293b',
-    tableHeader: '#f1f5f9',
+    pageBackground: '#f4f1ea',
+    cardBackground: '#fffdf8',
+    cardSoftBackground: '#f2eee6',
+    text: '#1f2937',
+    muted: '#78716c',
+    accent: '#4338ca',
+    border: '#d6d3d1',
+    barTrack: '#e7e5e4',
+    barFill: '#4338ca',
+    tableHeader: '#ece7de',
+    radarStroke: '#4338ca',
+    radarFill: 'rgba(67,56,202,0.15)',
+    radarGrid: '#a8a29e',
   },
   creative_color: {
-    pageBackground: '#fff8f0',
-    cardBackground: '#ffffff',
-    cardSoftBackground: '#fff2e5',
-    text: '#1e293b',
-    muted: '#6b7280',
-    accent: '#9333ea',
-    border: '#e9d5ff',
-    barTrack: '#ffedd5',
-    barFill: '#a855f7',
-    tableHeader: '#fdf2f8',
+    pageBackground: '#fff7e8',
+    cardBackground: '#fffdf8',
+    cardSoftBackground: '#fff2df',
+    text: '#0f172a',
+    muted: '#92400e',
+    accent: '#0f766e',
+    border: '#f1c38f',
+    barTrack: '#fed7aa',
+    barFill: '#14b8a6',
+    tableHeader: '#ffedd5',
+    radarStroke: '#0d9488',
+    radarFill: 'rgba(20,184,166,0.18)',
+    radarGrid: '#fdba74',
   },
 };
 
@@ -179,7 +191,7 @@ const createStyles = (theme: PdfTheme) =>
       width: '100%',
       height: 142,
       borderRadius: 14,
-      objectFit: 'cover',
+      objectFit: 'contain',
       backgroundColor: theme.cardSoftBackground,
       borderWidth: 1,
       borderColor: theme.border,
@@ -348,10 +360,26 @@ const createStyles = (theme: PdfTheme) =>
       borderRadius: 10,
       backgroundColor: theme.cardSoftBackground,
       padding: 10,
+      marginBottom: 0,
+      height: '100%',
+    },
+    skillsMatrixRow: {
+      flexDirection: 'row',
+      marginRight: -8,
       marginBottom: 8,
     },
+    skillsMatrixCell: {
+      width: '48.5%',
+      marginRight: '3%',
+    },
+    skillsMatrixCellLast: {
+      marginRight: 0,
+    },
+    skillsMatrixCellPlaceholder: {
+      width: '48.5%',
+    },
     skillCategoryTitle: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: 700,
       color: theme.accent,
       marginBottom: 8,
@@ -468,17 +496,23 @@ const createStyles = (theme: PdfTheme) =>
       flexDirection: 'row',
       flexWrap: 'wrap',
       marginTop: 8,
+      marginRight: -6,
     },
-    timelineImage: {
-      width: 90,
-      height: 60,
-      borderRadius: 6,
-      marginRight: 6,
+    timelineImageFrame: {
+      width: '31.33%',
+      marginRight: '2%',
       marginBottom: 6,
-      objectFit: 'cover',
+      borderRadius: 7,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.cardSoftBackground,
+      padding: 4,
+    },
+    timelineImage: {
+      width: '100%',
+      height: 96,
+      borderRadius: 6,
+      objectFit: 'contain',
     },
     starTitle: {
       fontSize: 12,
@@ -517,17 +551,23 @@ const createStyles = (theme: PdfTheme) =>
       flexDirection: 'row',
       flexWrap: 'wrap',
       marginTop: 8,
+      marginRight: -6,
     },
-    evidenceImage: {
-      width: 92,
-      height: 60,
-      borderRadius: 5,
-      marginRight: 6,
+    evidenceImageFrame: {
+      width: '31.33%',
+      marginRight: '2%',
       marginBottom: 6,
-      objectFit: 'cover',
+      borderRadius: 6,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.cardSoftBackground,
+      padding: 4,
+    },
+    evidenceImage: {
+      width: '100%',
+      height: 96,
+      borderRadius: 5,
+      objectFit: 'contain',
     },
     table: {
       borderWidth: 1,
@@ -577,16 +617,21 @@ const createStyles = (theme: PdfTheme) =>
       flexWrap: 'wrap',
       marginRight: -6,
     },
-    imageGridItem: {
+    imageGridItemFrame: {
       width: '31.33%',
-      height: 96,
       marginRight: '2%',
       marginBottom: 6,
       borderRadius: 8,
-      objectFit: 'cover',
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.cardSoftBackground,
+      padding: 4,
+    },
+    imageGridItem: {
+      width: '100%',
+      height: 150,
+      borderRadius: 6,
+      objectFit: 'contain',
     },
     footer: {
       position: 'absolute',
@@ -685,9 +730,9 @@ const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, 
     return null;
   }
 
-  const size = 146;
+  const size = 152;
   const center = size / 2;
-  const radius = 46;
+  const radius = 48;
   const angleStep = (Math.PI * 2) / items.length;
 
   const getPoint = (value: number, index: number, scale = radius) => {
@@ -706,7 +751,7 @@ const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, 
             <Polygon
               key={level}
               points={items.map((_, index) => getPoint(level, index)).join(' ')}
-              stroke={theme.border}
+              stroke={theme.radarGrid}
               strokeWidth={1}
               fill="none"
             />
@@ -718,18 +763,18 @@ const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, 
               y1={center}
               x2={getPoint(100, index).split(',')[0]}
               y2={getPoint(100, index).split(',')[1]}
-              stroke={theme.border}
+              stroke={theme.radarGrid}
               strokeWidth={1}
             />
           ))}
-          <Polygon points={points} fill={theme.accent + '33'} stroke={theme.accent} strokeWidth={2} />
+          <Polygon points={points} fill={theme.radarFill} stroke={theme.radarStroke} strokeWidth={2} />
         </Svg>
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginRight: -8 }}>
         {items.map((item, index) => (
           <View key={`${item.name}-${index}`} style={{ width: '48%', marginRight: '2%', marginBottom: 4 }}>
             <Text style={{ fontSize: 8, color: theme.muted }}>
-              {item.name}: <Text style={{ color: theme.accent, fontWeight: 700 }}>{item.value}{item.unit || '%'}</Text>
+              {item.name}: <Text style={{ color: theme.radarStroke, fontWeight: 700 }}>{item.value}{item.unit || '%'}</Text>
             </Text>
           </View>
         ))}
@@ -786,11 +831,12 @@ const renderSkillsCategory = (
   theme: PdfTheme,
   styles: ReturnType<typeof createStyles>,
   key: string,
+  layoutStyle?: any,
 ) => {
   if (category.layout === 'radar') {
     return (
-      <View key={key} style={styles.skillCategory} wrap={false}>
-        <Text style={styles.skillCategoryTitle}>{category.name}</Text>
+      <View key={key} style={composeStyles(styles.skillCategory, layoutStyle)} wrap={false}>
+        <Text style={styles.skillCategoryTitle}>⚡ {category.name}</Text>
         <RadarChart items={category.items} theme={theme} />
       </View>
     );
@@ -798,8 +844,8 @@ const renderSkillsCategory = (
 
   if (category.layout === 'circle') {
     return (
-      <View key={key} style={styles.skillCategory} wrap={false}>
-        <Text style={styles.skillCategoryTitle}>{category.name}</Text>
+      <View key={key} style={composeStyles(styles.skillCategory, layoutStyle)} wrap={false}>
+        <Text style={styles.skillCategoryTitle}>⚡ {category.name}</Text>
         <View style={styles.circleGrid}>
           {category.items.map((item, index) => (
             <CircleSkill
@@ -816,8 +862,8 @@ const renderSkillsCategory = (
 
   if (category.layout === 'stat_grid') {
     return (
-      <View key={key} style={styles.skillCategory} wrap={false}>
-        <Text style={styles.skillCategoryTitle}>{category.name}</Text>
+      <View key={key} style={composeStyles(styles.skillCategory, layoutStyle)} wrap={false}>
+        <Text style={styles.skillCategoryTitle}>⚡ {category.name}</Text>
         <View style={styles.statGrid}>
           {category.items.map((item, index) => (
             <View key={`${category.name}-${item.name}-${index}`} style={styles.statItem}>
@@ -834,8 +880,8 @@ const renderSkillsCategory = (
   }
 
   return (
-    <View key={key} style={styles.skillCategory} wrap={false}>
-      <Text style={styles.skillCategoryTitle}>{category.name}</Text>
+    <View key={key} style={composeStyles(styles.skillCategory, layoutStyle)} wrap={false}>
+      <Text style={styles.skillCategoryTitle}>⚡ {category.name}</Text>
       {category.items.map((item, index) => (
         <View key={`${category.name}-${item.name}-${index}`} style={styles.skillRow}>
           <View style={styles.skillHeader}>
@@ -898,27 +944,75 @@ const renderBlock = (
   }
 
   if (block.type === 'skills_matrix') {
+    const categories = block.data.skills_categories || [];
+    const categoryRows: SkillCategory[][] = [];
+
+    for (let index = 0; index < categories.length; index += 2) {
+      categoryRows.push(categories.slice(index, index + 2));
+    }
+
     return (
       <View key={block.id} style={styles.section}>
-        <Text style={styles.sectionTitle}>{block.data.title || 'Skills Matrix'}</Text>
-        {block.data.skills_categories?.map((category, index) =>
-          renderSkillsCategory(category, theme, styles, `${block.id}-${category.name}-${index}`),
-        )}
+        <Text style={styles.sectionTitle}>{block.data.title || '技能矩阵'}</Text>
+        {categoryRows.map((row, rowIndex) => (
+          <View
+            key={`${block.id}-skills-row-${rowIndex}`}
+            style={composeStyles(
+              styles.skillsMatrixRow,
+              rowIndex === categoryRows.length - 1 && { marginBottom: 0 },
+            )}
+            wrap={false}
+          >
+            {row.map((category, colIndex) =>
+              renderSkillsCategory(
+                category,
+                theme,
+                styles,
+                `${block.id}-${category.name}-${rowIndex}-${colIndex}`,
+                composeStyles(
+                  styles.skillsMatrixCell,
+                  colIndex === row.length - 1 && styles.skillsMatrixCellLast,
+                ),
+              ),
+            )}
+            {row.length === 1 ? <View style={styles.skillsMatrixCellPlaceholder} /> : null}
+          </View>
+        ))}
       </View>
     );
   }
 
   if (block.type === 'timeline_node') {
+    const timelineUrls = block.data.urls || [];
+
     return (
       <View key={block.id} style={styles.section}>
         <View style={styles.timelineItem}>
           {block.data.date ? <Text style={styles.timelineDate}>{block.data.date}</Text> : null}
           {block.data.title ? <Text style={styles.timelineTitle}>{block.data.title}</Text> : null}
           {renderParagraphs(block.data.content, styles.timelineText)}
-          {block.data.urls && block.data.urls.length > 0 ? (
+          {timelineUrls.length > 0 ? (
             <View style={styles.timelineImageRow}>
-              {block.data.urls.map((url, index) => (
-                <Image key={`${url}-${index}`} src={url} style={styles.timelineImage} />
+              {timelineUrls.map((url, index) => (
+                <View
+                  key={`${url}-${index}`}
+                  style={composeStyles(
+                    styles.timelineImageFrame,
+                    timelineUrls.length === 1 && { width: '100%', marginRight: 0 },
+                    timelineUrls.length === 2 && { width: '49%', marginRight: '2%' },
+                    timelineUrls.length === 2 && index === 1 && { marginRight: 0 },
+                    timelineUrls.length > 2 && index % 3 === 2 && { marginRight: 0 },
+                  )}
+                >
+                  <Image
+                    src={url}
+                    style={composeStyles(
+                      styles.timelineImage,
+                      timelineUrls.length === 1 && { height: 220 },
+                      timelineUrls.length === 2 && { height: 170 },
+                    )}
+                  />
+                </View>
               ))}
             </View>
           ) : null}
@@ -949,7 +1043,25 @@ const renderBlock = (
         {block.data.evidence_urls && block.data.evidence_urls.length > 0 ? (
           <View style={styles.evidenceRow}>
             {block.data.evidence_urls.map((url, index) => (
-              <Image key={`${url}-${index}`} src={url} style={styles.evidenceImage} />
+              <View
+                key={`${url}-${index}`}
+                style={composeStyles(
+                  styles.evidenceImageFrame,
+                  block.data.evidence_urls?.length === 1 && { width: '100%', marginRight: 0 },
+                  block.data.evidence_urls?.length === 2 && { width: '49%', marginRight: '2%' },
+                  block.data.evidence_urls?.length === 2 && index === 1 && { marginRight: 0 },
+                  (block.data.evidence_urls?.length || 0) > 2 && index % 3 === 2 && { marginRight: 0 },
+                )}
+              >
+                <Image
+                  src={url}
+                  style={composeStyles(
+                    styles.evidenceImage,
+                    block.data.evidence_urls?.length === 1 && { height: 220 },
+                    block.data.evidence_urls?.length === 2 && { height: 170 },
+                  )}
+                />
+              </View>
             ))}
           </View>
         ) : null}
@@ -1013,26 +1125,34 @@ const renderBlock = (
 
     const dynamicStyle =
       urls.length === 1
-        ? { width: '100%', height: 180, marginRight: 0 }
+        ? { width: '100%', marginRight: 0 }
         : urls.length === 2
-          ? { width: '49%', height: 130, marginRight: '1%' }
+          ? { width: '49%', marginRight: '2%' }
           : undefined;
+
+    const imageStyle =
+      urls.length === 1
+        ? { height: 280 }
+        : urls.length === 2
+          ? { height: 220 }
+          : { height: 160 };
 
     return (
       <View key={block.id} style={styles.section}>
         {block.data.title ? <Text style={styles.sectionTitle}>{block.data.title}</Text> : null}
         <View style={styles.imageGrid}>
           {urls.map((url, index) => (
-            <Image
+            <View
               key={`${url}-${index}`}
-              src={url}
               style={composeStyles(
-                styles.imageGridItem,
+                styles.imageGridItemFrame,
                 dynamicStyle,
                 urls.length > 2 && index % 3 === 2 && { marginRight: 0 },
                 urls.length === 2 && index === 1 && { marginRight: 0 },
               )}
-            />
+            >
+              <Image src={url} style={composeStyles(styles.imageGridItem, imageStyle)} />
+            </View>
           ))}
         </View>
       </View>
@@ -1054,7 +1174,7 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        <View style={styles.coverSection} wrap={false}>
+        <View style={styles.coverSection}>
           <View style={styles.coverColumns}>
             <View style={styles.coverLeft}>
               <View style={styles.coverAvatarWrap}>

@@ -1049,7 +1049,7 @@ const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, 
               {lp.item.name}
             </Text>
             <Text style={{ fontSize: 6.5, color: theme.radarStroke, fontWeight: 700, textAlign: lp.textAlign as any }}>
-              {lp.item.value}{lp.item.unit || '%'}
+              {lp.item.value}{lp.item.unit || ''}
             </Text>
           </View>
         ))}
@@ -1115,7 +1115,7 @@ const CircleSkill: React.FC<{ item: SkillItem; theme: PdfTheme; styles: ReturnTy
             fontWeight: 700,
           }}
         >
-          {item.value}{item.unit || '%'}
+          {item.value}{item.unit || ''}
         </Text>
       </View>
       <Text style={styles.circleLabel}>{item.name}</Text>
@@ -1143,7 +1143,7 @@ const renderSkillsCategory = (
                 <Text style={styles.skillName}>{item.name}</Text>
                 <Text style={styles.skillValue}>
                   {item.value}
-                  {item.unit || '%'}
+                  {item.unit || ''}
                 </Text>
               </View>
               <View style={styles.skillTrack}>
@@ -1202,7 +1202,7 @@ const renderSkillsCategory = (
             <Text style={styles.skillName}>{item.name}</Text>
             <Text style={styles.skillValue}>
               {item.value}
-              {item.unit || '%'}
+              {item.unit || ''}
             </Text>
           </View>
           <View style={styles.skillTrack}>
@@ -1223,6 +1223,10 @@ const renderBlock = (
 ): React.ReactNode => {
   if (block.type === 'profile_header') {
     return null;
+  }
+
+  if (block.type === 'page_break') {
+    return <View key={block.id} break />;
   }
 
   if (block.type === 'section_heading') {

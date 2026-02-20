@@ -419,6 +419,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                 { name: '核心能力', layout: 'radar', items: [{ name: '编程', value: 80, unit: '' }] }
             ]
         };
+    } else if (type === 'page_break') {
+        initialData = {};
     }
 
     const newBlock: ContentBlock = {
@@ -1366,6 +1368,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                   <button onClick={() => addContentBlock('image_grid')} className="text-xs bg-slate-100 px-3 py-1.5 rounded-lg border hover:bg-slate-200">+ 图集</button>
                                   <button onClick={() => addContentBlock('info_list')} className="text-xs bg-orange-100 text-orange-700 px-3 py-1.5 rounded-lg border border-orange-200 font-bold hover:bg-orange-200">+ 个人信息</button>
                                   <button onClick={() => addContentBlock('table')} className="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-lg border border-green-200 font-bold hover:bg-green-200">+ 表格</button>
+                                  <button onClick={() => addContentBlock('page_break')} className="text-xs bg-gray-100 text-gray-500 px-3 py-1.5 rounded-lg border border-gray-300 font-bold hover:bg-gray-200">+ 分页符</button>
                               </div>
                           </div>
 
@@ -1374,7 +1377,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                const blockIsPolishing = polishingBlockId === b.id;
                                const blockCanPolish = canPolishBlock(b as ContentBlock);
                                return (
-                               <div key={b.id} className={`border rounded-xl relative group transition-all ${b.type === 'profile_header' ? 'bg-purple-50 border-purple-200 ring-2 ring-purple-100' : b.type === 'skills_matrix' ? 'bg-pink-50 border-pink-200' : 'bg-white border-slate-200 shadow-sm'}`}>
+                               <div key={b.id} className={`border rounded-xl relative group transition-all ${b.type === 'profile_header' ? 'bg-purple-50 border-purple-200 ring-2 ring-purple-100' : b.type === 'skills_matrix' ? 'bg-pink-50 border-pink-200' : b.type === 'page_break' ? 'bg-gray-50 border-dashed border-gray-300' : 'bg-white border-slate-200 shadow-sm'}`}>
                                   {/* Block Controls */}
                                   <div className="absolute right-4 top-4 flex gap-1 opacity-20 group-hover:opacity-100 transition-opacity z-10">
                                       <button onClick={() => moveContentBlock(i, 'up')} className="p-1 hover:bg-slate-200 rounded"><Icons.ArrowUp size={14}/></button>
@@ -1725,6 +1728,17 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                                       <label className="w-10 h-10 border border-dashed flex items-center justify-center cursor-pointer hover:bg-slate-100"><Icons.Plus size={16}/><input type="file" className="hidden" onChange={e => handleImageUpload(e, 'standard', b.id)} /></label>
                                                   </div>
                                               )}
+                                          </div>
+                                      )}
+
+                                      {/* === PAGE BREAK (PDF only) === */}
+                                      {b.type === 'page_break' && (
+                                          <div className="flex items-center gap-3 py-1">
+                                              <div className="flex-1 border-t-2 border-dashed border-gray-300" />
+                                              <span className="text-xs text-gray-400 font-bold uppercase tracking-wider whitespace-nowrap flex items-center gap-1.5">
+                                                  <Icons.Scissors size={14} /> PDF 分页符
+                                              </span>
+                                              <div className="flex-1 border-t-2 border-dashed border-gray-300" />
                                           </div>
                                       )}
                                   </div>

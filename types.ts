@@ -76,7 +76,8 @@ export type ContentBlockType =
   | 'timeline_node' 
   | 'section_heading' 
   | 'info_list' 
-  | 'table';
+  | 'table'
+  | 'page_break';    // PDF-only: forces a page break in exported PDF
 
 export type PortfolioTheme = 'tech_dark' | 'academic_light' | 'creative_color';
 export type SkillsLayout = 'bar' | 'radar' | 'circle' | 'stat_grid';

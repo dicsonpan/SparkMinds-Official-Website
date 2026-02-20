@@ -188,7 +188,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
               .map((item: any) => ({
                 name: typeof item.name === 'string' ? item.name : '能力项',
                 value: Number.isFinite(Number(item.value)) ? Number(item.value) : 80,
-                unit: typeof item.unit === 'string' ? item.unit : '%'
+                unit: typeof item.unit === 'string' ? item.unit : ''
               }))
           : []
       }));
@@ -416,7 +416,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
     } else if (type === 'skills_matrix') {
         initialData = {
             skills_categories: [
-                { name: '核心能力', layout: 'radar', items: [{ name: '编程', value: 80, unit: '%' }] }
+                { name: '核心能力', layout: 'radar', items: [{ name: '编程', value: 80, unit: '' }] }
             ]
         };
     }
@@ -828,7 +828,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
             items: (cat.items || []).map((item) => ({
               name: item.name,
               value: item.value,
-              unit: item.unit || '%'
+              unit: item.unit || ''
             }))
           }))
         };
@@ -983,7 +983,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
               items: (category.items || []).map((item, itemIndex) => ({
                 ...item,
                 name: asString(polishedItems[itemIndex]?.name, item.name),
-                unit: asString(polishedItems[itemIndex]?.unit, item.unit || '%')
+                unit: asString(polishedItems[itemIndex]?.unit, item.unit || '')
               }))
             };
           })
@@ -1030,7 +1030,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
   "student_name": "可选",
   "content_blocks": [
     { "type": "profile_header", "data": { "student_title": "", "summary_bio": "" } },
-    { "type": "skills_matrix", "data": { "skills_categories": [ { "name": "", "layout": "bar", "items": [ { "name": "", "value": 80, "unit": "%" } ] } ] } },
+    { "type": "skills_matrix", "data": { "skills_categories": [ { "name": "", "layout": "bar", "items": [ { "name": "", "value": 80, "unit": "" } ] } ] } },
     { "type": "section_heading", "data": { "title": "" } },
     { "type": "timeline_node", "data": { "date": "", "title": "", "content": "" } },
     { "type": "project_highlight", "data": { "title": "", "star_situation": "", "star_task": "", "star_action": "", "star_result": "" } },
@@ -1493,7 +1493,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                                                   }} />
                                                                   <input
                                                                       className="text-[10px] bg-transparent w-10 text-slate-400 outline-none"
-                                                                      value={skill.unit ?? '%'}
+                                                                      value={skill.unit ?? ''}
                                                                       onChange={e => {
                                                                           const newCats = [...b.data.skills_categories];
                                                                           newCats[catIdx].items[skIdx].unit = e.target.value;
@@ -1504,7 +1504,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ defaultTab = 'bookings' })
                                                               </div>
                                                           ))}
                                                           <button onClick={() => {
-                                                              const newCats = [...b.data.skills_categories]; newCats[catIdx].items.push({ name: '新技能', value: 80, unit: '%' });
+                                                              const newCats = [...b.data.skills_categories]; newCats[catIdx].items.push({ name: '新技能', value: 80, unit: '' });
                                                               updateContentBlock(b.id, 'skills_categories', newCats);
                                                           }} className="text-xs text-pink-500 font-bold bg-pink-50 p-1 rounded hover:bg-pink-100">+ 加项</button>
                                                       </div>

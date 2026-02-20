@@ -930,9 +930,10 @@ const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, 
     return null;
   }
 
-  const size = 152;
-  const center = size / 2;
   const radius = 48;
+  const labelMargin = 50;
+  const size = (radius + labelMargin) * 2;
+  const center = size / 2;
   const angleStep = (Math.PI * 2) / items.length;
 
   const getPointCoords = (value: number, index: number, scale = radius): { x: number; y: number } => {
@@ -950,24 +951,65 @@ const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, 
       return `${p.x},${p.y}`;
     }).join(' ');
 
-  const points = items.map((item, index) => {
+  const dataPoints = items.map((item, index) => {
     const p = getPointCoords(item.value, index);
     return `${p.x},${p.y}`;
   }).join(' ');
 
+  // Build a lower-opacity fill by replacing the last 2 hex chars (alpha) with "1A" (~10%)
+  const baseFillColor = theme.radarFill.length === 9 ? theme.radarFill.slice(0, 7) : theme.radarFill;
+  const lowOpacityFill = baseFillColor + '1A';
+
+  // Compute label positions outside the outermost grid ring
+  const labelOffset = radius + 18;
+  const labels = items.map((item, index) => {
+    const angle = index * angleStep - Math.PI / 2;
+    const x = center + labelOffset * Math.cos(angle);
+    const y = center + labelOffset * Math.sin(angle);
+
+    const cosA = Math.cos(angle);
+    const sinA = Math.sin(angle);
+    let textAlign: 'center' | 'left' | 'right' = 'center';
+    let left = x;
+    let top = y;
+
+    // Adjust position and alignment based on which side of the chart the label is on
+    if (cosA > 0.3) {
+      textAlign = 'left';
+    } else if (cosA < -0.3) {
+      textAlign = 'right';
+      left = x - 50;
+    } else {
+      left = x - 25;
+    }
+
+    // Vertical adjustment
+    if (sinA < -0.3) {
+      top = y - 16;
+    } else if (sinA > 0.3) {
+      top = y + 2;
+    } else {
+      top = y - 6;
+    }
+
+    return { left, top, textAlign, item };
+  });
+
   return (
-    <View>
-      <View style={{ alignItems: 'center', marginBottom: 6 }}>
+    <View style={{ alignItems: 'center' }}>
+      <View style={{ width: size, height: size, position: 'relative' }}>
         <Svg width={size} height={size}>
+          {/* Grid rings */}
           {[25, 50, 75, 100].map((level) => (
             <Polygon
               key={level}
               points={toPointsStr(level)}
               stroke={theme.radarGrid}
-              strokeWidth={1}
+              strokeWidth={0.75}
               fill="none"
             />
           ))}
+          {/* Axis lines */}
           {items.map((_, index) => {
             const p = getPointCoords(100, index);
             return (
@@ -978,18 +1020,36 @@ const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, 
                 x2={p.x}
                 y2={p.y}
                 stroke={theme.radarGrid}
-                strokeWidth={1}
+                strokeWidth={0.75}
               />
             );
           })}
-          <Polygon points={points} fill={theme.radarFill} stroke={theme.radarStroke} strokeWidth={2} />
+          {/* Data polygon with low opacity fill */}
+          <Polygon points={dataPoints} fill={lowOpacityFill} stroke={theme.radarStroke} strokeWidth={1.5} />
+          {/* Data point dots */}
+          {items.map((item, index) => {
+            const p = getPointCoords(item.value, index);
+            return (
+              <Circle key={`dot-${index}`} cx={p.x} cy={p.y} r={2.5} fill={theme.radarStroke} />
+            );
+          })}
         </Svg>
-      </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginRight: -8 }}>
-        {items.map((item, index) => (
-          <View key={`${item.name}-${index}`} style={{ width: '48%', marginRight: '2%', marginBottom: 4 }}>
-            <Text style={{ fontSize: 8, color: theme.muted }}>
-              {item.name}: <Text style={{ color: theme.radarStroke, fontWeight: 700 }}>{item.value}{item.unit || '%'}</Text>
+        {/* Labels positioned absolutely around the chart */}
+        {labels.map((lp, index) => (
+          <View
+            key={`label-${index}`}
+            style={{
+              position: 'absolute',
+              left: lp.left,
+              top: lp.top,
+              width: 50,
+            }}
+          >
+            <Text style={{ fontSize: 6.5, color: theme.text, fontWeight: 700, textAlign: lp.textAlign as any }}>
+              {lp.item.name}
+            </Text>
+            <Text style={{ fontSize: 6.5, color: theme.radarStroke, fontWeight: 700, textAlign: lp.textAlign as any }}>
+              {lp.item.value}{lp.item.unit || '%'}
             </Text>
           </View>
         ))}
@@ -997,6 +1057,8 @@ const RadarChart: React.FC<{ items: SkillItem[]; theme: PdfTheme }> = ({ items, 
     </View>
   );
 };
+
+
 
 const describeArc = (cx: number, cy: number, r: number, startAngle: number, endAngle: number): string => {
   const round = (n: number) => Math.round(n * 100) / 100;
@@ -1266,13 +1328,14 @@ const renderBlock = (
                     {row.map((item, index) => {
                       const isSingleImage = timelineUrls.length === 1;
                       const fullRow = item.fullRow || isSingleImage;
+                      const isOrphan = !fullRow && !isTwoCol;
 
                       return (
                         <View
                           key={`${item.url}-${index}`}
                           style={composeStyles(
                             styles.timelineImageFrame,
-                            fullRow
+                            fullRow || isOrphan
                               ? styles.mediaImageFrameFull
                               : { width: rowLayout!.widths[index] },
                           )}
@@ -1281,8 +1344,8 @@ const renderBlock = (
                             src={sanitizeImageUrl(item.url)}
                             style={composeStyles(
                               styles.timelineImage,
-                              fullRow
-                                ? pickFullRowImageHeight(item, isSingleImage, {
+                              fullRow || isOrphan
+                                ? pickFullRowImageHeight(item, isSingleImage || isOrphan, {
                                     ultraWide: styles.timelineImageUltraWide,
                                     wide: styles.timelineImageWide,
                                     tall: styles.timelineImageTall,
@@ -1340,13 +1403,14 @@ const renderBlock = (
                   {row.map((item, index) => {
                     const isSingleImage = block.data.evidence_urls?.length === 1;
                     const fullRow = item.fullRow || isSingleImage;
+                    const isOrphan = !fullRow && !isTwoCol;
 
                     return (
                       <View
                         key={`${item.url}-${index}`}
                         style={composeStyles(
                           styles.evidenceImageFrame,
-                          fullRow
+                          fullRow || isOrphan
                             ? styles.mediaImageFrameFull
                             : { width: rowLayout!.widths[index] },
                         )}
@@ -1355,8 +1419,8 @@ const renderBlock = (
                           src={sanitizeImageUrl(item.url)}
                           style={composeStyles(
                             styles.evidenceImage,
-                            fullRow
-                              ? pickFullRowImageHeight(item, !!isSingleImage, {
+                            fullRow || isOrphan
+                              ? pickFullRowImageHeight(item, !!isSingleImage || isOrphan, {
                                   ultraWide: styles.evidenceImageUltraWide,
                                   wide: styles.evidenceImageWide,
                                   tall: styles.evidenceImageTall,
@@ -1450,13 +1514,14 @@ const renderBlock = (
                 {row.map((item, index) => {
                   const isSingleImage = urls.length === 1;
                   const fullRow = item.fullRow || isSingleImage;
+                  const isOrphan = !fullRow && !isTwoCol;
 
                   return (
                     <View
                       key={`${item.url}-${index}`}
                       style={composeStyles(
                         styles.imageGridItemFrame,
-                        fullRow
+                        fullRow || isOrphan
                           ? styles.mediaImageFrameFull
                           : { width: rowLayout!.widths[index] },
                       )}
@@ -1465,8 +1530,8 @@ const renderBlock = (
                         src={sanitizeImageUrl(item.url)}
                         style={composeStyles(
                           styles.imageGridItem,
-                          fullRow
-                            ? pickFullRowImageHeight(item, isSingleImage, {
+                          fullRow || isOrphan
+                            ? pickFullRowImageHeight(item, isSingleImage || isOrphan, {
                                 ultraWide: styles.imageGridItemUltraWide,
                                 wide: styles.imageGridItemWide,
                                 tall: styles.imageGridItemTall,

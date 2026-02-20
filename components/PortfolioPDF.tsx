@@ -491,15 +491,8 @@ const createStyles = (theme: PdfTheme) =>
       width: '100%',
       justifyContent: 'space-between',
     },
-    mediaImageFrameHalf: {
-      width: '49%',
-      marginRight: 0,
-    },
     mediaImageFrameFull: {
       width: '100%',
-      marginRight: 0,
-    },
-    mediaImageFrameLastInRow: {
       marginRight: 0,
     },
     timelineImageFrame: {
@@ -514,9 +507,6 @@ const createStyles = (theme: PdfTheme) =>
       width: '100%',
       borderRadius: 6,
       objectFit: 'contain',
-    },
-    timelineImageTwoColumn: {
-      height: 180,
     },
     timelineImageUltraWide: {
       height: 110,
@@ -578,9 +568,6 @@ const createStyles = (theme: PdfTheme) =>
       width: '100%',
       borderRadius: 5,
       objectFit: 'contain',
-    },
-    evidenceImageTwoColumn: {
-      height: 180,
     },
     evidenceImageUltraWide: {
       height: 110,
@@ -652,9 +639,6 @@ const createStyles = (theme: PdfTheme) =>
       width: '100%',
       borderRadius: 6,
       objectFit: 'contain',
-    },
-    imageGridItemTwoColumn: {
-      height: 190,
     },
     imageGridItemUltraWide: {
       height: 120,
@@ -730,6 +714,7 @@ interface ImageRowItem {
   url: string;
   fullRow: boolean;
   layout: ImageLayout;
+  aspectRatio: number; // width / height, defaults to 1 if unknown
 }
 
 const classifyImage = (url: string, measuredAspectRatios: Record<string, number>): ImageLayout => {
@@ -747,6 +732,7 @@ const shouldImageBeFullRow = (layout: ImageLayout): boolean =>
 const splitImagesIntoRows = (
   urls: string[],
   classifyFn: (url: string) => ImageLayout,
+  ratios: Record<string, number>,
 ): ImageRowItem[][] => {
   const rows: ImageRowItem[][] = [];
   let currentRow: ImageRowItem[] = [];
@@ -754,7 +740,9 @@ const splitImagesIntoRows = (
   urls.forEach((url) => {
     const layout = classifyFn(url);
     const fullRow = shouldImageBeFullRow(layout);
-    const item: ImageRowItem = { url, fullRow, layout };
+    const ar = ratios[url];
+    const aspectRatio = Number.isFinite(ar) && ar > 0 ? ar : 1;
+    const item: ImageRowItem = { url, fullRow, layout, aspectRatio };
 
     if (item.fullRow) {
       if (currentRow.length > 0) {
@@ -779,17 +767,68 @@ const splitImagesIntoRows = (
   return rows;
 };
 
+/** Gap between two images in a row (percentage of total width). */
+const TWO_COL_GAP_PCT = 2;
+
+/**
+ * For a two-image row, compute each image's width% and a shared row height
+ * so that both images display at their natural proportions with minimal wasted space.
+ *
+ * Algorithm:
+ *   Given aspect ratios r1, r2 and a target row height H:
+ *     image1 natural width = r1 * H
+ *     image2 natural width = r2 * H
+ *   We want them to fit side-by-side in the available width (100% - gap).
+ *   So width1% = r1 / (r1 + r2) * (100 - gap)
+ *      width2% = r2 / (r1 + r2) * (100 - gap)
+ *
+ *   The row height is then derived from the available pixel width:
+ *     A4 content width ≈ 535pt (595 - 2*30 padding)
+ *     H = (width1_pct / 100 * 535) / r1
+ *   We clamp H between a min and max to keep things reasonable.
+ */
+const A4_CONTENT_WIDTH = 535; // pt, after page padding
+const TWO_COL_MIN_HEIGHT = 120;
+const TWO_COL_MAX_HEIGHT = 260;
+const TWO_COL_DEFAULT_HEIGHT = 180;
+
+interface RowLayout {
+  widths: string[];   // e.g. ["62%", "36%"]
+  height: number;     // shared row height in pt
+}
+
+const computeTwoColLayout = (items: ImageRowItem[]): RowLayout => {
+  if (items.length !== 2) {
+    return { widths: ['49%'], height: TWO_COL_DEFAULT_HEIGHT };
+  }
+
+  const r1 = items[0].aspectRatio;
+  const r2 = items[1].aspectRatio;
+  const usable = 100 - TWO_COL_GAP_PCT;
+
+  const w1Pct = (r1 / (r1 + r2)) * usable;
+  const w2Pct = usable - w1Pct;
+
+  // Compute ideal height based on the first image's allocated width
+  const w1Pt = (w1Pct / 100) * A4_CONTENT_WIDTH;
+  let height = w1Pt / r1;
+  height = Math.max(TWO_COL_MIN_HEIGHT, Math.min(TWO_COL_MAX_HEIGHT, Math.round(height)));
+
+  return {
+    widths: [`${Math.round(w1Pct * 10) / 10}%`, `${Math.round(w2Pct * 10) / 10}%`],
+    height,
+  };
+};
+
 /**
  * Pick the correct height style for an image based on its layout classification.
- * @param item - The image row item with layout info
- * @param isSingleImage - Whether this is the only image in the entire block
- * @param heightStyles - Map of layout → style object
+ * For two-column rows, height is computed dynamically by computeTwoColLayout.
+ * This helper is only used for full-row and single-image cases.
  */
-const pickImageHeightStyle = (
+const pickFullRowImageHeight = (
   item: ImageRowItem,
   isSingleImage: boolean,
   heightStyles: {
-    twoColumn: any;
     ultraWide: any;
     wide: any;
     tall: any;
@@ -805,7 +844,7 @@ const pickImageHeightStyle = (
     case 'tall':
       return heightStyles.tall;
     default:
-      return heightStyles.twoColumn;
+      return heightStyles.single;
   }
 };
 
@@ -1118,6 +1157,7 @@ const renderBlock = (
   theme: PdfTheme,
   styles: ReturnType<typeof createStyles>,
   classifyImageFn: (url: string) => ImageLayout,
+  measuredRatios: Record<string, number>,
 ): React.ReactNode => {
   if (block.type === 'profile_header') {
     return null;
@@ -1202,7 +1242,7 @@ const renderBlock = (
 
   if (block.type === 'timeline_node') {
     const timelineUrls = block.data.urls || [];
-    const timelineRows = splitImagesIntoRows(timelineUrls, classifyImageFn);
+    const timelineRows = splitImagesIntoRows(timelineUrls, classifyImageFn, measuredRatios);
 
     return (
       <View key={block.id} style={styles.section}>
@@ -1212,46 +1252,51 @@ const renderBlock = (
           {renderParagraphs(block.data.content, styles.timelineText)}
           {timelineUrls.length > 0 ? (
             <View style={styles.timelineImageRow}>
-              {timelineRows.map((row, rowIndex) => (
-                <View
-                  key={`${block.id}-timeline-row-${rowIndex}`}
-                  style={styles.mediaTwoColumnRow}
-                  wrap={row.length !== 2}
-                  minPresenceAhead={rowIndex < timelineRows.length - 1 ? 210 : undefined}
-                >
-                  {row.map((item, index) => {
-                    const isSingleImage = timelineUrls.length === 1;
-                    const fullRow = item.fullRow || isSingleImage;
+              {timelineRows.map((row, rowIndex) => {
+                const isTwoCol = row.length === 2 && !row[0].fullRow && !row[1].fullRow;
+                const rowLayout = isTwoCol ? computeTwoColLayout(row) : null;
 
-                    return (
-                      <View
-                        key={`${item.url}-${index}`}
-                        style={composeStyles(
-                          styles.timelineImageFrame,
-                          fullRow ? styles.mediaImageFrameFull : styles.mediaImageFrameHalf,
-                          !fullRow &&
-                            (row.length === 1 || index === row.length - 1) &&
-                            styles.mediaImageFrameLastInRow,
-                        )}
-                      >
-                        <Image
-                          src={sanitizeImageUrl(item.url)}
+                return (
+                  <View
+                    key={`${block.id}-timeline-row-${rowIndex}`}
+                    style={styles.mediaTwoColumnRow}
+                    wrap={!isTwoCol}
+                    minPresenceAhead={rowIndex < timelineRows.length - 1 ? 210 : undefined}
+                  >
+                    {row.map((item, index) => {
+                      const isSingleImage = timelineUrls.length === 1;
+                      const fullRow = item.fullRow || isSingleImage;
+
+                      return (
+                        <View
+                          key={`${item.url}-${index}`}
                           style={composeStyles(
-                            styles.timelineImage,
-                            pickImageHeightStyle(item, isSingleImage, {
-                              twoColumn: styles.timelineImageTwoColumn,
-                              ultraWide: styles.timelineImageUltraWide,
-                              wide: styles.timelineImageWide,
-                              tall: styles.timelineImageTall,
-                              single: styles.timelineImageSingleRow,
-                            }),
+                            styles.timelineImageFrame,
+                            fullRow
+                              ? styles.mediaImageFrameFull
+                              : { width: rowLayout!.widths[index] },
                           )}
-                        />
-                      </View>
-                    );
-                  })}
-                </View>
-              ))}
+                        >
+                          <Image
+                            src={sanitizeImageUrl(item.url)}
+                            style={composeStyles(
+                              styles.timelineImage,
+                              fullRow
+                                ? pickFullRowImageHeight(item, isSingleImage, {
+                                    ultraWide: styles.timelineImageUltraWide,
+                                    wide: styles.timelineImageWide,
+                                    tall: styles.timelineImageTall,
+                                    single: styles.timelineImageSingleRow,
+                                  })
+                                : { height: rowLayout!.height },
+                            )}
+                          />
+                        </View>
+                      );
+                    })}
+                  </View>
+                );
+              })}
             </View>
           ) : null}
         </View>
@@ -1266,7 +1311,7 @@ const renderBlock = (
       { label: 'Action / 行动', content: block.data.star_action },
       { label: 'Result / 结果', content: block.data.star_result },
     ];
-    const evidenceRows = splitImagesIntoRows(block.data.evidence_urls || [], classifyImageFn);
+    const evidenceRows = splitImagesIntoRows(block.data.evidence_urls || [], classifyImageFn, measuredRatios);
 
     return (
       <View key={block.id} style={styles.section}>
@@ -1281,12 +1326,15 @@ const renderBlock = (
         </View>
         {block.data.evidence_urls && block.data.evidence_urls.length > 0 ? (
           <View style={styles.evidenceRow}>
-            {evidenceRows.map(
-              (row, rowIndex) => (
+            {evidenceRows.map((row, rowIndex) => {
+              const isTwoCol = row.length === 2 && !row[0].fullRow && !row[1].fullRow;
+              const rowLayout = isTwoCol ? computeTwoColLayout(row) : null;
+
+              return (
                 <View
                   key={`${block.id}-evidence-row-${rowIndex}`}
                   style={styles.mediaTwoColumnRow}
-                  wrap={row.length !== 2}
+                  wrap={!isTwoCol}
                   minPresenceAhead={rowIndex < evidenceRows.length - 1 ? 210 : undefined}
                 >
                   {row.map((item, index) => {
@@ -1298,31 +1346,31 @@ const renderBlock = (
                         key={`${item.url}-${index}`}
                         style={composeStyles(
                           styles.evidenceImageFrame,
-                          fullRow ? styles.mediaImageFrameFull : styles.mediaImageFrameHalf,
-                          !fullRow &&
-                            (row.length === 1 || index === row.length - 1) &&
-                            styles.mediaImageFrameLastInRow,
+                          fullRow
+                            ? styles.mediaImageFrameFull
+                            : { width: rowLayout!.widths[index] },
                         )}
                       >
                         <Image
                           src={sanitizeImageUrl(item.url)}
                           style={composeStyles(
                             styles.evidenceImage,
-                            pickImageHeightStyle(item, !!isSingleImage, {
-                              twoColumn: styles.evidenceImageTwoColumn,
-                              ultraWide: styles.evidenceImageUltraWide,
-                              wide: styles.evidenceImageWide,
-                              tall: styles.evidenceImageTall,
-                              single: styles.evidenceImageSingleRow,
-                            }),
+                            fullRow
+                              ? pickFullRowImageHeight(item, !!isSingleImage, {
+                                  ultraWide: styles.evidenceImageUltraWide,
+                                  wide: styles.evidenceImageWide,
+                                  tall: styles.evidenceImageTall,
+                                  single: styles.evidenceImageSingleRow,
+                                })
+                              : { height: rowLayout!.height },
                           )}
                         />
                       </View>
                     );
                   })}
                 </View>
-              ),
-            )}
+              );
+            })}
           </View>
         ) : null}
       </View>
@@ -1382,52 +1430,57 @@ const renderBlock = (
 
   if (block.type === 'image_grid' && block.data.urls && block.data.urls.length > 0) {
     const urls = block.data.urls;
-    const imageRows = splitImagesIntoRows(urls, classifyImageFn);
+    const imageRows = splitImagesIntoRows(urls, classifyImageFn, measuredRatios);
 
     return (
       <View key={block.id} style={styles.section}>
         {block.data.title ? <Text style={styles.sectionTitle}>{block.data.title}</Text> : null}
         <View style={styles.imageGrid}>
-          {imageRows.map((row, rowIndex) => (
-            <View
-              key={`${block.id}-image-grid-row-${rowIndex}`}
-              style={styles.mediaTwoColumnRow}
-              wrap={row.length !== 2}
-              minPresenceAhead={rowIndex < imageRows.length - 1 ? 210 : undefined}
-            >
-              {row.map((item, index) => {
-                const isSingleImage = urls.length === 1;
-                const fullRow = item.fullRow || isSingleImage;
+          {imageRows.map((row, rowIndex) => {
+            const isTwoCol = row.length === 2 && !row[0].fullRow && !row[1].fullRow;
+            const rowLayout = isTwoCol ? computeTwoColLayout(row) : null;
 
-                return (
-                  <View
-                    key={`${item.url}-${index}`}
-                    style={composeStyles(
-                      styles.imageGridItemFrame,
-                      fullRow ? styles.mediaImageFrameFull : styles.mediaImageFrameHalf,
-                      !fullRow &&
-                        (row.length === 1 || index === row.length - 1) &&
-                        styles.mediaImageFrameLastInRow,
-                    )}
-                  >
-                    <Image
-                      src={sanitizeImageUrl(item.url)}
+            return (
+              <View
+                key={`${block.id}-image-grid-row-${rowIndex}`}
+                style={styles.mediaTwoColumnRow}
+                wrap={!isTwoCol}
+                minPresenceAhead={rowIndex < imageRows.length - 1 ? 210 : undefined}
+              >
+                {row.map((item, index) => {
+                  const isSingleImage = urls.length === 1;
+                  const fullRow = item.fullRow || isSingleImage;
+
+                  return (
+                    <View
+                      key={`${item.url}-${index}`}
                       style={composeStyles(
-                        styles.imageGridItem,
-                        pickImageHeightStyle(item, isSingleImage, {
-                          twoColumn: styles.imageGridItemTwoColumn,
-                          ultraWide: styles.imageGridItemUltraWide,
-                          wide: styles.imageGridItemWide,
-                          tall: styles.imageGridItemTall,
-                          single: styles.imageGridItemSingleRow,
-                        }),
+                        styles.imageGridItemFrame,
+                        fullRow
+                          ? styles.mediaImageFrameFull
+                          : { width: rowLayout!.widths[index] },
                       )}
-                    />
-                  </View>
-                );
-              })}
-            </View>
-          ))}
+                    >
+                      <Image
+                        src={sanitizeImageUrl(item.url)}
+                        style={composeStyles(
+                          styles.imageGridItem,
+                          fullRow
+                            ? pickFullRowImageHeight(item, isSingleImage, {
+                                ultraWide: styles.imageGridItemUltraWide,
+                                wide: styles.imageGridItemWide,
+                                tall: styles.imageGridItemTall,
+                                single: styles.imageGridItemSingleRow,
+                              })
+                            : { height: rowLayout!.height },
+                        )}
+                      />
+                    </View>
+                  );
+                })}
+              </View>
+            );
+          })}
         </View>
       </View>
     );
@@ -1533,7 +1586,7 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
           </View>
         </View>
 
-        {blocks.map((block) => renderBlock(block, theme, styles, classifyImageFn))}
+        {blocks.map((block) => renderBlock(block, theme, styles, classifyImageFn, measuredAspectRatios))}
 
         <Text
           style={styles.footer}

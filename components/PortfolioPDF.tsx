@@ -15,18 +15,21 @@ import {
 } from '@react-pdf/renderer';
 import { ContentBlock, PortfolioTheme, SkillCategory, SkillItem, StudentPortfolio } from '../types';
 
-// Use static (non-variable) TTF files from Google Fonts.
+// Use static (non-variable) TTF files from Google Fonts (chinese-simplified subset).
 // The @fontsource WOFF files are variable fonts which @react-pdf/renderer
 // does not support (causes "unsupported number" errors during glyph rendering).
+// NOTE: A residual "unsupported number" console error may still appear for certain
+// CJK compound glyphs — this is a known pdfkit/fontkit limitation with large CJK
+// fonts and does NOT prevent the PDF from being generated successfully.
 Font.register({
   family: 'Noto Sans SC',
   fonts: [
     {
-      src: 'https://fonts.gstatic.com/s/notosanssc/v40/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaG9_FnYw.ttf',
+      src: 'https://fonts.gstatic.com/s/notosanssc/v40/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaG9_Fra5HaA.ttf',
       fontWeight: 400,
     },
     {
-      src: 'https://fonts.gstatic.com/s/notosanssc/v40/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaGzjCnYw.ttf',
+      src: 'https://fonts.gstatic.com/s/notosanssc/v40/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaGzjCra5HaA.ttf',
       fontWeight: 700,
     },
   ],

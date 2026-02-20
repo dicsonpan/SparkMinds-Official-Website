@@ -516,13 +516,19 @@ const createStyles = (theme: PdfTheme) =>
       objectFit: 'contain',
     },
     timelineImageTwoColumn: {
-      height: 170,
+      height: 180,
     },
-    timelineImageFullRow: {
-      height: 132,
+    timelineImageUltraWide: {
+      height: 110,
+    },
+    timelineImageWide: {
+      height: 160,
+    },
+    timelineImageTall: {
+      height: 340,
     },
     timelineImageSingleRow: {
-      height: 220,
+      height: 240,
     },
     starTitle: {
       fontSize: 12,
@@ -574,13 +580,19 @@ const createStyles = (theme: PdfTheme) =>
       objectFit: 'contain',
     },
     evidenceImageTwoColumn: {
-      height: 170,
+      height: 180,
     },
-    evidenceImageFullRow: {
-      height: 132,
+    evidenceImageUltraWide: {
+      height: 110,
+    },
+    evidenceImageWide: {
+      height: 160,
+    },
+    evidenceImageTall: {
+      height: 340,
     },
     evidenceImageSingleRow: {
-      height: 220,
+      height: 240,
     },
     table: {
       borderWidth: 1,
@@ -644,8 +656,14 @@ const createStyles = (theme: PdfTheme) =>
     imageGridItemTwoColumn: {
       height: 190,
     },
-    imageGridItemFullRow: {
-      height: 140,
+    imageGridItemUltraWide: {
+      height: 120,
+    },
+    imageGridItemWide: {
+      height: 170,
+    },
+    imageGridItemTall: {
+      height: 360,
     },
     imageGridItemSingleRow: {
       height: 280,
@@ -691,27 +709,52 @@ const sanitizeImageUrl = (url: string | undefined | null): string => {
 };
 
 const FIRST_LINE_INDENT = 24;
-const LONG_IMAGE_RATIO_THRESHOLD = 2.8;
+
+/**
+ * Image layout classification thresholds (based on aspect ratio = width / height):
+ *
+ * - ULTRA_WIDE: ratio >= 2.5  → panoramic / banner images → full row, short height
+ * - WIDE:       ratio >= 1.8  → landscape screenshots etc → full row, medium height
+ * - TALL:       ratio <= 0.45 → phone screenshots, long scrolls → full row, tall height
+ * - NORMAL:     everything else → 2 per row
+ *
+ * When only 1 image exists in a block it always gets full row with generous height.
+ */
+const RATIO_ULTRA_WIDE = 2.5;
+const RATIO_WIDE = 1.8;
+const RATIO_TALL = 0.45;
+
+type ImageLayout = 'ultra_wide' | 'wide' | 'tall' | 'normal';
 
 interface ImageRowItem {
   url: string;
   fullRow: boolean;
+  layout: ImageLayout;
 }
 
-const isUltraWideImage = (url: string, measuredAspectRatios: Record<string, number>): boolean => {
-  const measuredRatio = measuredAspectRatios[url];
-  return Number.isFinite(measuredRatio) && measuredRatio >= LONG_IMAGE_RATIO_THRESHOLD;
+const classifyImage = (url: string, measuredAspectRatios: Record<string, number>): ImageLayout => {
+  const ratio = measuredAspectRatios[url];
+  if (!Number.isFinite(ratio)) return 'normal';
+  if (ratio >= RATIO_ULTRA_WIDE) return 'ultra_wide';
+  if (ratio >= RATIO_WIDE) return 'wide';
+  if (ratio <= RATIO_TALL) return 'tall';
+  return 'normal';
 };
+
+const shouldImageBeFullRow = (layout: ImageLayout): boolean =>
+  layout === 'ultra_wide' || layout === 'wide' || layout === 'tall';
 
 const splitImagesIntoRows = (
   urls: string[],
-  shouldUseFullRow: (url: string) => boolean,
+  classifyFn: (url: string) => ImageLayout,
 ): ImageRowItem[][] => {
   const rows: ImageRowItem[][] = [];
   let currentRow: ImageRowItem[] = [];
 
   urls.forEach((url) => {
-    const item: ImageRowItem = { url, fullRow: shouldUseFullRow(url) };
+    const layout = classifyFn(url);
+    const fullRow = shouldImageBeFullRow(layout);
+    const item: ImageRowItem = { url, fullRow, layout };
 
     if (item.fullRow) {
       if (currentRow.length > 0) {
@@ -734,6 +777,36 @@ const splitImagesIntoRows = (
   }
 
   return rows;
+};
+
+/**
+ * Pick the correct height style for an image based on its layout classification.
+ * @param item - The image row item with layout info
+ * @param isSingleImage - Whether this is the only image in the entire block
+ * @param heightStyles - Map of layout → style object
+ */
+const pickImageHeightStyle = (
+  item: ImageRowItem,
+  isSingleImage: boolean,
+  heightStyles: {
+    twoColumn: any;
+    ultraWide: any;
+    wide: any;
+    tall: any;
+    single: any;
+  },
+): any => {
+  if (isSingleImage && !item.fullRow) return heightStyles.single;
+  switch (item.layout) {
+    case 'ultra_wide':
+      return heightStyles.ultraWide;
+    case 'wide':
+      return heightStyles.wide;
+    case 'tall':
+      return heightStyles.tall;
+    default:
+      return heightStyles.twoColumn;
+  }
 };
 
 const pickProfileData = (portfolio: StudentPortfolio, blocks: ContentBlock[]): ProfileData => {
@@ -1044,7 +1117,7 @@ const renderBlock = (
   block: ContentBlock,
   theme: PdfTheme,
   styles: ReturnType<typeof createStyles>,
-  shouldUseFullRowForImage: (url: string) => boolean,
+  classifyImageFn: (url: string) => ImageLayout,
 ): React.ReactNode => {
   if (block.type === 'profile_header') {
     return null;
@@ -1129,7 +1202,7 @@ const renderBlock = (
 
   if (block.type === 'timeline_node') {
     const timelineUrls = block.data.urls || [];
-    const timelineRows = splitImagesIntoRows(timelineUrls, shouldUseFullRowForImage);
+    const timelineRows = splitImagesIntoRows(timelineUrls, classifyImageFn);
 
     return (
       <View key={block.id} style={styles.section}>
@@ -1165,8 +1238,13 @@ const renderBlock = (
                           src={sanitizeImageUrl(item.url)}
                           style={composeStyles(
                             styles.timelineImage,
-                            fullRow ? styles.timelineImageFullRow : styles.timelineImageTwoColumn,
-                            isSingleImage && !item.fullRow && styles.timelineImageSingleRow,
+                            pickImageHeightStyle(item, isSingleImage, {
+                              twoColumn: styles.timelineImageTwoColumn,
+                              ultraWide: styles.timelineImageUltraWide,
+                              wide: styles.timelineImageWide,
+                              tall: styles.timelineImageTall,
+                              single: styles.timelineImageSingleRow,
+                            }),
                           )}
                         />
                       </View>
@@ -1188,7 +1266,7 @@ const renderBlock = (
       { label: 'Action / 行动', content: block.data.star_action },
       { label: 'Result / 结果', content: block.data.star_result },
     ];
-    const evidenceRows = splitImagesIntoRows(block.data.evidence_urls || [], shouldUseFullRowForImage);
+    const evidenceRows = splitImagesIntoRows(block.data.evidence_urls || [], classifyImageFn);
 
     return (
       <View key={block.id} style={styles.section}>
@@ -1230,8 +1308,13 @@ const renderBlock = (
                           src={sanitizeImageUrl(item.url)}
                           style={composeStyles(
                             styles.evidenceImage,
-                            fullRow ? styles.evidenceImageFullRow : styles.evidenceImageTwoColumn,
-                            isSingleImage && !item.fullRow && styles.evidenceImageSingleRow,
+                            pickImageHeightStyle(item, !!isSingleImage, {
+                              twoColumn: styles.evidenceImageTwoColumn,
+                              ultraWide: styles.evidenceImageUltraWide,
+                              wide: styles.evidenceImageWide,
+                              tall: styles.evidenceImageTall,
+                              single: styles.evidenceImageSingleRow,
+                            }),
                           )}
                         />
                       </View>
@@ -1299,7 +1382,7 @@ const renderBlock = (
 
   if (block.type === 'image_grid' && block.data.urls && block.data.urls.length > 0) {
     const urls = block.data.urls;
-    const imageRows = splitImagesIntoRows(urls, shouldUseFullRowForImage);
+    const imageRows = splitImagesIntoRows(urls, classifyImageFn);
 
     return (
       <View key={block.id} style={styles.section}>
@@ -1331,8 +1414,13 @@ const renderBlock = (
                       src={sanitizeImageUrl(item.url)}
                       style={composeStyles(
                         styles.imageGridItem,
-                        fullRow ? styles.imageGridItemFullRow : styles.imageGridItemTwoColumn,
-                        isSingleImage && !item.fullRow && styles.imageGridItemSingleRow,
+                        pickImageHeightStyle(item, isSingleImage, {
+                          twoColumn: styles.imageGridItemTwoColumn,
+                          ultraWide: styles.imageGridItemUltraWide,
+                          wide: styles.imageGridItemWide,
+                          tall: styles.imageGridItemTall,
+                          single: styles.imageGridItemSingleRow,
+                        }),
                       )}
                     />
                   </View>
@@ -1410,8 +1498,8 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
     };
   }, [allBlockImageUrls, measuredAspectRatios]);
 
-  const shouldUseFullRowForImage = React.useCallback(
-    (url: string) => isUltraWideImage(url, measuredAspectRatios),
+  const classifyImageFn = React.useCallback(
+    (url: string) => classifyImage(url, measuredAspectRatios),
     [measuredAspectRatios],
   );
 
@@ -1445,7 +1533,7 @@ export const PortfolioPDF: React.FC<PortfolioPDFProps> = ({ portfolio }) => {
           </View>
         </View>
 
-        {blocks.map((block) => renderBlock(block, theme, styles, shouldUseFullRowForImage))}
+        {blocks.map((block) => renderBlock(block, theme, styles, classifyImageFn))}
 
         <Text
           style={styles.footer}
